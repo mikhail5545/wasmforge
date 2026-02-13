@@ -19,11 +19,10 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 
+	"github.com/mikhail5545/wasm-gateway/internal/admin"
 	"github.com/mikhail5545/wasm-gateway/internal/proxy"
 	"github.com/mikhail5545/wasm-gateway/internal/wasm/host"
-	"github.com/mikhail5545/wasm-gateway/internal/wasm/middleware"
 	"go.uber.org/zap"
 )
 
@@ -48,17 +47,18 @@ func main() {
 		}
 	}()
 
-	wasmBytes, err := os.ReadFile("./plugins/auth.wasm")
-	if err != nil {
-		log.Fatal("Could not read WASM file:", err)
-	}
-
-	wasmMiddleware, err := middleware.New(ctx, runtime, wasmBytes, logger)
-	if err != nil {
-		log.Fatal("Failed to create WASM middleware:", err)
-	}
-
+	//wasmBytes, err := os.ReadFile("./plugins/auth.wasm")
+	//if err != nil {
+	//	log.Fatal("Could not read WASM file:", err)
+	//}
+	//
+	//wasmMiddleware, err := middleware.New(ctx, runtime, wasmBytes, logger)
+	//if err != nil {
+	//	log.Fatal("Failed to create WASM middleware:", err)
+	//}
+	//
 	proxyManager := proxy.New()
-	proxyManager.AddRoute("/api/", "http://localhost:8081", wasmMiddleware)
+	//proxyManager.AddRoute("/api/", "http://localhost:8081", wasmMiddleware)
 
+	admin.StartAdminServer(proxyManager)
 }

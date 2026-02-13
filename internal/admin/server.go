@@ -5,9 +5,9 @@ import (
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
-	"github.com/mikhail5545/wasm-gateway/internal/admin/handlers"
-	"github.com/mikhail5545/wasm-gateway/internal/proxy"
-	"github.com/mikhail5545/wasm-gateway/pkg/ui"
+	"github.com/mikhail5545/wasmforge/internal/admin/handlers"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
+	"github.com/mikhail5545/wasmforge/pkg/ui"
 )
 
 func StartAdminServer(manager *proxy.Manager) {

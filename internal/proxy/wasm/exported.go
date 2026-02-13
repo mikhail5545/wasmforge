@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-package host
+package wasm
 
 import (
 	"context"
 
-	"github.com/mikhail5545/wasm-gateway/internal/reqctx"
+	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
 	"github.com/tetratelabs/wazero/api"
 	"go.uber.org/zap"
 )
@@ -29,7 +29,7 @@ func hostGetHeader(ctx context.Context, mod api.Module, keyPtr, keyLen, bufPtr, 
 
 	req, ok := reqctx.RequestFromContext(ctx)
 	if !ok {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	keyBytes, ok := mod.Memory().Read(keyPtr, keyLen)
@@ -38,13 +38,13 @@ func hostGetHeader(ctx context.Context, mod api.Module, keyPtr, keyLen, bufPtr, 
 			zap.Uint32("ptr", keyPtr),
 			zap.Uint32("len", keyLen),
 		)
-		return 0
+		return 0xFFFFFFFF
 	}
 	key := string(keyBytes)
 
 	headerValue := req.Header.Get(key)
 	if headerValue == "" {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	valBytes := []byte(headerValue)
@@ -99,7 +99,7 @@ func hostGetMethod(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint32
 
 	req, ok := reqctx.RequestFromContext(ctx)
 	if !ok {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	methodBytes := []byte(req.Method)
@@ -122,7 +122,7 @@ func hostGetPath(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint32) 
 
 	req, ok := reqctx.RequestFromContext(ctx)
 	if !ok {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	pathBytes := []byte(req.URL.Path)
@@ -146,7 +146,7 @@ func hostGetQueryParam(ctx context.Context, mod api.Module, keyPtr, keyLen, bufP
 
 	req, ok := reqctx.RequestFromContext(ctx)
 	if !ok {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	keyBytes, ok := mod.Memory().Read(keyPtr, keyLen)
@@ -155,7 +155,7 @@ func hostGetQueryParam(ctx context.Context, mod api.Module, keyPtr, keyLen, bufP
 			zap.Uint32("ptr", keyPtr),
 			zap.Uint32("len", keyLen),
 		)
-		return 0
+		return 0xFFFFFFFF
 	}
 	key := string(keyBytes)
 
@@ -171,7 +171,7 @@ func hostGetQueryParam(ctx context.Context, mod api.Module, keyPtr, keyLen, bufP
 			zap.Uint32("buffer_ptr", bufPtr),
 			zap.Uint32("len", valueLen),
 		)
-		return 0
+		return 0xFFFFFFFF
 	}
 	return valueLen
 }
@@ -181,7 +181,7 @@ func hostGetRawQuery(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint
 
 	req, ok := reqctx.RequestFromContext(ctx)
 	if !ok {
-		return 0
+		return 0xFFFFFFFF
 	}
 
 	queryBytes := []byte(req.URL.RawQuery)
@@ -196,7 +196,7 @@ func hostGetRawQuery(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint
 			zap.Uint32("buffer_ptr", bufPtr),
 			zap.Uint32("len", queryLen),
 		)
-		return 0
+		return 0xFFFFFFFF
 	}
 	return queryLen
 }

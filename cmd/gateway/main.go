@@ -20,9 +20,9 @@ import (
 	"context"
 	"log"
 
-	"github.com/mikhail5545/wasm-gateway/internal/admin"
-	"github.com/mikhail5545/wasm-gateway/internal/proxy"
-	"github.com/mikhail5545/wasm-gateway/internal/wasm/host"
+	"github.com/mikhail5545/wasmforge/internal/admin"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
+	"github.com/mikhail5545/wasmforge/internal/wasm/host"
 	"go.uber.org/zap"
 )
 

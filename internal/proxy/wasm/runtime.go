@@ -14,24 +14,25 @@
  * limitations under the License.
  */
 
-package host
+package wasm
 
 import (
 	"context"
-	"log"
-	"os"
 
 	"github.com/tetratelabs/wazero"
+	"go.uber.org/zap"
+
+	"os"
 )
 
-func NewWasmRuntime(ctx context.Context) (wazero.Runtime, func() error, error) {
+func NewWasmRuntime(ctx context.Context, logger *zap.Logger) (wazero.Runtime, func() error, error) {
 	cacheDir, err := os.MkdirTemp("", "wasm")
 	if err != nil {
-		log.Printf("Error creating cache directory: %v", err)
+		logger.Error("failed to create cache directory for WASM runtime", zap.Error(err))
 	}
 	cache, err := wazero.NewCompilationCacheWithDir(cacheDir)
 	if err != nil {
-		log.Printf("Error creating cache directory: %v", err)
+		logger.Error("failed to create compilation cache for WASM runtime", zap.Error(err))
 	}
 
 	cfg := wazero.NewRuntimeConfig().WithCompilationCache(cache)

@@ -18,7 +18,7 @@ package route
 
 import (
 	"github.com/google/uuid"
-	"github.com/mikhail5545/wasm-gateway/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/models/route"
 )
 
 type filter struct {
@@ -62,9 +62,9 @@ func WithTargetURLs(targetURLs ...string) FilterOption {
 	}
 }
 
-func WithEnabled(enabled bool) FilterOption {
+func WithEnabled(enabled *bool) FilterOption {
 	return func(f *filter) {
-		f.Enabled = &enabled
+		f.Enabled = enabled
 	}
 }
 

@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
-	"github.com/mikhail5545/wasm-gateway/internal/proxy"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
 )
 
 type Handler struct {

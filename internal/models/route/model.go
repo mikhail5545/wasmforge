@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mikhail5545/wasm-gateway/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"gorm.io/gorm"
 )
 
@@ -14,7 +14,7 @@ type Route struct {
 	Path      string    `gorm:"uniqueIndex;not null" json:"path"`
 	TargetURL string    `json:"target_url"`
 
-	Enabled               bool `gorm:"default:true" json:"enabled"`
+	Enabled               bool `gorm:"default:false" json:"enabled"`
 	IdleConnTimeout       int  `json:"idle_conn_timeout"`
 	TLSHandshakeTimeout   int  `json:"tls_handshake_timeout"`
 	ExpectContinueTimeout int  `json:"expect_continue_timeout"`

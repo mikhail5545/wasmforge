@@ -23,3 +23,31 @@ const (
 	OrderFieldFilename  OrderField = "filename"
 	OrderFieldCreatedAt OrderField = "created_at"
 )
+
+type GetRequest struct {
+	ID       *string `param:"id" json:"-"`
+	Filename *string `param:"id" json:"-"`
+	Name     *string `param:"id" json:"-"`
+}
+
+type ListRequest struct {
+	IDs []string `query:"ids" json:"-"`
+
+	Names     []string `query:"n" json:"-"`
+	Filenames []string `query:"fn" json:"-"`
+
+	OrderField     OrderField `param:"of" json:"-"`
+	OrderDirection string     `param:"od" json:"-"`
+
+	PageSize  int    `param:"ps" json:"-"`
+	PageToken string `param:"pt" json:"-"`
+}
+
+type CreateRequest struct {
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+}
+
+type DeleteRequest struct {
+	ID string `param:"id" json:"-"`
+}

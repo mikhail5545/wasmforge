@@ -18,7 +18,7 @@ package plugin
 
 import (
 	"github.com/google/uuid"
-	"github.com/mikhail5545/wasm-gateway/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 )
 
 type Preload string
@@ -51,19 +51,19 @@ func newFilter(opts ...FilterOption) *filter {
 	return f
 }
 
-func WithIDs(ids uuid.UUIDs) FilterOption {
+func WithIDs(ids ...uuid.UUID) FilterOption {
 	return func(f *filter) {
 		f.IDs = ids
 	}
 }
 
-func WithPluginIDs(pluginIDs uuid.UUIDs) FilterOption {
+func WithPluginIDs(pluginIDs ...uuid.UUID) FilterOption {
 	return func(f *filter) {
 		f.PluginIDs = pluginIDs
 	}
 }
 
-func WithRouteIDs(routeIDs uuid.UUIDs) FilterOption {
+func WithRouteIDs(routeIDs ...uuid.UUID) FilterOption {
 	return func(f *filter) {
 		f.RouteIDs = routeIDs
 	}

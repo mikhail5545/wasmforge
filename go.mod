@@ -1,8 +1,9 @@
-module github.com/mikhail5545/wasm-gateway
+module github.com/mikhail5545/wasmforge
 
 go 1.25.0
 
 require (
+	github.com/go-ozzo/ozzo-validation/v4 v4.3.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/jinzhu/now v1.1.5 // indirect

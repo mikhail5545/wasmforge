@@ -17,8 +17,8 @@
 package plugin
 
 import (
-	"github.com/mikhail5545/wasm-gateway/internal/database/util"
-	"github.com/mikhail5545/wasm-gateway/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/database/util"
+	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"gorm.io/gorm"
 )
 

@@ -22,3 +22,31 @@ const (
 	OrderFieldCreatedAt      OrderField = "created_at"
 	OrderFieldExecutionOrder OrderField = "execution_order"
 )
+
+type GetRequest struct {
+	ID string `param:"id" json:"-"`
+}
+
+type ListRequest struct {
+	IDs       []string `query:"ids" json:"-"`
+	RouteIDs  []string `query:"r_ids" json:"-"`
+	PluginIDs []string `query:"p_ds" json:"-"`
+
+	OrderField     OrderField `query:"of" json:"-"`
+	OrderDirection string     `query:"od" json:"-"`
+
+	PageSize  int    `query:"ps" json:"-"`
+	PageToken string `query:"pt" json:"-"`
+}
+
+type CreateRequest struct {
+	RouteID        string `json:"route_id"`
+	PluginID       string `json:"plugin_id"`
+	ExecutionOrder int    `json:"execution_order"`
+
+	Config *string `json:"config,omitempty"`
+}
+
+type DeleteRequest struct {
+	ID string `param:"id" json:"-"`
+}

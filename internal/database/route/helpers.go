@@ -20,11 +20,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/mikhail5545/wasm-gateway/internal/database/pagination"
-	routemodel "github.com/mikhail5545/wasm-gateway/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/database/pagination"
+	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 )
 
-func (r *Repository) get(ctx context.Context, filter *filter) (*routemodel.Route, error) {
+func (r *repository) get(ctx context.Context, filter *filter) (*routemodel.Route, error) {
 	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return nil, fmt.Errorf("not enough identifying filters provided")
@@ -36,7 +36,7 @@ func (r *Repository) get(ctx context.Context, filter *filter) (*routemodel.Route
 	return &rte, err
 }
 
-func (r *Repository) list(ctx context.Context, filter *filter) ([]*routemodel.Route, string, error) {
+func (r *repository) list(ctx context.Context, filter *filter) ([]*routemodel.Route, string, error) {
 	cleanFilter(filter)
 	db := applyIdentifyingFilters(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
@@ -67,7 +67,7 @@ func (r *Repository) list(ctx context.Context, filter *filter) ([]*routemodel.Ro
 	return routes, nextPageToken, nil
 }
 
-func (r *Repository) unpaginatedList(ctx context.Context, filter *filter) ([]*routemodel.Route, error) {
+func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*routemodel.Route, error) {
 	cleanFilter(filter)
 	db := applyIdentifyingFilters(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
@@ -79,7 +79,7 @@ func (r *Repository) unpaginatedList(ctx context.Context, filter *filter) ([]*ro
 	return routes, nil
 }
 
-func (r *Repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
+func (r *repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
 	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return 0, fmt.Errorf("not enough identifying filters provided")
@@ -90,7 +90,7 @@ func (r *Repository) updates(ctx context.Context, filter *filter, updates map[st
 	return res.RowsAffected, res.Error
 }
 
-func (r *Repository) delete(ctx context.Context, filter *filter) (int64, error) {
+func (r *repository) delete(ctx context.Context, filter *filter) (int64, error) {
 	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return 0, fmt.Errorf("not enough identifying filters provided")

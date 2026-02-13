@@ -18,7 +18,7 @@ package plugin
 
 import (
 	"github.com/google/uuid"
-	"github.com/mikhail5545/wasm-gateway/internal/models/plugin"
+	"github.com/mikhail5545/wasmforge/internal/models/plugin"
 )
 
 type filter struct {

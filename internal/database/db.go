@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"plugin"
 
-	"github.com/mikhail5545/wasm-gateway/internal/models/route"
-	"github.com/mikhail5545/wasm-gateway/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )

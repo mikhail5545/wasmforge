@@ -19,11 +19,11 @@ package plugin
 import (
 	"context"
 
-	"github.com/mikhail5545/wasm-gateway/internal/database/pagination"
-	pluginmodel "github.com/mikhail5545/wasm-gateway/internal/models/plugin"
+	"github.com/mikhail5545/wasmforge/internal/database/pagination"
+	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 )
 
-func (r *Repository) get(ctx context.Context, filter *filter) (*pluginmodel.Plugin, error) {
+func (r *repository) get(ctx context.Context, filter *filter) (*pluginmodel.Plugin, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
@@ -32,7 +32,7 @@ func (r *Repository) get(ctx context.Context, filter *filter) (*pluginmodel.Plug
 	return &plugin, err
 }
 
-func (r *Repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, string, error) {
+func (r *repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, string, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
@@ -62,7 +62,7 @@ func (r *Repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.P
 	return plugins, nextPageToken, nil
 }
 
-func (r *Repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, error) {
+func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
@@ -73,7 +73,7 @@ func (r *Repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pl
 	return plugins, nil
 }
 
-func (r *Repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
+func (r *repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
@@ -81,7 +81,7 @@ func (r *Repository) updates(ctx context.Context, filter *filter, updates map[st
 	return res.RowsAffected, res.Error
 }
 
-func (r *Repository) delete(ctx context.Context, filter *filter) (int64, error) {
+func (r *repository) delete(ctx context.Context, filter *filter) (int64, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 

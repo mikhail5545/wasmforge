@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/mikhail5545/wasm-gateway/internal/models/plugin"
+	"github.com/mikhail5545/wasmforge/internal/models/plugin"
 )
 
 type RoutePlugin struct {
@@ -15,6 +15,6 @@ type RoutePlugin struct {
 	PluginID uuid.UUID     `gorm:"type:uuid;not null;index" json:"plugin_id"`
 	Plugin   plugin.Plugin `gorm:"foreignKey:PluginID;references:ID" json:"plugin"`
 
-	ExecutionOrder int    `gorm:"not null" json:"execution_order"`
-	Config         string `gorm:"type:jsonb" json:"config,omitempty"`
+	ExecutionOrder int     `gorm:"not null" json:"execution_order"`
+	Config         *string `gorm:"type:jsonb" json:"config,omitempty"`
 }

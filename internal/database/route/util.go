@@ -17,8 +17,8 @@
 package route
 
 import (
-	"github.com/mikhail5545/wasm-gateway/internal/database/util"
-	routemodel "github.com/mikhail5545/wasm-gateway/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/database/util"
+	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	"gorm.io/gorm"
 )
 

@@ -24,11 +24,24 @@ import (
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 )
 
+// Director is a custom HTTP handler that manages routes dynamically using an atomic value for
+// lock-free reads and a mutex for safe updates. It allows adding and removing routes at runtime without downtime.
+// It's based on http.ServeMux for zero-dependency efficient path matching but optimized for dynamic route management in a high-concurrency environment,
+// making it suitable for use in a reverse proxy setup where routes may need to be updated frequently without downtime.
 type Director struct {
 	// Atomic value to hold the current http.ServeMux for lock-free reads, which allows for hot swapping routes without downtime.
-	mux    atomic.Value
-	mu     sync.Mutex
+	mux atomic.Value
+	mu  sync.Mutex
+	// routes is a map of path to final http.Handler, used to reconstruct the http.ServeMux when routes are added, edited or removed.
 	routes map[string]http.Handler
+}
+
+func NewDirector() *Director {
+	d := &Director{
+		routes: make(map[string]http.Handler),
+	}
+	d.mux.Store(http.NewServeMux())
+	return d
 }
 
 func (d *Director) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +49,7 @@ func (d *Director) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	router.ServeHTTP(w, r)
 }
 
-func (d *Director) AddRoute(path string, handler http.Handler) {
+func (d *Director) addRoute(path string, handler http.Handler) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
@@ -49,7 +62,7 @@ func (d *Director) AddRoute(path string, handler http.Handler) {
 	d.mux.Store(newMux)
 }
 
-func (d *Director) RemoveRoute(path string) error {
+func (d *Director) removeRoute(path string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 

@@ -29,8 +29,8 @@ import (
 type (
 	Builder interface {
 		Director() *Director
-		BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...middleware) error
-		RebuildRouteMiddlewares(path string, middlewares ...middleware) error
+		BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error
+		RebuildRouteMiddlewares(path string, middlewares ...func(http.Handler) http.Handler) error
 		RemoveRoute(path string) error
 	}
 
@@ -41,8 +41,9 @@ type (
 	}
 
 	internalRoute struct {
-		handler http.Handler           // Fully assembled chain: WASM(s) -> Proxy, this will be called when request matches the route
-		proxy   *httputil.ReverseProxy // Original reverse proxy instance without middleware applied, used for hot-swapping middlewares without re-parsing the target URL
+		handler http.Handler // Fully assembled chain: WASM middleware(s) -> Proxy, this will be called when request matches the route
+		// Original reverse httputil.ReverseProxy instance without middleware applied, used for hot-swapping middlewares without re-initializing the instance itself
+		proxy *httputil.ReverseProxy
 	}
 
 	TransportConfig struct {
@@ -60,18 +61,18 @@ type (
 		IdleConnTimeout       time.Duration
 		TLSHandshakeTimeout   time.Duration
 		ExpectContinueTimeout time.Duration
-		MaxIdleCons           *int
-		MaxIdleConsPerHost    *int
-		MaxConsPerHost        *int
 		ResponseHeaderTimeout *time.Duration
 	}
-
-	middleware func(http.Handler) http.Handler
 )
 
 func NewBuilder() Builder {
+	d := &Director{
+		routes: make(map[string]http.Handler),
+	}
+	d.mux.Store(http.NewServeMux())
 	return &builder{
-		routes: make(map[string]*internalRoute),
+		director: d,
+		routes:   make(map[string]*internalRoute),
 	}
 }
 
@@ -79,7 +80,7 @@ func (b *builder) Director() *Director {
 	return b.director
 }
 
-func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...middleware) error {
+func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		return fmt.Errorf("invalid target URL: %v", err)
@@ -92,7 +93,7 @@ func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfi
 	proxy.Director = func(req *http.Request) {
 		req.URL.Scheme = target.Scheme
 		req.URL.Host = target.Host
-		req.URL.Path = strings.TrimPrefix(req.URL.Path, target.Path)
+		req.URL.Path = target.Path + strings.TrimPrefix(req.URL.Path, path)
 		if target.RawQuery == "" || req.URL.RawQuery == "" {
 			req.URL.RawQuery = target.RawQuery + req.URL.RawQuery
 		} else {
@@ -112,11 +113,11 @@ func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfi
 		handler: final,
 		proxy:   proxy,
 	}
-	b.director.AddRoute(path, final)
+	b.director.addRoute(path, final)
 	return nil
 }
 
-func (b *builder) RebuildRouteMiddlewares(path string, middlewares ...middleware) error {
+func (b *builder) RebuildRouteMiddlewares(path string, middlewares ...func(http.Handler) http.Handler) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -130,7 +131,7 @@ func (b *builder) RebuildRouteMiddlewares(path string, middlewares ...middleware
 		final = middlewares[i](final)
 	}
 	route.handler = final
-	b.director.AddRoute(path, final)
+	b.director.addRoute(path, final)
 	return nil
 }
 
@@ -142,7 +143,7 @@ func (b *builder) RemoveRoute(path string) error {
 		return fmt.Errorf("route not found: %s", path)
 	}
 	delete(b.routes, path)
-	return b.director.RemoveRoute(path)
+	return b.director.removeRoute(path)
 }
 
 func newTransport(cfg TransportConfig) *http.Transport {

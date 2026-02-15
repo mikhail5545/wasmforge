@@ -1,5 +1,5 @@
 FROM ubuntu:latest
-LABEL authors="mikai"
+LABEL authors="mikhai5545"
 
 ENTRYPOINT ["top", "-b"]
 FROM node:18-alpine AS ui-builder

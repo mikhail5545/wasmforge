@@ -20,45 +20,48 @@ import (
 	"context"
 	"log"
 
-	"github.com/mikhail5545/wasmforge/internal/admin"
-	"github.com/mikhail5545/wasmforge/internal/proxy"
-	"github.com/mikhail5545/wasmforge/internal/wasm/host"
-	"go.uber.org/zap"
+	"github.com/mikhail5545/wasmforge/internal/app"
+	"github.com/spf13/pflag"
 )
 
 func main() {
 	ctx := context.Background()
 
-	logger, err := zap.NewProduction()
+	cfg := parseArgs()
+
+	application, err := app.New(cfg)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to create app: %v", err)
+	}
+	defer func(application *app.App, ctx context.Context) {
+		err := application.Cleanup(ctx)
+		if err != nil {
+			log.Fatalf("failed to cleanup app: %v", err)
+		}
+	}(application, ctx)
+
+	if err := application.Init(ctx); err != nil {
+		log.Fatalf("failed to initialize app: %v", err)
 	}
 
-	runtime, cleanup, err := host.NewWasmRuntime(ctx)
-	if err != nil {
-		log.Fatal(err)
+	if err := application.Start(ctx); err != nil {
+		log.Fatalf("app stopped with error: %v", err)
 	}
-	defer func() {
-		if err := cleanup(); err != nil {
-			logger.Error("failed to clean up WASM runtime cache", zap.Error(err))
-		}
-		if err := runtime.Close(ctx); err != nil {
-			logger.Error("failed to close WASM runtime", zap.Error(err))
-		}
-	}()
+}
 
-	//wasmBytes, err := os.ReadFile("./plugins/auth.wasm")
-	//if err != nil {
-	//	log.Fatal("Could not read WASM file:", err)
-	//}
-	//
-	//wasmMiddleware, err := middleware.New(ctx, runtime, wasmBytes, logger)
-	//if err != nil {
-	//	log.Fatal("Failed to create WASM middleware:", err)
-	//}
-	//
-	proxyManager := proxy.New()
-	//proxyManager.AddRoute("/api/", "http://localhost:8081", wasmMiddleware)
+func parseArgs() *app.Config {
+	cfg := &app.Config{
+		DatabaseConfig: app.DatabaseConfig{
+			DSN: "./wasmforge.db",
+		},
+	}
 
-	admin.StartAdminServer(proxyManager)
+	pflag.Int64VarP(&cfg.AdminServerConfig.Port, "admin-port", "a", 8080, "Port for the admin server")
+	pflag.Int64VarP(&cfg.ProxyServerConfig.Port, "proxy-port", "p", 9090, "Port for the proxy server")
+	pflag.StringVarP(&cfg.UploadsConfig.Directory, "uploads-dir", "u", "./uploads", "Directory for uploaded WASM modules")
+	pflag.StringVarP(&cfg.LogConfig.Directory, "logs-dir", "l", "./logs", "Directory for log files")
+	pflag.BoolVarP(&cfg.LogConfig.UseTimestamp, "use-timestamps", "t", true, "Use timestamps in logs filenames")
+	pflag.Parse()
+
+	return cfg
 }

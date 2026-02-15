@@ -32,16 +32,16 @@ type (
 		logger         *zap.Logger
 		rt             wazero.Runtime
 		compiledModule wazero.CompiledModule
-		pluginConfig   string
+		pluginConfig   *string
 	}
 
 	WasmMiddlewareConfig struct {
-		PluginConfig string
+		PluginConfig *string
 		WasmBytes    []byte
 	}
 )
 
-func (m *WasmMiddleware) New(ctx context.Context, rt wazero.Runtime, logger *zap.Logger, cfg WasmMiddlewareConfig) (func(http.Handler) http.Handler, error) {
+func New(ctx context.Context, rt wazero.Runtime, logger *zap.Logger, cfg WasmMiddlewareConfig) (func(http.Handler) http.Handler, error) {
 	compiled, err := rt.CompileModule(ctx, cfg.WasmBytes)
 	if err != nil {
 		logger.Error("failed to compile WASM module", zap.Error(err))

@@ -41,6 +41,6 @@ type CreateRequest struct {
 	ResponseHeaderTimeout *int `json:"response_header_timeout"`
 }
 
-type DeleteRequest struct {
+type IDRequest struct {
 	ID string `param:"id" json:"-"`
 }

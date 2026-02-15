@@ -38,7 +38,7 @@ type Service struct {
 	logger        *zap.Logger
 }
 
-func New(pluginRepo pluginrepo.Repository, logger *zap.Logger) *Service {
+func New(pluginRepo pluginrepo.Repository, uploadManager *uploads.Manager, logger *zap.Logger) *Service {
 	return &Service{
 		pluginRepo: pluginRepo,
 		logger:     logger.With(zap.String("service", "plugin")),

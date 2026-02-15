@@ -57,7 +57,7 @@ func (req CreateRequest) Validate() error {
 	)
 }
 
-func (req DeleteRequest) Validate() error {
+func (req IDRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
 	)

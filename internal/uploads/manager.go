@@ -108,3 +108,12 @@ func (m *Manager) Delete(filename string) error {
 	m.logger.Info("file deleted successfully", zap.String("filename", filePath))
 	return nil
 }
+
+func (m *Manager) Read(filename string) ([]byte, error) {
+	filePath := path.Join(m.pluginUploadDir, filename)
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	return data, nil
+}

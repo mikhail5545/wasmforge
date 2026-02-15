@@ -23,16 +23,20 @@ import (
 
 	"github.com/google/uuid"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
-	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
+	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
+	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
 	uuidutil "github.com/mikhail5545/wasmforge/internal/util/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	routeRepo routerepo.Repository
-	logger    *zap.Logger
+	routeRepo       routerepo.Repository
+	routePluginRepo routepluginrepo.Repository
+	routeFactory    proxy.Factory
+	logger          *zap.Logger
 }
 
 func New(routeRepo routerepo.Repository, logger *zap.Logger) *Service {
@@ -50,7 +54,7 @@ func (s *Service) Get(ctx context.Context, req *routemodel.GetRequest) (*routemo
 	route, err := s.routeRepo.Get(ctx, opt)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
-			return nil, serviceerrors.NewNotFoundError(err)
+			return nil, inerrors.NewNotFoundError(err)
 		}
 		s.logger.Error("failed to retrieve route", zap.Error(err))
 		return nil, fmt.Errorf("failed to retrieve route: %w", err)
@@ -60,7 +64,7 @@ func (s *Service) Get(ctx context.Context, req *routemodel.GetRequest) (*routemo
 
 func (s *Service) List(ctx context.Context, req *routemodel.ListRequest) ([]*routemodel.Route, string, error) {
 	if err := req.Validate(); err != nil {
-		return nil, "", serviceerrors.NewValidationError(err)
+		return nil, "", inerrors.NewValidationError(err)
 	}
 	routes, token, err := s.routeRepo.List(ctx,
 		routerepo.WithIDs(uuidutil.MustParseSlice(req.IDs)...), routerepo.WithPluginIDs(uuidutil.MustParseSlice(req.IDs)...),
@@ -76,7 +80,7 @@ func (s *Service) List(ctx context.Context, req *routemodel.ListRequest) ([]*rou
 
 func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*routemodel.Route, error) {
 	if err := req.Validate(); err != nil {
-		return nil, serviceerrors.NewValidationError(err)
+		return nil, inerrors.NewValidationError(err)
 	}
 	var route *routemodel.Route
 	err := s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
@@ -107,22 +111,80 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 	return route, nil
 }
 
-func (s *Service) Enable(ctx context.Context, id uuid.UUID) error {
-	return nil
+func (s *Service) Enable(ctx context.Context, req *routemodel.IDRequest) error {
+	if err := req.Validate(); err != nil {
+		return inerrors.NewValidationError(err)
+	}
+	return s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
+		txRepo := s.routeRepo.WithTx(tx)
+		txRoutePluginRepo := s.routePluginRepo.WithTx(tx)
+
+		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
+		if err != nil {
+			return err
+		}
+		if route.Enabled {
+			return inerrors.NewConflictError("route is already enabled")
+		}
+
+		plugins, err := txRoutePluginRepo.UnpaginatedList(ctx, routepluginrepo.WithRouteIDs(route.ID), routepluginrepo.WithPreloads(routepluginrepo.PreloadPlugin))
+		if err != nil {
+			s.logger.Error("failed to retrieve route plugins for enabling", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to retrieve route plugins for enabling: %w", err)
+		}
+
+		if err := s.routeFactory.Assemble(ctx, route, plugins); err != nil {
+			s.logger.Error("failed to assemble route for enabling", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to assemble route for enabling: %w", err)
+		}
+
+		if _, err := txRepo.Updates(ctx, map[string]any{"enabled": true}, routerepo.WithIDs(route.ID)); err != nil {
+			s.logger.Error("failed to mark route as enabled", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to mark route as enabled: %w", err)
+		}
+
+		return nil
+	})
 }
 
-func (s *Service) Delete(ctx context.Context, req *routemodel.DeleteRequest) error {
+func (s *Service) Disable(ctx context.Context, req *routemodel.IDRequest) error {
 	if err := req.Validate(); err != nil {
-		return serviceerrors.NewValidationError(err)
+		return inerrors.NewValidationError(err)
 	}
 	return s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.routeRepo.WithTx(tx)
 
-		affected, err := txRepo.Delete(ctx, routerepo.WithIDs(uuid.MustParse(req.ID)))
+		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
 		if err != nil {
+			return err
+		}
+		if !route.Enabled {
+			return inerrors.NewConflictError("route is already disabled")
+		}
+
+		if err := s.routeFactory.Disassemble(route.Path); err != nil {
+			return fmt.Errorf("failed to disassemble route for disabling: %w", err)
+		}
+		return nil
+	})
+}
+
+func (s *Service) Delete(ctx context.Context, req *routemodel.IDRequest) error {
+	if err := req.Validate(); err != nil {
+		return inerrors.NewValidationError(err)
+	}
+	return s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
+		txRepo := s.routeRepo.WithTx(tx)
+
+		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
+		if err != nil {
+			return err
+		}
+		if route.Enabled {
+			return inerrors.NewConflictError("cannot delete an enabled route, please disable it first")
+		}
+		if _, err := txRepo.Delete(ctx, routerepo.WithIDs(route.ID)); err != nil {
 			return fmt.Errorf("failed to delete route: %w", err)
-		} else if affected == 0 {
-			return serviceerrors.NewNotFoundError(errors.New("route does not exist"))
 		}
 		return nil
 	})

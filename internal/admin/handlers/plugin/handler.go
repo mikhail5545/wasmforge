@@ -17,6 +17,7 @@
 package plugin
 
 import (
+	"encoding/json"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
@@ -37,7 +38,7 @@ func New(svc *pluginservice.Service) *Handler {
 }
 
 func (h *Handler) Get(c *echo.Context) error {
-	identifier := c.Param(":id")
+	identifier := c.Param("id")
 	if identifier == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing plugin identifier")
 	}
@@ -71,13 +72,17 @@ func (h *Handler) List(c *echo.Context) error {
 }
 
 func (h *Handler) Create(c *echo.Context) error {
-	var req pluginmodel.CreateRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request payload")
-	}
-	file, err := c.FormFile("wasm_plugin")
+	file, err := c.FormFile("wasm_file")
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing wasm plugin file")
+	}
+	metadata := c.FormValue("metadata")
+	if metadata == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "missing plugin metadata")
+	}
+	var req pluginmodel.CreateRequest
+	if err := json.Unmarshal([]byte(metadata), &req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid plugin metadata: "+err.Error())
 	}
 	plugin, err := h.service.Create(c.Request().Context(), file, &req)
 	if err != nil {

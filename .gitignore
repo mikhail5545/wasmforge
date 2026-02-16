@@ -8,6 +8,7 @@
 # SQLite DB and storage
 /db
 *.db
+.env
 
 # Wazero runtime cache
 /cache

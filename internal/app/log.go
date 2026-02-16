@@ -18,14 +18,10 @@ package app
 
 import (
 	"fmt"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"regexp"
-	"strings"
 	"time"
 
-	"github.com/labstack/echo/v5"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -109,56 +105,4 @@ func newLogger(logCfg LogConfig) (*zap.Logger, func(), error) {
 		_ = f.Close()
 	}
 	return logger, cleanup, nil
-}
-
-type zapEchoWriter struct {
-	s *zap.SugaredLogger
-}
-
-func newZapEchoWriter(s *zap.Logger) *zapEchoWriter {
-	return &zapEchoWriter{s: s.Sugar()}
-}
-
-func detectLevel(msg string) string {
-	levelRE := regexp.MustCompile(`(?i)\b(DEBUG|INFO|WARN(?:ING)?|ERROR|FATAL)\b`)
-	m := levelRE.FindStringSubmatch(msg)
-	if len(m) < 2 {
-		return ""
-	}
-	l := strings.ToUpper(m[1])
-	if l == "WARNING" {
-		l = "WARN"
-	}
-	switch l {
-	case "DEBUG", "INFO", "WARN", "ERROR", "FATAL":
-		return l
-	default:
-		return ""
-	}
-}
-
-func (w *zapEchoWriter) Write(p []byte) (n int, err error) {
-	msg := strings.TrimSpace(string(p))
-	if msg == "" {
-		return len(p), nil
-	}
-	switch detectLevel(msg) {
-	case "DEBUG":
-		w.s.Debug(msg)
-	case "INFO":
-		w.s.Info(msg)
-	case "WARN":
-		w.s.Warn(msg)
-	case "ERROR":
-		w.s.Error(msg)
-	case "FATAL":
-		w.s.Fatal(msg)
-	default:
-		w.s.Info(msg)
-	}
-	return len(p), nil
-}
-
-func integrateWithEcho(e *echo.Echo, logger *zap.Logger) {
-	e.Logger = slog.New(slog.NewJSONHandler(newZapEchoWriter(logger), nil))
 }

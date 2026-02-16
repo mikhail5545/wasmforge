@@ -44,8 +44,8 @@ type ListRequest struct {
 }
 
 type CreateRequest struct {
-	Name     string `json:"name"`
-	Filename string `json:"filename"`
+	Name     string `form:"name" json:"name"`
+	Filename string `form:"filename" json:"filename"`
 }
 
 type DeleteRequest struct {

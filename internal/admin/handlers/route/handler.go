@@ -18,6 +18,7 @@ package route
 
 import (
 	"net/http"
+	"net/url"
 
 	"github.com/labstack/echo/v5"
 	"github.com/mikhail5545/wasmforge/internal/admin/handlers/generic"
@@ -37,15 +38,19 @@ func New(svc *routeservice.Service) *Handler {
 }
 
 func (h *Handler) Get(c *echo.Context) error {
-	identifier := c.Param(":id")
+	identifier := c.Param("id")
 	if identifier == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing route identifier")
 	}
+	decoded, err := url.PathUnescape(identifier)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid route identifier encoding")
+	}
 	req := &routemodel.GetRequest{}
-	if err := validationutil.IsValidUUIDv7(identifier); err == nil {
-		req.ID = &identifier
-	} else if err := validationutil.IsValidPath(identifier); err == nil {
-		req.Path = &identifier
+	if err := validationutil.IsValidUUIDv7(decoded); err == nil {
+		req.ID = &decoded
+	} else if err := validationutil.IsValidPath(decoded); err == nil {
+		req.Path = &decoded
 	} else {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid route identifier format")
 	}

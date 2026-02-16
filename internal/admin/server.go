@@ -19,13 +19,50 @@ type Server struct {
 func New(deps *Dependencies, logger *zap.Logger) *Server {
 	e := echo.New()
 
-	e.Use(middleware.StaticWithConfig(middleware.StaticConfig{
-		Root:       ".",
-		Filesystem: ui.Handler(),
-		HTML5:      true,
-		Index:      "index.html",
-		Browse:     false,
-	}), middleware.Recover(), middleware.RequestLogger())
+	e.Use(
+		middleware.StaticWithConfig(middleware.StaticConfig{
+			Root:       ".",
+			Filesystem: ui.Handler(),
+			HTML5:      true,
+			Index:      "index.html",
+			Browse:     false,
+		}),
+		middleware.CORSWithConfig(middleware.CORSConfig{
+			AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080", "http://localhost:54938", "http://localhost"},
+			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+			AllowCredentials: true,
+		}),
+		middleware.Recover(),
+		middleware.RequestLoggerWithConfig(
+			middleware.RequestLoggerConfig{
+				LogURI:      true,
+				LogLatency:  true,
+				LogStatus:   true,
+				LogMethod:   true,
+				HandleError: true,
+				LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
+					if v.Error != nil {
+						logger.Error("request error",
+							zap.String("method", v.Method),
+							zap.String("uri", v.URI),
+							zap.Int("status", v.Status),
+							zap.Duration("latency", v.Latency),
+							zap.Error(v.Error),
+						)
+					} else {
+						logger.Info("request",
+							zap.String("method", v.Method),
+							zap.String("uri", v.URI),
+							zap.Int("status", v.Status),
+							zap.Duration("latency", v.Latency),
+						)
+					}
+					return nil
+				},
+			},
+		),
+	)
 
 	e.HTTPErrorHandler = errors.HTTPErrorHandler
 
@@ -37,6 +74,10 @@ func New(deps *Dependencies, logger *zap.Logger) *Server {
 		e:      e,
 		logger: logger.With(zap.String("component", "admin_server")),
 	}
+}
+
+func (s *Server) Echo() *echo.Echo {
+	return s.e
 }
 
 // Start runs the admin server on the specified address and sends any errors to the provided error channel.

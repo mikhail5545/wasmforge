@@ -80,7 +80,6 @@ func (a *App) Init(ctx context.Context) error {
 		RouteSvc:       a.services.RouteSvc,
 		ProxyServer:    a.proxyServer,
 	}, a.logger)
-
 	return nil
 }
 

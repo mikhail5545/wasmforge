@@ -18,6 +18,7 @@ package admin
 
 import (
 	"github.com/labstack/echo/v5"
+	pluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/plugin"
 	proxyhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy"
 	routehandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
@@ -89,7 +90,7 @@ func (r *router) registerRoutePlugin(e *echo.Group) {
 }
 
 func (r *router) registerPlugin(e *echo.Group) {
-	pluginHandler := routehandler.New(r.deps.RouteSvc)
+	pluginHandler := pluginhandler.New(r.deps.PluginSvc)
 	plugins := e.Group("/plugins")
 
 	plugins.GET("/:id", pluginHandler.Get)

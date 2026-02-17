@@ -47,7 +47,7 @@ func openLogFile(logCfg LogConfig) (*os.File, error) {
 	var fileName string
 	if logCfg.UseTimestamp {
 		now := time.Now()
-		fileName = fmt.Sprintf("%02d-%s-%d-app.log", now.Day(), now.Month().String(), now.Year())
+		fileName = fmt.Sprintf("%02d-%s-%d-%02d-%02d-app.log", now.Day(), now.Month().String(), now.Year(), now.Hour(), now.Minute())
 	} else {
 		fileName = "app.log"
 	}

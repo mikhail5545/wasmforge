@@ -21,6 +21,7 @@ import (
 	pluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/plugin"
 	proxyhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy"
 	routehandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route"
+	routepluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route/plugin"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
 	pluginservice "github.com/mikhail5545/wasmforge/internal/services/plugin"
 	routeservice "github.com/mikhail5545/wasmforge/internal/services/route"
@@ -80,7 +81,7 @@ func (r *router) registerRoute(e *echo.Group) {
 }
 
 func (r *router) registerRoutePlugin(e *echo.Group) {
-	routePluginHandler := routehandler.New(r.deps.RouteSvc)
+	routePluginHandler := routepluginhandler.New(r.deps.RoutePluginSvc)
 	routePlugins := e.Group("/route-plugins")
 
 	routePlugins.GET("/:id", routePluginHandler.Get)

@@ -3,11 +3,12 @@ package admin
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"github.com/mikhail5545/wasmforge/internal/admin/handlers/errors"
-	"github.com/mikhail5545/wasmforge/pkg/ui"
+	custommiddleware "github.com/mikhail5545/wasmforge/internal/admin/middleware"
 	"go.uber.org/zap"
 )
 
@@ -19,18 +20,20 @@ type Server struct {
 func New(deps *Dependencies, logger *zap.Logger) *Server {
 	e := echo.New()
 
+	serveStatic, assets := custommiddleware.NewServeStaticMiddleware()
+	e.Use(serveStatic) // Echo's static middleware fix
+
 	e.Use(
 		middleware.StaticWithConfig(middleware.StaticConfig{
-			Root:       ".",
-			Filesystem: ui.Handler(),
+			Filesystem: assets,
 			HTML5:      true,
 			Index:      "index.html",
 			Browse:     false,
 		}),
 		middleware.CORSWithConfig(middleware.CORSConfig{
-			AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080", "http://localhost:54938", "http://localhost"},
-			AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-			AllowHeaders:     []string{"Origin", "Content-Type", "Accept"},
+			AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"},
+			AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions, http.MethodPatch, http.MethodHead},
+			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 			AllowCredentials: true,
 		}),
 		middleware.Recover(),

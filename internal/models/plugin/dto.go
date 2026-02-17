@@ -26,8 +26,8 @@ const (
 
 type GetRequest struct {
 	ID       *string `param:"id" json:"-"`
-	Filename *string `param:"id" json:"-"`
 	Name     *string `param:"id" json:"-"`
+	Filename *string `param:"id" json:"-"`
 }
 
 type ListRequest struct {
@@ -36,18 +36,19 @@ type ListRequest struct {
 	Names     []string `query:"n" json:"-"`
 	Filenames []string `query:"fn" json:"-"`
 
-	OrderField     OrderField `param:"of" json:"-"`
-	OrderDirection string     `param:"od" json:"-"`
+	OrderField     OrderField `query:"of" json:"-"`
+	OrderDirection string     `query:"od" json:"-"`
 
-	PageSize  int    `param:"ps" json:"-"`
-	PageToken string `param:"pt" json:"-"`
+	PageSize  int    `query:"ps" json:"-"`
+	PageToken string `query:"pt" json:"-"`
 }
 
 type CreateRequest struct {
-	Name     string `form:"name" json:"name"`
-	Filename string `form:"filename" json:"filename"`
+	Name     string `json:"name"`
+	Filename string `json:"filename"`
+	Data     string `json:"data"` // Base64-encoded plugin data
 }
 
-type DeleteRequest struct {
+type IDRequest struct {
 	ID string `param:"id" json:"-"`
 }

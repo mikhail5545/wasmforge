@@ -15,13 +15,14 @@
  */
 
 import {useState, useCallback, Dispatch, SetStateAction} from "react";
+import {makeFallbackErrorResponse,parseErrorResponse} from "@/lib/ErrorResponse";
 
 type Method = "POST" | "PUT" | "PATCH" | "DELETE";
 
 interface UseMutation {
     loading: boolean;
-    error: Error | null;
-    setError: Dispatch<SetStateAction<Error | null>>;
+    error: WasmForge.ErrorResponse | null;
+    setError: Dispatch<SetStateAction<WasmForge.ErrorResponse | null>>;
     mutate: (
         path: string,
         method: Method,
@@ -32,7 +33,7 @@ interface UseMutation {
 
 export function useMutation(): UseMutation {
     const [loading, setLoading] = useState(false);
-    const [error, setError] = useState<Error | null>(null);
+    const [error, setError] = useState<WasmForge.ErrorResponse | null>(null);
     const [success, setSuccess] = useState(false);
 
     const makeRequest = useCallback(
@@ -54,21 +55,30 @@ export function useMutation(): UseMutation {
                     body: payload ?? null,
                 });
 
+                const text = await response.text();
+
+                // Try to parse JSON if possible
+                let parsed: any;
+                try{
+                    parsed = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    parsed = text;
+                }
+
                 if (!response.ok) {
-                    let errMsg = response.statusText || "Failed to perform action";
-                    try {
-                        const errorData = await response.json();
-                        errMsg = errorData.error.details || errMsg;
-                    } catch (e) {
-                        // Ignore JSON parsing errors and use the default message
+                    const parsedError = parseErrorResponse(parsed);
+                    if (parsedError) {
+                        setError(parsedError);
+                    } else {
+                        setError(makeFallbackErrorResponse(response.status, response.statusText, parsed));
                     }
-                    throw new Error(errMsg);
+                    return {success: false}
                 }
 
                 setSuccess(true);
                 return { success: true, response };
             } catch (err: unknown) {
-                setError(err instanceof Error ? err : new Error("An unknown error occurred"));
+                setError(makeFallbackErrorResponse(500, "Unexpected error", err instanceof Error ? err.message : String(err)));
                 return { success: false };
             } finally {
                 setLoading(false);

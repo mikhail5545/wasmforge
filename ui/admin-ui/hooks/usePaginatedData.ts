@@ -15,6 +15,7 @@
  */
 
 import {useCallback, useEffect, useState} from "react";
+import {makeFallbackErrorResponse, parseErrorResponse} from "@/lib/ErrorResponse";
 
 const BACKEND_URL = "http://localhost:8080";
 
@@ -30,7 +31,7 @@ interface PaginatedData<T> {
     pageSize: number;
     nextPageToken: string;
     loading: boolean;
-    error: Error | null;
+    error: WasmForge.ErrorResponse | null;
     data: T[];
     nextPage: (token?: string, options?: { append?: boolean, force?: boolean }) => Promise<void>;
     refetch: (token?: string) => Promise<void>;
@@ -63,7 +64,7 @@ export function usePaginatedData<T>(
     const [data, setData] = useState<T[]>([]);
     const [nextPageToken, setNextPageToken] = useState<string>("");
     const [loading, setLoading] = useState<boolean>(false);
-    const [error, setError] = useState<Error | null>(null);
+    const [error, setError] = useState<WasmForge.ErrorResponse | null>(null);
 
     const buildUrl = useCallback(
         (orderField: string, orderDirection: "asc" | "desc", token?: string) => {
@@ -98,18 +99,27 @@ export function usePaginatedData<T>(
 
             try {
                 const response = await fetch(url, { method: "GET" });
-                if (!response.ok) {
-                    let errMsg = response.statusText || "Failed to fetch data";
-                    try {
-                        const errBody = await response.json();
-                        errMsg = errBody?.message || errBody?.error || errMsg;
-                    } catch {
-                        // Ignore JSON parsing errors
-                    }
-                    throw new Error(errMsg);
+                const text = await response.text();
+
+                // Try to parse JSON if possible
+                let parsed: any;
+                try{
+                    parsed = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    parsed = text;
                 }
 
-                const responseData = await response.json();
+                if (!response.ok) {
+                    const parsedError = parseErrorResponse(parsed);
+                    if (parsedError) {
+                        setError(parsedError);
+                    } else {
+                        setError(makeFallbackErrorResponse(response.status, response.statusText, parsed));
+                    }
+                    return;
+                }
+
+                const responseData = parsed;
 
                 const nextToken = responseData["next_page_token"] || "";
                 cache.set(url, { data: responseData, timestamp: Date.now(), nextPageToken: nextToken });
@@ -118,7 +128,7 @@ export function usePaginatedData<T>(
                 setData((prev) => (append ? [...prev, ...dataArray] : dataArray));
                 setNextPageToken(nextToken);
             } catch (err: unknown) {
-                setError(err instanceof Error ? err : new Error(String(err)));
+                setError(makeFallbackErrorResponse(500, "Unexpected error", err instanceof Error ? err.message : String(err)));
             } finally {
                 setLoading(false);
             }

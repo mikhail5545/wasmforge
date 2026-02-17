@@ -14,42 +14,65 @@
  * limitations under the License.
  */
 
-import {useRouter} from "next/router";
 import {useEffect, useState, useCallback} from "react";
+import {parseErrorResponse, makeFallbackErrorResponse} from "@/lib/ErrorResponse";
 
 interface Data<T>{
     data: T;
     loading: boolean;
-    error: Error | null;
+    error: WasmForge.ErrorResponse | null;
     refetch: () => Promise<void>;
 }
 
-export function useData<T>(path: string, key: string) : Data<T> {
+export function useData<T>(path: string | null, key: string) : Data<T> {
     const [data, setData] = useState<T>(null as any);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<Error | null>(null);
+    const [loading, setLoading] = useState<boolean>(() => !!path);
+    const [error, setError] = useState<WasmForge.ErrorResponse | null>(null);
 
     const fetchData = useCallback(
         async() => {
+            // If no path is provided, don't attempt to fetch.
+            if (!path) {
+                setLoading(false);
+                setError(null);
+                setData(null as any);
+                return;
+            }
+
             setLoading(true);
             setError(null);
 
             try{
                 const response = await fetch(path, { method: "GET" });
-                if (!response.ok) {
-                    let errMsg = response.statusText || "Failed to fetch data";
-                    try{
-                        const errorData = await response.json();
-                        errMsg = errorData.error.details || errMsg;
-                    } catch(err) {
-                        // Ignore JSON parsing errors and use the default message
-                    }
-                    throw new Error(errMsg);
+                const text = await response.text();
+
+                // Try to parse JSON if possible
+                let parsed: any;
+                try{
+                    parsed = text ? JSON.parse(text) : null;
+                } catch (e) {
+                    parsed = text;
                 }
-                const responseData = await response.json();
-                setData(responseData[key]);
+
+                if (!response.ok) {
+                    const parsedError = parseErrorResponse(parsed);
+                    if (parsedError) {
+                        setError(parsedError);
+                    } else {
+                        setError(makeFallbackErrorResponse(response.status, response.statusText, parsed));
+                    }
+                    return;
+                }
+
+                // Successful response. Try to extract requested key or use entire body.
+                if (parsed && typeof parsed === 'object' && key in parsed) {
+                    setData(parsed[key] as T);
+                } else {
+                    // If parsed is an object with a single root matching 'data' or similar, try to use parsed.
+                    setData(parsed as T);
+                }
             } catch (err: unknown) {
-                setError(err instanceof Error ? err : new Error("An unknown error occurred"));
+                setError(makeFallbackErrorResponse(500, "Unexpected error", err instanceof Error ? err.message : String(err)));
             } finally {
                 setLoading(false);
             }
@@ -57,8 +80,15 @@ export function useData<T>(path: string, key: string) : Data<T> {
     );
 
     useEffect(() => {
+        // If there's no path, ensure state reflects that (no loading, no data)
+        if (!path) {
+            setData(null as any);
+            setLoading(false);
+            setError(null);
+            return;
+        }
         fetchData();
-    }, [fetchData]);
+    }, [fetchData, path]);
 
     return { data, loading, error, refetch: fetchData };
 }

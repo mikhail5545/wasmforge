@@ -64,6 +64,11 @@ func (a *App) Init(ctx context.Context) error {
 	}
 	a.db = db
 
+	if err := a.uploadsManager.EnsureDirectory(); err != nil {
+		a.logger.Error("failed to ensure uploads directory", zap.Error(err))
+		return err
+	}
+
 	a.setupRepositories()
 	a.setupServices()
 

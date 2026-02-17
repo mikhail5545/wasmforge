@@ -17,10 +17,11 @@
 namespace WasmForge {
     export interface RoutePlugin {
         readonly id: string;
-        createdAt: string;
-        readonly routeId: string;
-        readonly pluginId: string;
-        Config: string;
-        plugin?: WasmForge.Plugin;
+        readonly created_at: string;
+        route_id: string;
+        plugin_id: string;
+        execution_order: number;
+        config: string;
+        readonly plugin?: WasmForge.Plugin;
     }
 }

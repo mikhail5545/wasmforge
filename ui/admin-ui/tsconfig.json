@@ -36,11 +36,6 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts",
     "out/types/**/*.ts",
-    "out/dev/types/**/*.ts",
-    "/pkg/ui/out/types/**/*.ts",
-    "/pkg/ui/out/dev/types/**/*.ts",
-    "../../../pkg/ui/out/types/**/*.ts",
-    "../../../pkg/ui/out/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

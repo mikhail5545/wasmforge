@@ -58,10 +58,10 @@ type (
 	}
 
 	TimeoutConfig struct {
-		IdleConnTimeout       time.Duration
-		TLSHandshakeTimeout   time.Duration
-		ExpectContinueTimeout time.Duration
-		ResponseHeaderTimeout *time.Duration
+		IdleConnTimeout       int
+		TLSHandshakeTimeout   int
+		ExpectContinueTimeout int
+		ResponseHeaderTimeout *int
 	}
 )
 
@@ -149,9 +149,12 @@ func (b *builder) RemoveRoute(path string) error {
 func newTransport(cfg TransportConfig) *http.Transport {
 	transport := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
-		IdleConnTimeout:       cfg.Timeout.IdleConnTimeout,
-		TLSHandshakeTimeout:   cfg.Timeout.TLSHandshakeTimeout,
-		ExpectContinueTimeout: cfg.Timeout.ExpectContinueTimeout,
+		IdleConnTimeout:       time.Duration(cfg.Timeout.IdleConnTimeout) * time.Second,
+		TLSHandshakeTimeout:   time.Duration(cfg.Timeout.TLSHandshakeTimeout) * time.Second,
+		ExpectContinueTimeout: time.Duration(cfg.Timeout.ExpectContinueTimeout) * time.Second,
+	}
+	if cfg.Timeout.ResponseHeaderTimeout != nil {
+		transport.ResponseHeaderTimeout = time.Duration(*cfg.Timeout.ResponseHeaderTimeout) * time.Second
 	}
 	switch {
 	case cfg.Conn.MaxIdleCons != nil:

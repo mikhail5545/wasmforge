@@ -40,8 +40,9 @@ type Service struct {
 
 func New(pluginRepo pluginrepo.Repository, uploadManager *uploads.Manager, logger *zap.Logger) *Service {
 	return &Service{
-		pluginRepo: pluginRepo,
-		logger:     logger.With(zap.String("service", "plugin")),
+		pluginRepo:    pluginRepo,
+		uploadManager: uploadManager,
+		logger:        logger.With(zap.String("service", "plugin")),
 	}
 }
 
@@ -89,6 +90,8 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 			Filename: req.Filename,
 		}
 
+		s.logger.Debug("creating plugin record", zap.String("name", req.Name), zap.String("filename", req.Filename))
+
 		hash, err := s.uploadManager.FromMultipartFile(file, req.Filename)
 		if err != nil {
 			return err
@@ -102,6 +105,7 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 			s.logger.Error("failed to create plugin record", zap.Error(err))
 			return fmt.Errorf("failed to create plugin record: %w", err)
 		}
+		s.logger.Debug("plugin record created successfully", zap.String("id", plugin.ID.String()), zap.String("checksum", plugin.Checksum))
 		return nil
 	})
 	if err != nil {
@@ -110,7 +114,7 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 	return plugin, nil
 }
 
-func (s *Service) Delete(ctx context.Context, req *pluginmodel.DeleteRequest) error {
+func (s *Service) Delete(ctx context.Context, req *pluginmodel.IDRequest) error {
 	if err := req.Validate(); err != nil {
 		return serviceerrors.NewValidationError(err)
 	}
@@ -126,6 +130,8 @@ func (s *Service) Delete(ctx context.Context, req *pluginmodel.DeleteRequest) er
 			s.logger.Error("failed to retrieve plugin record for deletion", zap.String("id", req.ID), zap.Error(err))
 			return fmt.Errorf("failed to retrieve plugin record for deletion: %w", err)
 		}
+
+		s.logger.Debug("deleting plugin record", zap.String("name", plugin.Name))
 
 		if _, err := txRepo.Delete(ctx, pluginrepo.WithIDs(uuid.MustParse(req.ID))); err != nil {
 			s.logger.Error("failed to delete plugin record", zap.String("id", req.ID), zap.Error(err))

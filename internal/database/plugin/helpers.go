@@ -65,6 +65,9 @@ func (r *repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.P
 func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, error) {
 	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
+	if filter.OrderField != "" && filter.OrderDirection != "" {
+		db = db.Order(string(filter.OrderField) + " " + filter.OrderDirection)
+	}
 
 	var plugins []*pluginmodel.Plugin
 	if err := db.Find(&plugins).Error; err != nil {

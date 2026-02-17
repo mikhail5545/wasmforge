@@ -27,29 +27,33 @@ import (
 	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
 	uuidutil "github.com/mikhail5545/wasmforge/internal/util/uuid"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
 
 type Service struct {
-	repo       routepluginrepo.Repository
-	routeRepo  routerepo.Repository
-	pluginRepo pluginrepo.Repository
-	logger     *zap.Logger
+	repo         routepluginrepo.Repository
+	routeRepo    routerepo.Repository
+	pluginRepo   pluginrepo.Repository
+	routeFactory proxy.Factory
+	logger       *zap.Logger
 }
 
 type ServiceParams struct {
-	RouteRepo  routerepo.Repository
-	PluginRepo pluginrepo.Repository
+	RouteRepo    routerepo.Repository
+	PluginRepo   pluginrepo.Repository
+	RouteFactory proxy.Factory
 }
 
 func New(repo routepluginrepo.Repository, params ServiceParams, logger *zap.Logger) *Service {
 	return &Service{
-		repo:       repo,
-		routeRepo:  params.RouteRepo,
-		pluginRepo: params.PluginRepo,
-		logger:     logger.With(zap.String("service", "route_plugin")),
+		repo:         repo,
+		routeRepo:    params.RouteRepo,
+		pluginRepo:   params.PluginRepo,
+		routeFactory: params.RouteFactory,
+		logger:       logger.With(zap.String("service", "route_plugin")),
 	}
 }
 
@@ -94,6 +98,7 @@ func (s *Service) Create(ctx context.Context, req *routepluginmodel.CreateReques
 		txRouteRepo := s.routeRepo.WithTx(tx)
 		txPluginRepo := s.pluginRepo.WithTx(tx)
 
+		s.logger.Debug("creating route plugin", zap.String("route_id", req.RouteID), zap.String("plugin_id", req.PluginID))
 		route, err := s.getRouteInTx(ctx, txRouteRepo, uuid.MustParse(req.RouteID))
 		if err != nil {
 			return err
@@ -111,8 +116,21 @@ func (s *Service) Create(ctx context.Context, req *routepluginmodel.CreateReques
 			Config:         req.Config,
 		}
 		if err := txRepo.Create(ctx, routePlugin); err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				return serviceerrors.NewAlreadyExistsError("plugin with this execution order already exists for the route")
+			}
 			s.logger.Error("failed to create route plugin", zap.Error(err))
 			return fmt.Errorf("failed to create route plugin: %w", err)
+		}
+		s.logger.Debug("route plugin created successfully", zap.String("route_plugin_id", routePlugin.ID.String()))
+
+		if !route.Enabled {
+			return nil
+		}
+		// Reassemble the route's middleware chain to include the new plugin
+		if err := s.reassembleRouteInTx(ctx, txRepo, route); err != nil {
+			// helper logs error, just return error
+			return err
 		}
 		return nil
 	})

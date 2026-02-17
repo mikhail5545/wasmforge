@@ -119,6 +119,7 @@ func (s *Service) Enable(ctx context.Context, req *routemodel.IDRequest) error {
 		txRepo := s.routeRepo.WithTx(tx)
 		txRoutePluginRepo := s.routePluginRepo.WithTx(tx)
 
+		s.logger.Debug("enabling route", zap.String("route_id", req.ID))
 		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
 		if err != nil {
 			return err
@@ -133,11 +134,13 @@ func (s *Service) Enable(ctx context.Context, req *routemodel.IDRequest) error {
 			return fmt.Errorf("failed to retrieve route plugins for enabling: %w", err)
 		}
 
+		s.logger.Debug("retrieved route plugins for enabling", zap.String("route_id", route.ID.String()), zap.Int("plugin_count", len(plugins)))
 		if err := s.routeFactory.Assemble(ctx, route, plugins); err != nil {
 			s.logger.Error("failed to assemble route for enabling", zap.String("route_id", route.ID.String()), zap.Error(err))
 			return fmt.Errorf("failed to assemble route for enabling: %w", err)
 		}
 
+		s.logger.Debug("successfully assembled middleware chain for route", zap.String("route_id", route.ID.String()))
 		if _, err := txRepo.Updates(ctx, map[string]any{"enabled": true}, routerepo.WithIDs(route.ID)); err != nil {
 			s.logger.Error("failed to mark route as enabled", zap.String("route_id", route.ID.String()), zap.Error(err))
 			return fmt.Errorf("failed to mark route as enabled: %w", err)
@@ -154,6 +157,7 @@ func (s *Service) Disable(ctx context.Context, req *routemodel.IDRequest) error 
 	return s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.routeRepo.WithTx(tx)
 
+		s.logger.Debug("disabling route", zap.String("route_id", req.ID))
 		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
 		if err != nil {
 			return err
@@ -164,6 +168,12 @@ func (s *Service) Disable(ctx context.Context, req *routemodel.IDRequest) error 
 
 		if err := s.routeFactory.Disassemble(route.Path); err != nil {
 			return fmt.Errorf("failed to disassemble route for disabling: %w", err)
+		}
+		s.logger.Debug("successfully disassembled middleware chain for route", zap.String("route_id", route.ID.String()))
+
+		if _, err := txRepo.Updates(ctx, map[string]any{"enabled": false}, routerepo.WithIDs(route.ID)); err != nil {
+			s.logger.Error("failed to mark route as disabled", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to mark route as disabled: %w", err)
 		}
 		return nil
 	})

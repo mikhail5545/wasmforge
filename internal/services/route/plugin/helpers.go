@@ -24,9 +24,11 @@ import (
 	"github.com/google/uuid"
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
+	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
+	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -53,4 +55,23 @@ func (s *Service) getPluginInTx(ctx context.Context, txRepo pluginrepo.Repositor
 		return nil, fmt.Errorf("failed to retrieve plugin: %w", err)
 	}
 	return plugin, nil
+}
+
+func (s *Service) reassembleRouteInTx(ctx context.Context, txPluginRepo routepluginrepo.Repository, route *routemodel.Route) error {
+	plugins, err := txPluginRepo.UnpaginatedList(ctx,
+		routepluginrepo.WithRouteIDs(route.ID), routepluginrepo.WithOrder(routepluginmodel.OrderFieldExecutionOrder, "desc"),
+		routepluginrepo.WithPreloads(routepluginrepo.PreloadPlugin),
+	)
+	if err != nil {
+		s.logger.Error("failed to retrieve plugins for route during reassembly", zap.String("route_id", route.ID.String()), zap.Error(err))
+		return fmt.Errorf("failed to retrieve plugins for route during reassembly: %w", err)
+	}
+	s.logger.Debug("reassembling route after plugin creation", zap.String("route_id", route.ID.String()), zap.Int("total_plugins", len(plugins)))
+
+	if err := s.routeFactory.Reassemble(ctx, route, plugins); err != nil {
+		s.logger.Error("failed to reassemble route after plugin creation", zap.String("route_id", route.ID.String()), zap.Error(err))
+		return fmt.Errorf("failed to reassemble route after plugin creation: %w", err)
+	}
+	s.logger.Debug("successfully reassembled route after plugin creation", zap.String("route_id", route.ID.String()))
+	return nil
 }

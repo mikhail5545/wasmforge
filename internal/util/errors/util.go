@@ -86,6 +86,11 @@ func MapServiceError(err error) (int, ErrorResponse) {
 		resp.Error.Message = "Unprocessable entity"
 		resp.Error.Details = err.Error()
 		return http.StatusUnprocessableEntity, resp
+	case errors.Is(err, serviceerrors.ErrSizeLimitExceeded):
+		resp.Error.Code = serviceerrors.ErrorAliases[serviceerrors.ErrSizeLimitExceeded]
+		resp.Error.Message = "Size limit exceeded"
+		resp.Error.Details = err.Error()
+		return http.StatusRequestEntityTooLarge, resp
 	default:
 		resp.Error.Code = "INTERNAL_SERVER_ERROR"
 		resp.Error.Message = "Internal server error"

@@ -28,7 +28,7 @@ import (
 var pathRegexp = regexp.MustCompile("^/.*$")
 
 // wasmFilenameRegexp matches strings that consist of a valid filename (letters, numbers, underscores, or hyphens) followed by the .wasm extension.
-var wasmFilenameRegexp = regexp.MustCompile("^([a-zA-Z0-9_-]+)\\.(wasm)$")
+var wasmFilenameRegexp = regexp.MustCompile(`^([a-zA-Z0-9_-]+)\\.(wasm)$`)
 var pluginNameRegexp = regexp.MustCompile(`^[a-z0-9]+(?:_[&?a-z0-9]+)*$`)
 
 func composeRules(required bool, additional ...validation.Rule) []validation.Rule {
@@ -116,6 +116,9 @@ func IsValidWasmFilename(value any) error {
 	if err := extractValue(&filename, value); err != nil {
 		return fmt.Errorf("must be a string: %w", err)
 	}
+	if filename == "" {
+		return nil // empty value is allowed
+	}
 	if !wasmFilenameRegexp.MatchString(filename) {
 		return fmt.Errorf("must match the pattern 'name.wasm' where name can contain letters, numbers, underscores, or hyphens")
 	}
@@ -129,6 +132,9 @@ func IsValidPluginName(value any) error {
 	var name string
 	if err := extractValue(&name, value); err != nil {
 		return fmt.Errorf("must be a string: %w", err)
+	}
+	if name == "" {
+		return nil // empty value is allowed
 	}
 	if !pluginNameRegexp.MatchString(name) {
 		return fmt.Errorf("must match the pattern 'name' or 'name_part1_name_part2' where name and parts can contain lowercase letters, numbers, and underscores")

@@ -17,11 +17,14 @@
 package uploads
 
 import (
+	"encoding/base64"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
 	"path"
+
+	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 
 	"go.uber.org/zap"
 )
@@ -58,6 +61,30 @@ func (m *Manager) EnsureDirectory() error {
 	return nil
 }
 
+func (m *Manager) FromBase64(encodedData, filename string) (string, string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(encodedData)
+	if err != nil {
+		m.logger.Error("failed to decode Base64 data", zap.String("filename", filename), zap.Error(err))
+		return "", "", fmt.Errorf("failed to decode Base64 data: %w", err)
+	}
+
+	if len(decoded) > 10*1024*1024 { // 10 MB limit
+		m.logger.Warn("decoded data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(decoded)))
+		return "", "", inerrors.NewSizeLimitExceededError("file size exceedes the limit of 10 MB")
+	}
+
+	filePath := path.Join(m.pluginUploadDir, filename)
+	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
+		m.logger.Error("failed to write decoded data to file", zap.String("filename", filePath), zap.Error(err))
+		return "", "", fmt.Errorf("failed to write decoded data to file: %w", err)
+	}
+
+	hash := hashFromBytes(decoded)
+
+	m.logger.Debug("file created successfully from Base64 data", zap.String("filename", filePath), zap.Int("size", len(decoded)), zap.String("hash", hash))
+	return filePath, hash, nil
+}
+
 func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string) (string, error) {
 	src, err := file.Open()
 	if err != nil {
@@ -82,6 +109,7 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string)
 		}
 	}()
 
+	m.logger.Debug("starting to copy file", zap.String("source", file.Filename), zap.String("destination", dstPath))
 	if _, err := io.Copy(dst, src); err != nil {
 		m.logger.Error("failed to copy file", zap.String("source", file.Filename), zap.String("destination", dstPath), zap.Error(err))
 		return "", fmt.Errorf("failed to copy file: %w", err)
@@ -91,7 +119,7 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string)
 		m.logger.Error("failed to compute file hash", zap.String("filename", file.Filename), zap.Error(err))
 		return "", fmt.Errorf("failed to compute file hash: %w", err)
 	}
-	m.logger.Info("file saved successfully", zap.String("filename", dstPath), zap.String("hash", fileHash))
+	m.logger.Debug("file saved successfully", zap.String("filename", dstPath), zap.String("hash", fileHash))
 	return fileHash, nil
 }
 
@@ -105,7 +133,7 @@ func (m *Manager) Delete(filename string) error {
 		m.logger.Error("failed to delete file", zap.String("filename", filePath), zap.Error(err))
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
-	m.logger.Info("file deleted successfully", zap.String("filename", filePath))
+	m.logger.Debug("file deleted successfully", zap.String("filename", filePath))
 	return nil
 }
 

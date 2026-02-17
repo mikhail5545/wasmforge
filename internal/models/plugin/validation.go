@@ -24,8 +24,8 @@ import (
 func (req GetRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(false)...),
-		validation.Field(&req.Filename, validationutil.WasmFilenameRule(false)...),
 		validation.Field(&req.Name, validationutil.PluginNameRule(false)...),
+		validation.Field(&req.Filename, validationutil.WasmFilenameRule(false)...),
 	)
 }
 
@@ -47,7 +47,7 @@ func (req CreateRequest) Validate() error {
 	)
 }
 
-func (req DeleteRequest) Validate() error {
+func (req IDRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
 	)

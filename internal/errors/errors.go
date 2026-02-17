@@ -42,19 +42,22 @@ var (
 	ErrCanceled = errors.New("context cancelled")
 	// ErrUnavailable external service error.
 	ErrUnavailable = errors.New("unavailable")
+	// ErrSizeLimitExceeded uploaded file size exceeds the configured limit error.
+	ErrSizeLimitExceeded = errors.New("size limit exceeded")
 )
 
 var ErrorAliases = map[error]string{
-	ErrInvalidArgument:  "INVALID_ARGUMENT",
-	ErrValidationFailed: "VALIDATION_FAILED",
-	ErrNotFound:         "NOT_FOUND",
-	ErrConflict:         "CONFLICT",
-	ErrAlreadyExists:    "ALREADY_EXISTS",
-	ErrPermissionDenied: "PERMISSION_DENIED",
-	ErrTooManyRequests:  "TOO_MANY_REQUESTS",
-	ErrUnimplemented:    "UNIMPLEMENTED",
-	ErrCanceled:         "CANCELED",
-	ErrUnavailable:      "UNAVAILABLE",
+	ErrInvalidArgument:   "INVALID_ARGUMENT",
+	ErrValidationFailed:  "VALIDATION_FAILED",
+	ErrNotFound:          "NOT_FOUND",
+	ErrConflict:          "CONFLICT",
+	ErrAlreadyExists:     "ALREADY_EXISTS",
+	ErrPermissionDenied:  "PERMISSION_DENIED",
+	ErrTooManyRequests:   "TOO_MANY_REQUESTS",
+	ErrUnimplemented:     "UNIMPLEMENTED",
+	ErrCanceled:          "CANCELED",
+	ErrUnavailable:       "UNAVAILABLE",
+	ErrSizeLimitExceeded: "SIZE_LIMIT_EXCEEDED",
 }
 
 func NewInvalidArgumentError(v any) error {
@@ -95,4 +98,8 @@ func NewUnavailableError(v any) error {
 
 func NewValidationError(v any) error {
 	return fmt.Errorf("%w: %v", ErrValidationFailed, v)
+}
+
+func NewSizeLimitExceededError(v any) error {
+	return fmt.Errorf("%w: %v", ErrSizeLimitExceeded, v)
 }

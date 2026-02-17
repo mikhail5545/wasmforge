@@ -45,10 +45,10 @@ func (h *Handler) Get(c *echo.Context) error {
 	req := &pluginmodel.GetRequest{}
 	if err := validationutil.IsValidUUIDv7(identifier); err == nil {
 		req.ID = &identifier
-	} else if err := validationutil.IsValidWasmFilename(identifier); err == nil {
-		req.Filename = &identifier
 	} else if err := validationutil.IsValidPluginName(identifier); err == nil {
 		req.Name = &identifier
+	} else if err := validationutil.IsValidWasmFilename(identifier); err == nil {
+		req.Filename = &identifier
 	} else {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid plugin identifier format")
 	}
@@ -74,15 +74,15 @@ func (h *Handler) List(c *echo.Context) error {
 func (h *Handler) Create(c *echo.Context) error {
 	file, err := c.FormFile("wasm_file")
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "missing wasm plugin file")
+		return echo.NewHTTPError(http.StatusBadRequest, "missing file in request")
 	}
 	metadata := c.FormValue("metadata")
 	if metadata == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "missing plugin metadata")
+		return echo.NewHTTPError(http.StatusBadRequest, "missing metadata in request")
 	}
 	var req pluginmodel.CreateRequest
 	if err := json.Unmarshal([]byte(metadata), &req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid plugin metadata: "+err.Error())
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid metadata format")
 	}
 	plugin, err := h.service.Create(c.Request().Context(), file, &req)
 	if err != nil {

@@ -42,8 +42,8 @@ const initialRouteFormState: Omit<WasmForge.Route, "id" | "created_at" | "enable
 export default function NewRoutePage() {
     const links = [
         { label: "Dashboard", href: "/dashboard" },
-        { label: "Users", href: "/users" },
-        { label: "Settings", href: "/settings" },
+        { label: "Routes", href: "/routes" },
+        { label: "Plugins", href: "/plugins" },
     ];
 
     const [routeFormData, setRouteFormData] = useState(initialRouteFormState);
@@ -71,13 +71,8 @@ export default function NewRoutePage() {
         <div className={"flex min-h-screen bg-stone-950 font-mono text-white"}>
             <div className={"flex flex-col w-full"}>
                 <NavBar
-                    title={"Admin UI"}
+                    title={"WasmForge"}
                     links={links}
-                    rightContent={
-                        <div className={"flex items-center gap-2"}>
-                            <button className={"px-3 py-1 bg-stone-800 rounded text-sm"}>Sign out</button>
-                        </div>
-                    }
                 />
                 <div className={"px-5 md:px-15 lg:px-30 py-10"}>
                     <ErrorDialog

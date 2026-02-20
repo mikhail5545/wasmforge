@@ -83,6 +83,11 @@ func (a *App) Init(ctx context.Context) error {
 	a.setupRepositories()
 	a.setupServices()
 
+	if err := a.services.ProxyConfigSvc.Init(ctx); err != nil {
+		a.logger.Error("failed to initialize proxy config", zap.Error(err))
+		return err
+	}
+
 	a.adminServer = admin.New(&admin.Dependencies{
 		PluginSvc:      a.services.PluginSvc,
 		RoutePluginSvc: a.services.RoutePluginSvc,

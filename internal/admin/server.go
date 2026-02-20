@@ -31,7 +31,7 @@ func New(deps *Dependencies, logger *zap.Logger) *Server {
 			Browse:     false,
 		}),
 		middleware.CORSWithConfig(middleware.CORSConfig{
-			AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080"},
+			AllowOrigins:     []string{"http://localhost:3000", "http://localhost:8080", "http://localhost:63467"},
 			AllowMethods:     []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions, http.MethodPatch, http.MethodHead},
 			AllowHeaders:     []string{"Origin", "Content-Type", "Accept", "Authorization"},
 			AllowCredentials: true,

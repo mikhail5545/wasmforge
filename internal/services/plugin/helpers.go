@@ -38,3 +38,10 @@ func extractIdentifier(req *pluginmodel.GetRequest) (pluginrepo.FilterOption, er
 		return nil, serviceerrors.NewValidationError("at least one of id, name or filename must be provided")
 	}
 }
+
+func (s *Service) deleteFile(filename *string) error {
+	if filename == nil {
+		return nil
+	}
+	return s.uploadManager.Delete(*filename)
+}

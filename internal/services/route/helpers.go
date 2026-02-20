@@ -25,6 +25,7 @@ import (
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
 	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/util/patch"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -57,4 +58,34 @@ func (s *Service) getInTx(ctx context.Context, txRepo routerepo.Repository, id u
 		return nil, fmt.Errorf("failed to retrieve route: %w", err)
 	}
 	return route, nil
+}
+
+func (s *Service) update(ctx context.Context, txRepo routerepo.Repository, id uuid.UUID, updates map[string]any) error {
+	if len(updates) == 0 {
+		return nil
+	}
+	if _, err := txRepo.Updates(ctx, updates, routerepo.WithIDs(id)); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return inerrors.NewAlreadyExistsError("route with the same path already exists")
+		}
+		s.logger.Error("failed to update route", zap.String("route_id", id.String()), zap.Any("updates", updates), zap.Error(err))
+		return fmt.Errorf("failed to update route: %w", err)
+	}
+	return nil
+}
+
+func buildUpdates(existing *routemodel.Route, req *routemodel.UpdateRequest) map[string]any {
+	updates := make(map[string]any)
+
+	patch.UpdateIfChanged(updates, "path", req.Path, &existing.Path)
+	patch.UpdateIfChanged(updates, "target_url", req.TargetURL, &existing.TargetURL)
+	patch.UpdateIfChanged(updates, "idle_conn_timeout", req.IdleConnTimeout, &existing.IdleConnTimeout)
+	patch.UpdateIfChanged(updates, "tls_handshake_timeout", req.TLSHandshakeTimeout, &existing.TLSHandshakeTimeout)
+	patch.UpdateIfChanged(updates, "expect_continue_timeout", req.ExpectContinueTimeout, &existing.ExpectContinueTimeout)
+	patch.UpdateIfChanged(updates, "max_idle_cons", req.MaxIdleCons, existing.MaxIdleCons)
+	patch.UpdateIfChanged(updates, "max_idle_cons_per_host", req.MaxIdleConsPerHost, existing.MaxIdleConsPerHost)
+	patch.UpdateIfChanged(updates, "max_cons_per_host", req.MaxConsPerHost, existing.MaxConsPerHost)
+	patch.UpdateIfChanged(updates, "response_header_timeout", req.ResponseHeaderTimeout, existing.ResponseHeaderTimeout)
+
+	return updates
 }

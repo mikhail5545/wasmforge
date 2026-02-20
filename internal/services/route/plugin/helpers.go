@@ -29,6 +29,7 @@ import (
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/util/patch"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -57,6 +58,17 @@ func (s *Service) getPluginInTx(ctx context.Context, txRepo pluginrepo.Repositor
 	return plugin, nil
 }
 
+func (s *Service) create(ctx context.Context, txRepo routepluginrepo.Repository, routePlugin *routepluginmodel.RoutePlugin) error {
+	if err := txRepo.Create(ctx, routePlugin); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return serviceerrors.NewAlreadyExistsError("plugin with this execution order already exists for the route")
+		}
+		s.logger.Error("failed to create route plugin", zap.Error(err))
+		return fmt.Errorf("failed to create route plugin: %w", err)
+	}
+	return nil
+}
+
 func (s *Service) reassembleRouteInTx(ctx context.Context, txPluginRepo routepluginrepo.Repository, route *routemodel.Route) error {
 	plugins, err := txPluginRepo.UnpaginatedList(ctx,
 		routepluginrepo.WithRouteIDs(route.ID), routepluginrepo.WithOrder(routepluginmodel.OrderFieldExecutionOrder, "desc"),
@@ -74,4 +86,28 @@ func (s *Service) reassembleRouteInTx(ctx context.Context, txPluginRepo routeplu
 	}
 	s.logger.Debug("successfully reassembled route after plugin creation", zap.String("route_id", route.ID.String()))
 	return nil
+}
+
+func (s *Service) update(ctx context.Context, txRepo routepluginrepo.Repository, id uuid.UUID, updates map[string]any) error {
+	if len(updates) == 0 {
+		s.logger.Debug("no updates to apply for route plugin", zap.String("route_plugin_id", id.String()))
+		return nil
+	}
+	if _, err := txRepo.Updates(ctx, updates, routepluginrepo.WithIDs(id)); err != nil {
+		if errors.Is(err, gorm.ErrDuplicatedKey) {
+			return serviceerrors.NewAlreadyExistsError("plugin with this execution order already exists for the route")
+		}
+		s.logger.Error("failed to update route plugin", zap.Error(err))
+		return fmt.Errorf("failed to update route plugin: %w", err)
+	}
+	return nil
+}
+
+func buildUpdates(existing *routepluginmodel.RoutePlugin, req *routepluginmodel.UpdateRequest) map[string]any {
+	updates := make(map[string]any)
+
+	patch.UpdateIfChanged(updates, "execution_order", req.ExecutionOrder, &existing.ExecutionOrder)
+	patch.UpdateIfChanged(updates, "config", req.Config, existing.Config)
+
+	return updates
 }

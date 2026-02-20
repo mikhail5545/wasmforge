@@ -22,7 +22,6 @@ import (
 	"io"
 	"mime/multipart"
 	"os"
-	"path"
 
 	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 
@@ -31,12 +30,21 @@ import (
 
 type Manager struct {
 	pluginUploadDir string
+	certUploadDir   string
 	logger          *zap.Logger
 }
 
-func New(pluginUploadDir string, logger *zap.Logger) *Manager {
+type UploadType uint
+
+const (
+	PluginUpload UploadType = iota
+	CertUpload
+)
+
+func New(pluginUploadDir string, certUploadDir string, logger *zap.Logger) *Manager {
 	return &Manager{
 		pluginUploadDir: pluginUploadDir,
+		certUploadDir:   certUploadDir,
 		logger:          logger.With(zap.String("component", "uploads_manager")),
 	}
 }
@@ -45,47 +53,52 @@ func (m *Manager) PluginUploadDir() string {
 	return m.pluginUploadDir
 }
 
-func (m *Manager) EnsureDirectory() error {
-	_, err := os.ReadDir(m.pluginUploadDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			m.logger.Info("uploads directory does not exist, creating it", zap.String("path", m.pluginUploadDir))
-			if err := os.MkdirAll(m.pluginUploadDir, 0755); err != nil {
-				m.logger.Error("failed to create uploads directory", zap.String("path", m.pluginUploadDir), zap.Error(err))
-				return err
-			}
-			m.logger.Info("uploads directory created successfully", zap.String("path", m.pluginUploadDir))
-			return nil
-		}
-	}
-	return nil
+func (m *Manager) CertUploadDir() string {
+	return m.certUploadDir
 }
 
-func (m *Manager) FromBase64(encodedData, filename string) (string, string, error) {
+func (m *Manager) EnsureDirectory(uploadType UploadType) error {
+	var dir string
+	switch uploadType {
+	case PluginUpload:
+		dir = m.pluginUploadDir
+	case CertUpload:
+		dir = m.certUploadDir
+	default:
+		return fmt.Errorf("invalid upload type: %d", uploadType)
+	}
+
+	return m.ensureDirectory(dir)
+}
+
+func (m *Manager) FromBase64(encodedData, filename string, uploadType UploadType) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(encodedData)
 	if err != nil {
 		m.logger.Error("failed to decode Base64 data", zap.String("filename", filename), zap.Error(err))
-		return "", "", fmt.Errorf("failed to decode Base64 data: %w", err)
+		return "", fmt.Errorf("failed to decode Base64 data: %w", err)
 	}
 
 	if len(decoded) > 10*1024*1024 { // 10 MB limit
 		m.logger.Warn("decoded data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(decoded)))
-		return "", "", inerrors.NewSizeLimitExceededError("file size exceedes the limit of 10 MB")
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 10 MB")
 	}
 
-	filePath := path.Join(m.pluginUploadDir, filename)
-	if err := os.WriteFile(filePath, decoded, 0644); err != nil {
-		m.logger.Error("failed to write decoded data to file", zap.String("filename", filePath), zap.Error(err))
-		return "", "", fmt.Errorf("failed to write decoded data to file: %w", err)
+	fullPath, err := m.buildFullPath(uploadType, filename)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(fullPath, decoded, 0644); err != nil {
+		m.logger.Error("failed to write decoded data to file", zap.String("filename", fullPath), zap.Error(err))
+		return "", fmt.Errorf("failed to write decoded data to file: %w", err)
 	}
 
 	hash := hashFromBytes(decoded)
 
-	m.logger.Debug("file created successfully from Base64 data", zap.String("filename", filePath), zap.Int("size", len(decoded)), zap.String("hash", hash))
-	return filePath, hash, nil
+	m.logger.Debug("file created successfully from Base64 data", zap.String("filename", fullPath), zap.Int("size", len(decoded)), zap.String("hash", hash))
+	return hash, nil
 }
 
-func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string) (string, error) {
+func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string, uploadType UploadType) (string, error) {
 	src, err := file.Open()
 	if err != nil {
 		m.logger.Error("failed to open source file", zap.String("filename", file.Filename), zap.Error(err))
@@ -97,7 +110,11 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string)
 		}
 	}()
 
-	dstPath := path.Join(m.pluginUploadDir, filename)
+	dstPath, err := m.buildFullPath(uploadType, filename)
+	if err != nil {
+		return "", err
+	}
+
 	dst, err := os.Create(dstPath)
 	if err != nil {
 		m.logger.Error("failed to create destination file", zap.String("filename", dstPath), zap.Error(err))
@@ -123,23 +140,29 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string)
 	return fileHash, nil
 }
 
-func (m *Manager) Delete(filename string) error {
-	filePath := path.Join(m.pluginUploadDir, filename)
-	if err := os.Remove(filePath); err != nil {
+func (m *Manager) Delete(filename string, uploadType UploadType) error {
+	fullPath, err := m.buildFullPath(uploadType, filename)
+	if err != nil {
+		return err
+	}
+	if err := os.Remove(fullPath); err != nil {
 		if os.IsNotExist(err) {
-			m.logger.Warn("file does not exist, nothing to delete", zap.String("filename", filePath))
+			m.logger.Warn("file does not exist, nothing to delete", zap.String("filename", fullPath))
 			return nil
 		}
-		m.logger.Error("failed to delete file", zap.String("filename", filePath), zap.Error(err))
+		m.logger.Error("failed to delete file", zap.String("filename", fullPath), zap.Error(err))
 		return fmt.Errorf("failed to delete file: %w", err)
 	}
-	m.logger.Debug("file deleted successfully", zap.String("filename", filePath))
+	m.logger.Debug("file deleted successfully", zap.String("filename", fullPath))
 	return nil
 }
 
-func (m *Manager) Read(filename string) ([]byte, error) {
-	filePath := path.Join(m.pluginUploadDir, filename)
-	data, err := os.ReadFile(filePath)
+func (m *Manager) Read(filename string, uploadType UploadType) ([]byte, error) {
+	fullPath, err := m.buildFullPath(uploadType, filename)
+	if err != nil {
+		return nil, err
+	}
+	data, err := os.ReadFile(fullPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file: %w", err)
 	}

@@ -19,11 +19,16 @@ package admin
 import (
 	"github.com/labstack/echo/v5"
 	pluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/plugin"
-	proxyhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy"
+	certhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/cert"
+	cfghandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/config"
+	serverhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/server"
 	routehandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route"
 	routepluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route/plugin"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
 	pluginservice "github.com/mikhail5545/wasmforge/internal/services/plugin"
+	certservice "github.com/mikhail5545/wasmforge/internal/services/proxy/cert"
+	cfgservice "github.com/mikhail5545/wasmforge/internal/services/proxy/config"
+	serverservice "github.com/mikhail5545/wasmforge/internal/services/proxy/server"
 	routeservice "github.com/mikhail5545/wasmforge/internal/services/route"
 	routepluginservice "github.com/mikhail5545/wasmforge/internal/services/route/plugin"
 )
@@ -34,6 +39,9 @@ type (
 		RoutePluginSvc *routepluginservice.Service
 		RouteSvc       *routeservice.Service
 		ProxyServer    *server.Server
+		CertSvc        *certservice.Service
+		ConfigSvc      *cfgservice.Service
+		ServerSvc      *serverservice.Service
 	}
 
 	router struct {
@@ -53,22 +61,32 @@ func (r *router) register(e *echo.Group) {
 	})
 
 	r.registerProxy(e)
-	r.registerRoute(e)
-	r.registerRoutePlugin(e)
-	r.registerPlugin(e)
+	r.registerRouteRoutes(e)
+	r.registerRoutePluginRoutes(e)
+	r.registerPluginRoutes(e)
 }
 
 func (r *router) registerProxy(e *echo.Group) {
 	proxy := e.Group("/proxy")
 
-	proxyHandler := proxyhandler.New(r.deps.ProxyServer)
+	certHandler := certhandler.New(r.deps.CertSvc)
+	certsGroup := proxy.Group("/certs")
+	certsGroup.POST("", certHandler.Upload)
+	certsGroup.DELETE("", certHandler.Remove)
 
-	proxy.POST("/start", proxyHandler.Start)
-	proxy.POST("/restart", proxyHandler.Restart)
-	proxy.POST("/stop", proxyHandler.Stop)
+	serverHandler := serverhandler.New(r.deps.ServerSvc)
+	serverGroup := proxy.Group("/server")
+	serverGroup.POST("/start", serverHandler.Start)
+	serverGroup.POST("/stop", serverHandler.Stop)
+	serverGroup.POST("/restart", serverHandler.Restart)
+
+	configHandler := cfghandler.New(r.deps.ConfigSvc)
+	configGroup := proxy.Group("/config")
+	configGroup.GET("", configHandler.Get)
+	configGroup.PUT("", configHandler.Update)
 }
 
-func (r *router) registerRoute(e *echo.Group) {
+func (r *router) registerRouteRoutes(e *echo.Group) {
 	routeHandler := routehandler.New(r.deps.RouteSvc)
 	routes := e.Group("/routes")
 
@@ -80,7 +98,7 @@ func (r *router) registerRoute(e *echo.Group) {
 	routes.DELETE("/:id", routeHandler.Delete)
 }
 
-func (r *router) registerRoutePlugin(e *echo.Group) {
+func (r *router) registerRoutePluginRoutes(e *echo.Group) {
 	routePluginHandler := routepluginhandler.New(r.deps.RoutePluginSvc)
 	routePlugins := e.Group("/route-plugins")
 
@@ -90,7 +108,7 @@ func (r *router) registerRoutePlugin(e *echo.Group) {
 	routePlugins.DELETE("/:id", routePluginHandler.Delete)
 }
 
-func (r *router) registerPlugin(e *echo.Group) {
+func (r *router) registerPluginRoutes(e *echo.Group) {
 	pluginHandler := pluginhandler.New(r.deps.PluginSvc)
 	plugins := e.Group("/plugins")
 

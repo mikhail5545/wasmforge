@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -93,10 +94,9 @@ func newLogger(logCfg LogConfig) (*zap.Logger, func(), error) {
 
 	fileEnc := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 
-	// cores: console for debug+; file for info+
 	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEnc, consoleWS, zapcore.DebugLevel),
-		zapcore.NewCore(fileEnc, fileWS, zapcore.InfoLevel),
+		zapcore.NewCore(consoleEnc, consoleWS, normalizeLogLevel(logCfg.ConsoleLevel)),
+		zapcore.NewCore(fileEnc, fileWS, normalizeLogLevel(logCfg.ConsoleLevel)),
 	)
 
 	logger := zap.New(core, zap.AddCaller())
@@ -105,4 +105,27 @@ func newLogger(logCfg LogConfig) (*zap.Logger, func(), error) {
 		_ = f.Close()
 	}
 	return logger, cleanup, nil
+}
+
+// normalizeLogLevel converts a string log level from configuration to a zapcore.Level. It defaults to InfoLevel if the input is unrecognized.
+// Case-insensitive.
+func normalizeLogLevel(level string) zapcore.Level {
+	switch strings.ToLower(level) {
+	case "debug":
+		return zapcore.DebugLevel
+	case "info":
+		return zapcore.InfoLevel
+	case "warn", "warning":
+		return zapcore.WarnLevel
+	case "error":
+		return zapcore.ErrorLevel
+	case "dpanic":
+		return zapcore.DPanicLevel
+	case "panic":
+		return zapcore.PanicLevel
+	case "fatal":
+		return zapcore.FatalLevel
+	default:
+		return zapcore.InfoLevel // default to info if unrecognized
+	}
 }

@@ -57,10 +57,12 @@ func parseArgs() *app.Config {
 	}
 
 	pflag.Int64VarP(&cfg.AdminServerConfig.Port, "admin-port", "a", 8080, "Port for the admin server")
-	pflag.Int64VarP(&cfg.ProxyServerConfig.Port, "proxy-port", "p", 9090, "Port for the proxy server")
-	pflag.StringVarP(&cfg.UploadsConfig.Directory, "uploads-dir", "u", "./uploads", "Directory for uploaded WASM modules")
+	pflag.StringVarP(&cfg.UploadsConfig.PluginsDirectory, "plugins-uploads-dir", "p", "./uploads", "Directory for uploaded WASM modules")
+	pflag.StringVarP(&cfg.UploadsConfig.CertsDirectory, "certs-uploads-dir", "c", "./certs", "Directory for uploaded TLS certificates")
 	pflag.StringVarP(&cfg.LogConfig.Directory, "logs-dir", "l", "./logs", "Directory for log files")
 	pflag.BoolVarP(&cfg.LogConfig.UseTimestamp, "use-timestamps", "t", true, "Use timestamps in logs filenames")
+	pflag.StringVarP(&cfg.LogConfig.FileLevel, "file-log-level", "f", "info", "Case-insensitive log level for file output (debug, info, warn, error)")
+	pflag.StringVarP(&cfg.LogConfig.ConsoleLevel, "console-log-level", "s", "debug", "Case-insensitive log level for console output (debug, info, warn, error)")
 	pflag.Parse()
 
 	return cfg

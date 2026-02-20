@@ -27,7 +27,7 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-interface PaginatedData<T> {
+export interface PaginatedData<T> {
     pageSize: number;
     nextPageToken: string;
     loading: boolean;

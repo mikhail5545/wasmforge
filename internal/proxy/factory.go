@@ -93,7 +93,7 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 		})
 	}
 	// 1. Build the middleware chain based on the plugins
-	middlewares, err := f.composeMiddlewares(plugins)
+	middlewares, err := f.composeMiddlewares(ctx, plugins)
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func (f *factory) Reassemble(ctx context.Context, route *routemodel.Route, plugi
 		f.logger.Debug("no plugins provided for reassembly, aborting due to potential risk of accidentally removing all middleware from the route", zap.String("route_id", route.ID.String()))
 		return fmt.Errorf("no plugins provided for reassembly, aborting due to potential risk of accidentally removing all middleware from the route")
 	}
-	middlewares, err := f.composeMiddlewares(plugins)
+	middlewares, err := f.composeMiddlewares(ctx, plugins)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (f *factory) Disassemble(path string) error {
 // composeMiddlewares is a helper function to create a slice of middleware functions based on the provided plugins.
 // It reads the WASM bytes for each plugin, creates a new WASM middleware instance, and appends it to the slice.
 // If any step fails, it logs the error and returns it.
-func (f *factory) composeMiddlewares(plugins []*routepluginmodel.RoutePlugin) ([]func(http.Handler) http.Handler, error) {
+func (f *factory) composeMiddlewares(ctx context.Context, plugins []*routepluginmodel.RoutePlugin) ([]func(http.Handler) http.Handler, error) {
 	middlewares := make([]func(http.Handler) http.Handler, 0, len(plugins))
 	for _, rtPlugin := range plugins {
 		// Read raw bytes from the file
@@ -156,7 +156,7 @@ func (f *factory) composeMiddlewares(plugins []*routepluginmodel.RoutePlugin) ([
 		}
 		f.logger.Debug("successfully read WASM bytes for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Int("size_bytes", len(wasmBytes)))
 		// Create a new WASM middleware instance for this plugin
-		mw, err := wasmmiddleware.New(context.Background(), f.rt, f.logger, wasmmiddleware.WasmMiddlewareConfig{
+		mw, err := wasmmiddleware.New(ctx, f.rt, f.logger, wasmmiddleware.WasmMiddlewareConfig{
 			PluginConfig: rtPlugin.Config,
 			WasmBytes:    wasmBytes,
 		})

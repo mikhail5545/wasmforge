@@ -24,6 +24,7 @@ import (
 
 	"github.com/google/uuid"
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
+	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
@@ -34,14 +35,22 @@ import (
 
 type Service struct {
 	pluginRepo    pluginrepo.Repository
+	routeRepo     routerepo.Repository
 	uploadManager *uploads.Manager
 	logger        *zap.Logger
 }
 
-func New(pluginRepo pluginrepo.Repository, uploadManager *uploads.Manager, logger *zap.Logger) *Service {
+type Dependencies struct {
+	PluginRepo    pluginrepo.Repository
+	RouteRepo     routerepo.Repository
+	UploadManager *uploads.Manager
+}
+
+func New(deps Dependencies, logger *zap.Logger) *Service {
 	return &Service{
-		pluginRepo:    pluginRepo,
-		uploadManager: uploadManager,
+		pluginRepo:    deps.PluginRepo,
+		routeRepo:     deps.RouteRepo,
+		uploadManager: deps.UploadManager,
 		logger:        logger.With(zap.String("service", "plugin")),
 	}
 }
@@ -92,8 +101,9 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 
 		s.logger.Debug("creating plugin record", zap.String("name", req.Name), zap.String("filename", req.Filename))
 
-		hash, err := s.uploadManager.FromMultipartFile(file, req.Filename)
+		hash, err := s.uploadManager.FromMultipartFile(file, req.Filename, uploads.PluginUpload)
 		if err != nil {
+			tx.Rollback()
 			return err
 		}
 		plugin.Checksum = hash
@@ -121,6 +131,7 @@ func (s *Service) Delete(ctx context.Context, req *pluginmodel.IDRequest) error 
 	var filenameToDelete *string
 	err := s.pluginRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.pluginRepo.WithTx(tx)
+		txRouteRepo := s.routeRepo.WithTx(tx)
 
 		plugin, err := txRepo.Get(ctx, pluginrepo.WithIDs(uuid.MustParse(req.ID)))
 		if err != nil {
@@ -133,6 +144,16 @@ func (s *Service) Delete(ctx context.Context, req *pluginmodel.IDRequest) error 
 
 		s.logger.Debug("deleting plugin record", zap.String("name", plugin.Name))
 
+		associatedRoutes, err := txRouteRepo.UnpaginatedList(ctx, routerepo.WithPluginIDs(plugin.ID))
+		if err != nil {
+			s.logger.Error("failed to check for associated routes before plugin deletion", zap.String("id", req.ID), zap.Error(err))
+			return fmt.Errorf("failed to check for associated routes before plugin deletion: %w", err)
+		}
+		if len(associatedRoutes) > 0 {
+			s.logger.Warn("cannot delete plugin because it is associated with existing routes", zap.String("id", req.ID), zap.Int("associated_route_count", len(associatedRoutes)))
+			return serviceerrors.NewConflictError(fmt.Sprintf("cannot delete plugin because it is associated with %d existing route(s)", len(associatedRoutes)))
+		}
+
 		if _, err := txRepo.Delete(ctx, pluginrepo.WithIDs(uuid.MustParse(req.ID))); err != nil {
 			s.logger.Error("failed to delete plugin record", zap.String("id", req.ID), zap.Error(err))
 			return fmt.Errorf("failed to delete plugin record: %w", err)
@@ -143,10 +164,5 @@ func (s *Service) Delete(ctx context.Context, req *pluginmodel.IDRequest) error 
 	if err != nil {
 		return err
 	}
-	if filenameToDelete != nil {
-		if err := s.uploadManager.Delete(*filenameToDelete); err != nil {
-			return err
-		}
-	}
-	return nil
+	return s.deleteFile(filenameToDelete)
 }

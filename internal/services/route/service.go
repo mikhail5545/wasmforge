@@ -67,7 +67,7 @@ func (s *Service) List(ctx context.Context, req *routemodel.ListRequest) ([]*rou
 		return nil, "", inerrors.NewValidationError(err)
 	}
 	routes, token, err := s.routeRepo.List(ctx,
-		routerepo.WithIDs(uuidutil.MustParseSlice(req.IDs)...), routerepo.WithPluginIDs(uuidutil.MustParseSlice(req.IDs)...),
+		routerepo.WithIDs(uuidutil.MustParseSlice(req.IDs)...), routerepo.WithPluginIDs(uuidutil.MustParseSlice(req.PluginIDs)...),
 		routerepo.WithPaths(req.Paths...), routerepo.WithTargetURLs(req.TargetURLs...), routerepo.WithEnabled(req.Enabled),
 		routerepo.WithOrder(req.OrderField, req.OrderDirection), routerepo.WithPagination(req.PageSize, req.PageToken),
 	)
@@ -100,6 +100,9 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 		}
 
 		if err := txRepo.Create(ctx, route); err != nil {
+			if errors.Is(err, gorm.ErrDuplicatedKey) {
+				return inerrors.NewConflictError("route with the same path already exists")
+			}
 			s.logger.Error("failed to create route", zap.Error(err))
 			return fmt.Errorf("failed to create route: %w", err)
 		}
@@ -109,6 +112,32 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 		return nil, err
 	}
 	return route, nil
+}
+
+func (s *Service) Update(ctx context.Context, req *routemodel.UpdateRequest) (map[string]any, error) {
+	if err := req.Validate(); err != nil {
+		return nil, inerrors.NewValidationError(err)
+	}
+	var updates map[string]any
+	err := s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
+		txRepo := s.routeRepo.WithTx(tx)
+
+		s.logger.Debug("updating route", zap.String("route_id", req.ID))
+		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
+		if err != nil {
+			return err
+		}
+		if route.Enabled {
+			return inerrors.NewConflictError("cannot update an enabled route, please disable it first")
+		}
+
+		updates = buildUpdates(route, req)
+		return s.update(ctx, txRepo, route.ID, updates)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return updates, nil
 }
 
 func (s *Service) Enable(ctx context.Context, req *routemodel.IDRequest) error {

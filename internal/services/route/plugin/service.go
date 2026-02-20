@@ -115,16 +115,14 @@ func (s *Service) Create(ctx context.Context, req *routepluginmodel.CreateReques
 			ExecutionOrder: req.ExecutionOrder,
 			Config:         req.Config,
 		}
-		if err := txRepo.Create(ctx, routePlugin); err != nil {
-			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return serviceerrors.NewAlreadyExistsError("plugin with this execution order already exists for the route")
-			}
-			s.logger.Error("failed to create route plugin", zap.Error(err))
-			return fmt.Errorf("failed to create route plugin: %w", err)
+
+		if err := s.create(ctx, txRepo, routePlugin); err != nil {
+			return err
 		}
 		s.logger.Debug("route plugin created successfully", zap.String("route_plugin_id", routePlugin.ID.String()))
 
 		if !route.Enabled {
+			s.logger.Debug("route is disabled, skipping reassembly after plugin creation", zap.String("route_id", route.ID.String()))
 			return nil
 		}
 		// Reassemble the route's middleware chain to include the new plugin
@@ -140,19 +138,81 @@ func (s *Service) Create(ctx context.Context, req *routepluginmodel.CreateReques
 	return routePlugin, nil
 }
 
+func (s *Service) Update(ctx context.Context, req *routepluginmodel.UpdateRequest) (map[string]any, error) {
+	if err := req.Validate(); err != nil {
+		return nil, serviceerrors.NewValidationError(err)
+	}
+	var updates map[string]any
+	err := s.repo.DB().Transaction(func(tx *gorm.DB) error {
+		txRepo := s.repo.WithTx(tx)
+		txRouteRepo := s.routeRepo.WithTx(tx)
+
+		plugin, err := txRepo.Get(ctx, routepluginrepo.WithIDs(uuid.MustParse(req.ID)))
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return serviceerrors.NewNotFoundError("route plugin not found")
+			}
+			s.logger.Error("failed to retrieve route plugin for update", zap.Error(err))
+			return fmt.Errorf("failed to retrieve route plugin for update: %w", err)
+		}
+
+		updates = buildUpdates(plugin, req)
+		if err := s.update(ctx, txRepo, plugin.ID, updates); err != nil {
+			return err
+		}
+
+		route, err := s.getRouteInTx(ctx, txRouteRepo, plugin.RouteID)
+		if err != nil {
+			return err
+		}
+		if !route.Enabled {
+			s.logger.Debug("route is disabled, skipping reassembly after plugin update", zap.String("route_id", route.ID.String()))
+			return nil
+		}
+
+		// Reassemble the route's middleware chain to apply plugin updates
+		return s.reassembleRouteInTx(ctx, txRepo, route)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return updates, nil
+}
+
 func (s *Service) Delete(ctx context.Context, req *routepluginmodel.DeleteRequest) error {
 	if err := req.Validate(); err != nil {
 		return serviceerrors.NewValidationError(err)
 	}
 	return s.repo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.repo.WithTx(tx)
-		affected, err := txRepo.Delete(ctx, routepluginrepo.WithIDs(uuid.MustParse(req.ID)))
+
+		s.logger.Debug("deleting route plugin", zap.String("route_plugin_id", req.ID))
+
+		plugin, err := txRepo.Get(ctx, routepluginrepo.WithIDs(uuid.MustParse(req.ID)))
 		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return serviceerrors.NewNotFoundError("route plugin not found")
+			}
+			s.logger.Error("failed to retrieve route plugin for deletion", zap.Error(err))
+			return fmt.Errorf("failed to retrieve route plugin for deletion: %w", err)
+		}
+
+		route, err := s.getRouteInTx(ctx, s.routeRepo.WithTx(tx), plugin.RouteID)
+		if err != nil {
+			return err
+		}
+
+		if _, err := txRepo.Delete(ctx, routepluginrepo.WithIDs(plugin.ID)); err != nil {
 			s.logger.Error("failed to delete route plugin", zap.Error(err))
 			return fmt.Errorf("failed to delete route plugin: %w", err)
-		} else if affected == 0 {
-			return serviceerrors.NewNotFoundError("route plugin not found")
 		}
-		return nil
+
+		if !route.Enabled {
+			s.logger.Debug("route is disabled, skipping reassembly after plugin deletion", zap.String("route_id", route.ID.String()))
+			return nil
+		}
+
+		// Reassemble the route's middleware chain to remove the deleted plugin
+		return s.reassembleRouteInTx(ctx, txRepo, route)
 	})
 }

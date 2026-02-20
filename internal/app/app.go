@@ -120,7 +120,7 @@ func (a *App) Cleanup(ctx context.Context) error {
 		a.cleanup()
 	}
 	if a.proxyServer != nil {
-		if err := a.proxyServer.Shutdown(context.Background()); err != nil {
+		if err := a.proxyServer.Shutdown(ctx); err != nil {
 			a.logger.Error("failed to shutdown proxy server", zap.Error(err))
 			return err
 		}

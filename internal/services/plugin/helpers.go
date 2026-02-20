@@ -21,6 +21,7 @@ import (
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
+	"github.com/mikhail5545/wasmforge/internal/uploads"
 )
 
 func extractIdentifier(req *pluginmodel.GetRequest) (pluginrepo.FilterOption, error) {
@@ -43,5 +44,5 @@ func (s *Service) deleteFile(filename *string) error {
 	if filename == nil {
 		return nil
 	}
-	return s.uploadManager.Delete(*filename)
+	return s.uploadManager.Delete(*filename, uploads.PluginUpload)
 }

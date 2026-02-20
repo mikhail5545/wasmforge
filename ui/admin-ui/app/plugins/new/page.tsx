@@ -17,19 +17,19 @@
 'use client';
 
 import NavBar from "@/components/navigation/NavBar";
-import React, {useState, useCallback} from "react";
+import PageLayout from "@/components/layout/PageLayout";
+import React, {useState, useCallback, useEffect} from "react";
 import {useRouter} from "next/navigation";
 import {useMutation} from "@/hooks/useMutation";
-import {ErrorDialog} from "@/components/dialog/ErrorDialog";
 import {
-    Fieldset,
     Label,
-    Legend,
     Field,
     Input,
 } from "@headlessui/react";
 import {motion} from "motion/react";
-import {InfoDialog} from "@/components/dialog/InfoDialog";
+import {ArrowLeft, Undo2} from "lucide-react";
+import Scrollbar from "react-scrollbars-custom";
+import {ModalDialog} from "@/components/dialog/ModalDialog";
 
 const initialPluginFormState: Omit<WasmForge.Plugin, "id" | "created_at" | "checksum"> = {
     name: "my_new_plugin",
@@ -38,10 +38,14 @@ const initialPluginFormState: Omit<WasmForge.Plugin, "id" | "created_at" | "chec
 
 export default function NewPluginPage() {
     const links = [
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Routes", href: "/routes" },
-        { label: "Plugins", href: "/plugins" },
+        { label: "Routes", href: "/routes", active: false },
+        { label: "Plugins", href: "/plugins", active: false },
+        { label: "Settings", href: "/settings", active: false },
     ];
+
+    useEffect(() => {
+        document.title = "Create new Plugin - WasmForge";
+    });
 
     const [pluginFormData, setPluginFormData] = useState(initialPluginFormState);
     const [file, setFile] = useState<File | null>(null);
@@ -49,6 +53,8 @@ export default function NewPluginPage() {
 
     const router = useRouter();
     const mutation = useMutation();
+
+    const [createdPluginName, setCreatedPluginName] = useState<string | null>(null);
 
     const handleSubmit = useCallback(
         async() => {
@@ -61,104 +67,174 @@ export default function NewPluginPage() {
             formData.append("wasm_file", file);
             formData.append("metadata", JSON.stringify(pluginFormData));
 
-            const { success, response } = await mutation.mutate("http://localhost:8080/api/plugins", "POST", formData);
-            if (!success && mutation.error) {
+            const res = await mutation.mutate("http://localhost:8080/api/plugins", "POST", formData);
+            if (!res.success && mutation.error) {
                 formData.delete("wasm_file");
                 formData.delete("metadata");
                 return;
             }
-            if (success && response) {
+            if (res.success && res.response) {
+                try{
+                    const createdPlugin: WasmForge.Plugin = await res.response.json();
+                    setCreatedPluginName(createdPlugin.name);
+                }catch (error) {
+                    console.log("Error parsing response:", error);
+                    setCreatedPluginName(null);
+                }
                 setSuccess(true);
             }
         }, [file, pluginFormData, mutation]
     );
 
+    const handleCancel = () => {
+        setPluginFormData(initialPluginFormState);
+        setFile(null);
+    };
+
     return (
-        <div className={"flex min-h-screen bg-stone-950 font-mono text-white"}>
-            <div className={"flex flex-col w-full"}>
-                <NavBar
-                    title={"Admin UI"}
-                    links={links}
-                />
-                <ErrorDialog
-                    title={mutation.error?.message || "Unexpected error occurred"}
-                    message={mutation.error?.details || "No additional details available. Try reloading page"}
-                    isOpen={!!mutation.error}
-                    onClose={() => { mutation.setError(null)}}
-                />
-                <InfoDialog title={"Success"} message={"Plugin successfully created"} isOpen={success} onClose={() => router.push("/plugins")}/>
-                <div className={"px-5 md:px-15 lg:px-30 py-10"}>
-                    <div className={"px-20"}>
-                        <Fieldset className={"space-y-6 rounded-xl bg-white/5 p-6 sm:p-8"}>
-                            <Legend className={"text-lg font-semibold text-white"}>
-                                Plugin details
-                                <p className={"text-sm font-semibold text-white/50"}>Required fields are marked with *</p>
-                            </Legend>
-                            <Field>
-                                <Label className={"text-base/7 font-semibold text-white"}>Name*</Label>
-                                <Input
-                                    required
-                                    type={"text"}
-                                    value={pluginFormData.name}
-                                    onChange={(e) => setPluginFormData(prev => ({ ...prev, name: e.target.value }))}
-                                    className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                />
-                            </Field>
-                            <Field>
-                                <Label className={"text-base/7 font-semibold text-white"}>Filename*</Label>
-                                <Input
-                                    required
-                                    type={"text"}
-                                    value={pluginFormData.filename}
-                                    onChange={(e) => setPluginFormData(prev => ({ ...prev, filename: e.target.value }))}
-                                    className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                />
-                            </Field>
-                            <Field>
-                                <Label className={"text-base/7 font-semibold text-white"}>WASM File*</Label>
-                                <Input
-                                    required
-                                    type={"file"}
-                                    onChange={(e) => {
-                                        const selectedFile = e.target.files?.[0] ?? null;
-                                        setFile(selectedFile);
-                                    }}
-                                    className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                />
-                            </Field>
-                            <div className={"flex flex-row gap-5 pt-4"}>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    transition={{ duration: 0.2 }}
-                                    type={"button"}
-                                    disabled={mutation.loading}
-                                    onClick={() => { setFile(null); setPluginFormData(initialPluginFormState); }}
-                                    className={"w-1/2 px-4 py-2 bg-stone-800 text-white rounded-4xl text-sm hover:bg-stone-700 transition-colors duration-200"}
-                                >
-                                    Cancel
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    transition={{ duration: 0.2 }}
-                                    onClick={handleSubmit}
-                                    disabled={mutation.loading}
-                                    className={"w-1/2 px-4 py-2 bg-white text-black rounded-4xl text-sm hover:bg-stone-800 hover:text-white border disabled:cursor-not-allowed disabled:bg-white/70 border-white transition-colors duration-200"}
-                                >
-                                    <div className={"w-full h-full flex items-center justify-center text-center"}>
-                                        {mutation.loading ? (
-                                            <div className={"w-5 h-5 border-3 border-t-black border-white rounded-full animate-spin"}/>
-                                        ) : (
-                                            <p>Submit</p>
-                                        )}
+        <PageLayout>
+            <NavBar links={links}/>
+            <div className={"flex flex-col gap-5 w-full mt-20"}>
+                <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
+                    <p className={"text-xl font-semibold"}>Creating a new Plugin</p>
+                    <div className={"flex flex-row gap-2"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.back()}
+                            className={"px-2 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                        >
+                            <ArrowLeft size={15}/>
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleCancel}
+                            className={"px-2 py-2 rounded-full bg-amber-500 text-white hover:bg-amber-500/80 transition-colors duration-200"}
+                        >
+                            <Undo2 size={15}/>
+                        </motion.button>
+                    </div>
+                </div>
+                <ModalDialog title={"Error"} visible={!!mutation.error} onClose={() => mutation.setError(null)} >
+                    <div className={"flex flex-col gap-5"}>
+                        <p className={"text-md font-semibold"}>{mutation.error?.message}</p>
+                        <Scrollbar style={{ height: 200 }}>
+                            <p className={"text-md"}>{mutation.error?.details}</p>
+                        </Scrollbar>
+                        <div className={"flex flex-row items-end justify-end"}>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => mutation.setError(null)}
+                                className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                            >
+                                Close
+                            </motion.button>
+                        </div>
+                    </div>
+                </ModalDialog>
+                <ModalDialog title={"Plugin successfully created"} visible={success} onClose={() => router.push(createdPluginName ? `/plugins/plugin?name=${createdPluginName}` : "/plugins")} >
+                    <div className={"flex flex-col gap-5"}>
+                        <p className={"text-md font-semibold"}>You successfully created a new plugin!</p>
+                        <p className={"text-sm"}>You can now attach it to a route</p>
+                        <div className={"flex flex-row items-end justify-end"}>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => router.push(createdPluginName ? `/plugins/plugin?name=${createdPluginName}` : "/plugins")}
+                                className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                            >
+                                Close
+                            </motion.button>
+                        </div>
+                    </div>
+                </ModalDialog>
+                <div className={"flex flex-col lg:flex-row gap-5 w-full"}>
+                    <div className={"w-full lg:w-2/3"}>
+                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Name *</Label>
+                                        <Input
+                                            required
+                                            type={"text"}
+                                            value={pluginFormData.name}
+                                            onChange={(e) => setPluginFormData(prev => ({ ...prev, name: e.target.value }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Filename *</Label>
+                                        <Input
+                                            required
+                                            type={"text"}
+                                            value={pluginFormData.filename}
+                                            onChange={(e) => setPluginFormData(prev => ({ ...prev, filename: e.target.value }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2 lg:w-1/2"}>
+                                        <Label className={"text-md font-semibold"}>WASM File *</Label>
+                                        <Input
+                                            required
+                                            type={"file"}
+                                            accept={".wasm"}
+                                            onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+                                            className={"text-md font-semibold px-3 py-5 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-2 justify-between items-center"}>
+                                    <div className={"flex"}>
+                                        <p className={"text-sm"}>Required fields are marked with *</p>
                                     </div>
-                                </motion.button>
+                                    <div className={"flex flex-row gap-2"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            onClick={handleCancel}
+                                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            Cancel
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            onClick={handleSubmit}
+                                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            Submit
+                                        </motion.button>
+                                    </div>
+                                </div>
                             </div>
-                        </Fieldset>
+                        </div>
+                    </div>
+                    <div className={"w-full lg:w-1/3"}>
+                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <p className={"text-lg font-semibold"}>Information</p>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>Name and Filename</p>
+                                    <p className={"text-sm"}>Name and Filename are just unique identifiers for plugin that will help you to track and manage them.</p>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>WASM File</p>
+                                    <p className={"text-sm"}>WASM File will be saved and used when you will decide to attach this plugin to some route. In this case, it will be uploaded into WASM runtime and registered as a new middleware for selected route.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </PageLayout>
     );
 }

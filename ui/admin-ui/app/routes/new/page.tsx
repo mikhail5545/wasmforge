@@ -17,23 +17,23 @@
 'use client';
 
 import {
-    Fieldset,
     Field,
-    Description,
-    Legend,
     Label,
     Input,
 } from "@headlessui/react";
 import {motion} from "motion/react";
 import NavBar from "@/components/navigation/NavBar";
-import React, {useCallback, useState, ChangeEvent} from "react";
+import React, {useCallback, useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import {useMutation} from "@/hooks/useMutation";
-import {ErrorDialog} from "@/components/dialog/ErrorDialog";
+import PageLayout from "@/components/layout/PageLayout";
+import {ArrowLeft, Undo2} from "lucide-react";
+import Scrollbar from "react-scrollbars-custom";
+import {ModalDialog} from "@/components/dialog/ModalDialog";
 
 const initialRouteFormState: Omit<WasmForge.Route, "id" | "created_at" | "enabled"> = {
     path: "/api/example",
-    target_url: "http://localhost:8080/api/example",
+    target_url: "http://localhost:9092/api/example",
     idle_conn_timeout: 10,
     tls_handshake_timeout: 15,
     expect_continue_timeout: 5,
@@ -41,180 +41,249 @@ const initialRouteFormState: Omit<WasmForge.Route, "id" | "created_at" | "enable
 
 export default function NewRoutePage() {
     const links = [
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Routes", href: "/routes" },
-        { label: "Plugins", href: "/plugins" },
+        { label: "Routes", href: "/routes", active: false },
+        { label: "Plugins", href: "/plugins", active: false },
+        { label: "Settings", href: "/settings", active: false },
     ];
 
+    useEffect(() => {
+        document.title = "Create new Route - WasmForge";
+    });
+
     const [routeFormData, setRouteFormData] = useState(initialRouteFormState);
+    const [createdRoutePath, setCreatedRoutePath] = useState<string | null>(null);
+    const [success, setSuccess] = useState(false);
     const mutation = useMutation();
     const router = useRouter();
 
     const handleSubmit = useCallback(
         async () => {
-            const { success: submissionSuccess } = await mutation.mutate("http://localhost:8080/api/routes", "POST", JSON.stringify(routeFormData));
-            if (submissionSuccess) {
-                setRouteFormData(initialRouteFormState);
-                router.push("/routes");
+            const res = await mutation.mutate("http://localhost:8080/api/routes", "POST", JSON.stringify(routeFormData));
+            if (res.success) {
+                if (res.response) {
+                    try{
+                        const createdRoute: WasmForge.Route = await res.response.json();
+                        setCreatedRoutePath(createdRoute.path);
+                    } catch (error) {
+                        console.error("Failed to parse response:", error);
+                        setCreatedRoutePath(null);
+                    }
+                }
+                setSuccess(true);
             }
         }, [routeFormData, mutation, router]
     );
 
-    const handleCancel = useCallback(
-        () => {
-            setRouteFormData(initialRouteFormState);
-            router.push("/routes");
-        }, [router]
-    );
+    const handleCancel = () => {
+        setRouteFormData(initialRouteFormState);
+    };
 
     return (
-        <div className={"flex min-h-screen bg-stone-950 font-mono text-white"}>
-            <div className={"flex flex-col w-full"}>
-                <NavBar
-                    title={"WasmForge"}
-                    links={links}
-                />
-                <div className={"px-5 md:px-15 lg:px-30 py-10"}>
-                    <ErrorDialog
-                        title={mutation.error ? "Error fetching routes" : ""}
-                        message={mutation.error ? mutation.error.message : ""}
-                        isOpen={!!mutation.error}
-                        onClose={() => mutation.setError(null)}
-                    />
-                    <div className={"px-20"}>
-                        <form onSubmit={e => e.preventDefault()}>
-                            <Fieldset className={"space-y-6 rounded-xl bg-white/5 p-6 sm:p-8"}>
-                                <Legend className={"text-lg font-semibold text-white"}>
-                                    Route details
-                                    <p className={"text-sm font-semibold text-white/50"}>Required fields are marked with *</p>
-                                </Legend>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Path*</Label>
-                                    <Description className={"text-sm text-white/50"}>The path which will be used to determine where to redirect incoming request</Description>
-                                    <Input
-                                        type={"text"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        value={routeFormData.path}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, path: e.target.value }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Target URL*</Label>
-                                    <Description className={"text-sm text-white/50"}>Where to redirect requests</Description>
-                                    <Input
-                                        type={"text"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        value={routeFormData.target_url}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, target_url: e.target.value }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Idle connection timeout*</Label>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        value={routeFormData.idle_conn_timeout}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, idle_conn_timeout: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>TLS handshake timeout*</Label>
-                                    <Description className={"text-sm text-white/50"}>TLS handshake timeout for this specific route in seconds</Description>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        value={routeFormData.tls_handshake_timeout}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, tls_handshake_timeout: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Expected continue timeout*</Label>
-                                    <Description className={"text-sm text-white/50"}>Expected continue timeout for this specific route in seconds</Description>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        placeholder={"5"}
-                                        value={routeFormData.expect_continue_timeout}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, expect_continue_timeout: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Max idle connections</Label>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        value={routeFormData.max_idle_cons}
-                                        placeholder={"100"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, max_idle_cons: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Max idle connections per host</Label>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        placeholder={"100"}
-                                        value={routeFormData.max_idle_cons_per_host}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, max_idle_cons_per_host: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Max connections per host</Label>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        placeholder={"100"}
-                                        value={routeFormData.max_cons_per_host}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, max_cons_per_host: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <Field>
-                                    <Label className={"text-base/7 font-semibold text-white"}>Response header timeout</Label>
-                                    <Description className={"text-sm text-white/50"}>Response header timeout for this specific route in seconds</Description>
-                                    <Input
-                                        type={"number"}
-                                        name={"path"}
-                                        className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white focus:border-blue-500 focus:ring focus:ring-blue-500/50"}
-                                        placeholder={"5"}
-                                        value={routeFormData.response_header_timeout}
-                                        onChange={(e: ChangeEvent<HTMLInputElement>) => setRouteFormData(prev => ({ ...prev, response_header_timeout: parseInt(e.target.value) }))}
-                                    />
-                                </Field>
-                                <div className={"flex flex-row gap-5 pt-4"}>
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        transition={{ duration: 0.2 }}
-                                        type={"submit"}
-                                        onClick={handleSubmit}
-                                        className={"w-1/2 px-4 py-2 bg-white text-black rounded-4xl text-sm hover:bg-stone-800 hover:text-white border border-white transition-colors duration-200"}
-                                    >
-                                        Submit
-                                    </motion.button>
-                                    <motion.button
-                                        whileHover={{ scale: 1.05 }}
-                                        whileTap={{ scale: 0.95 }}
-                                        transition={{ duration: 0.2 }}
-                                        type={"button"}
-                                        onClick={handleCancel}
-                                        className={"w-1/2 px-4 py-2 bg-stone-800 text-white rounded-4xl text-sm hover:bg-stone-700 transition-colors duration-200"}
-                                    >
-                                        Cancel
-                                    </motion.button>
+        <PageLayout>
+            <NavBar links={links} />
+            <div className={"flex flex-col gap-5 w-full mt-20"}>
+                <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
+                    <p className={"text-xl font-semibold"}>Creating a new Route</p>
+                    <div className={"flex flex-row gap-2"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.back()}
+                            className={"px-2 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                        >
+                            <ArrowLeft size={15}/>
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={handleCancel}
+                            className={"px-2 py-2 rounded-full bg-amber-500 text-white hover:bg-amber-500/80 transition-colors duration-200"}
+                        >
+                            <Undo2 size={15}/>
+                        </motion.button>
+                    </div>
+                </div>
+                <ModalDialog title={"Error"} visible={!!mutation.error} onClose={() => mutation.setError(null)} >
+                    <div className={"flex flex-col gap-5"}>
+                        <p className={"text-md font-semibold"}>{mutation.error?.message}</p>
+                        <Scrollbar style={{ height: 200 }}>
+                            <p className={"text-md"}>{mutation.error?.details}</p>
+                        </Scrollbar>
+                        <div className={"flex flex-row items-end justify-end"}>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => mutation.setError(null)}
+                                className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                            >
+                                Close
+                            </motion.button>
+                        </div>
+                    </div>
+                </ModalDialog>
+                <ModalDialog title={"Route successfully created"} visible={success} onClose={() => router.push(createdRoutePath ? `/routes/route?path=${createdRoutePath}` : "/routes")} >
+                    <div className={"flex flex-col gap-5"}>
+                        <p className={"text-md font-semibold"}>You successfully created a new route!</p>
+                        <p className={"text-sm"}>Right now it's disabled. You can navigate to route page to enable it and add plugins</p>
+                        <div className={"flex flex-row items-end justify-end"}>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => router.push(createdRoutePath ? `/routes/route?path=${createdRoutePath}` : "/routes")}
+                                className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                            >
+                                Close
+                            </motion.button>
+                        </div>
+                    </div>
+                </ModalDialog>
+                <div className={"flex flex-col lg:flex-row gap-5 w-full"}>
+                    <div className={"w-full lg:w-2/3"}>
+                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Path *</Label>
+                                        <Input
+                                            required
+                                            type={"text"}
+                                            value={routeFormData.path}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, path: e.target.value }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Target URL *</Label>
+                                        <Input
+                                            required
+                                            type={"text"}
+                                            value={routeFormData.target_url}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, target_url: e.target.value }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
                                 </div>
-                            </Fieldset>
-                        </form>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Idle connection timeout *</Label>
+                                        <Input
+                                            required
+                                            value={routeFormData.idle_conn_timeout}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, idle_conn_timeout: parseInt(e.target.value) }))}
+                                            type={"number"}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>TLS handshake timeout *</Label>
+                                        <Input
+                                            required
+                                            type={"number"}
+                                            value={routeFormData.tls_handshake_timeout}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, tls_handshake_timeout: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Expect continue timeout *</Label>
+                                        <Input
+                                            required
+                                            type={"number"}
+                                            value={routeFormData.expect_continue_timeout}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, expect_continue_timeout: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Max idle connections</Label>
+                                        <Input
+                                            type={"number"}
+                                            value={routeFormData.max_idle_cons}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, max_idle_cons: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Max idle connections per host</Label>
+                                        <Input
+                                            type={"number"}
+                                            value={routeFormData.max_idle_cons_per_host}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, max_idle_cons_per_host: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                    <Field className={"flex flex-col w-full gap-2"}>
+                                        <Label className={"text-md font-semibold"}>Max connections per host</Label>
+                                        <Input
+                                            type={"number"}
+                                            value={routeFormData.max_cons_per_host}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, max_cons_per_host: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <Field className={"flex flex-col gap-2 w-1/2"}>
+                                        <Label className={"text-md font-semibold"}>Response header timeout</Label>
+                                        <Input
+                                            type={"number"}
+                                            value={routeFormData.response_header_timeout}
+                                            onChange={(e) => setRouteFormData(prev => ({ ...prev, response_header_timeout: parseInt(e.target.value) }))}
+                                            className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                        />
+                                    </Field>
+                                </div>
+                                <div className={"flex flex-row w-full gap-2 justify-between items-center"}>
+                                    <div className={"flex"}>
+                                        <p className={"text-sm"}>Required fields are marked with *</p>
+                                    </div>
+                                    <div className={"flex flex-row gap-2"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            onClick={handleCancel}
+                                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            Cancel
+                                        </motion.button>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            transition={{ duration: 0.2 }}
+                                            onClick={handleSubmit}
+                                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            Submit
+                                        </motion.button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className={"w-full lg:w-1/3"}>
+                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <p className={"text-lg font-semibold"}>Information</p>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>Path</p>
+                                    <p className={"text-sm"}>Path specifies the prefix of incoming requests. All requests containing this prefix, will be redirected to <strong>Target URL</strong></p>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>Target URL</p>
+                                    <p className={"text-sm"}>Target URL specifies where matching requests will be redirected.</p>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        </PageLayout>
     );
 }

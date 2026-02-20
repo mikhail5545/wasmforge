@@ -48,6 +48,14 @@ func (req CreateRequest) Validate() error {
 	)
 }
 
+func (req UpdateRequest) Validate() error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
+		validation.Field(&req.ExecutionOrder, validation.NilOrNotEmpty, validation.Min(1)),
+		validation.Field(&req.Config, validation.NilOrNotEmpty, is.JSON),
+	)
+}
+
 func (req DeleteRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),

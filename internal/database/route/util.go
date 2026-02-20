@@ -48,7 +48,8 @@ func applyIdentifyingFilters(db *gorm.DB, filter *filter) *gorm.DB {
 
 func applyFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	if len(filter.PluginIDs) > 0 {
-		db = db.Where("plugin_id IN ?", filter.PluginIDs)
+		db = db.Joins("JOIN route_plugins ON route_plugins.route_id = routes.id").
+			Where("route_plugins.plugin_id IN ?", filter.PluginIDs)
 	}
 	if len(filter.TargetURLs) > 0 {
 		db = db.Where("target_url IN ?", filter.TargetURLs)

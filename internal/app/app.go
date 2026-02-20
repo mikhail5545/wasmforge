@@ -50,7 +50,7 @@ func New(cfg *Config) (*App, error) {
 	}
 	return &App{
 		logger:         logger,
-		uploadsManager: uploads.New(cfg.UploadsConfig.Directory, logger),
+		uploadsManager: uploads.New(cfg.UploadsConfig.PluginsDirectory, cfg.UploadsConfig.CertsDirectory, logger),
 		cleanup:        cleanup,
 		cfg:            cfg,
 	}, nil
@@ -64,13 +64,14 @@ func (a *App) Init(ctx context.Context) error {
 	}
 	a.db = db
 
-	if err := a.uploadsManager.EnsureDirectory(); err != nil {
+	if err := a.uploadsManager.EnsureDirectory(uploads.CertUpload); err != nil {
 		a.logger.Error("failed to ensure uploads directory", zap.Error(err))
 		return err
 	}
-
-	a.setupRepositories()
-	a.setupServices()
+	if err := a.uploadsManager.EnsureDirectory(uploads.PluginUpload); err != nil {
+		a.logger.Error("failed to ensure uploads directory", zap.Error(err))
+		return err
+	}
 
 	proxyServer, err := server.New(ctx, a.uploadsManager, a.logger)
 	if err != nil {
@@ -78,6 +79,9 @@ func (a *App) Init(ctx context.Context) error {
 		return err
 	}
 	a.proxyServer = proxyServer
+
+	a.setupRepositories()
+	a.setupServices()
 
 	a.adminServer = admin.New(&admin.Dependencies{
 		PluginSvc:      a.services.PluginSvc,

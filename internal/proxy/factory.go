@@ -149,7 +149,7 @@ func (f *factory) composeMiddlewares(plugins []*routepluginmodel.RoutePlugin) ([
 	middlewares := make([]func(http.Handler) http.Handler, 0, len(plugins))
 	for _, rtPlugin := range plugins {
 		// Read raw bytes from the file
-		wasmBytes, err := f.manager.Read(rtPlugin.Plugin.Filename)
+		wasmBytes, err := f.manager.Read(rtPlugin.Plugin.Filename, uploads.PluginUpload)
 		if err != nil {
 			f.logger.Error("failed to read WASM bytes for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Error(err))
 			return nil, fmt.Errorf("failed to read WASM bytes for plugin %s: %w", rtPlugin.Plugin.Filename, err)

@@ -47,6 +47,13 @@ type CreateRequest struct {
 	Config *string `json:"config,omitempty"`
 }
 
+type UpdateRequest struct {
+	ID string `param:"id" json:"-"`
+
+	ExecutionOrder *int    `json:"execution_order,omitempty"`
+	Config         *string `json:"config,omitempty"`
+}
+
 type DeleteRequest struct {
 	ID string `param:"id" json:"-"`
 }

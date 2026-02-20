@@ -14,33 +14,18 @@
  * limitations under the License.
  */
 
-package app
+package patch
 
-type (
-	LogConfig struct {
-		Directory    string
-		UseTimestamp bool
-		FileLevel    string
-		ConsoleLevel string
+// UpdateIfChanged checks if new and cur are different. If they are, it adds the new value to the updates map under the dbField key.
+func UpdateIfChanged[T comparable](updates map[string]any, dbField string, new, cur *T) {
+	if new == nil {
+		return
 	}
-
-	AdminServerConfig struct {
-		Port int64
+	if cur == nil {
+		updates[dbField] = *new
+		return
 	}
-
-	DatabaseConfig struct {
-		DSN string
+	if *cur != *new {
+		updates[dbField] = *new
 	}
-
-	UploadsConfig struct {
-		PluginsDirectory string
-		CertsDirectory   string
-	}
-
-	Config struct {
-		LogConfig         LogConfig
-		AdminServerConfig AdminServerConfig
-		DatabaseConfig    DatabaseConfig
-		UploadsConfig     UploadsConfig
-	}
-)
+}

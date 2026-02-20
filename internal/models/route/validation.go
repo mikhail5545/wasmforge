@@ -57,6 +57,21 @@ func (req CreateRequest) Validate() error {
 	)
 }
 
+func (req UpdateRequest) Validate() error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
+		validation.Field(&req.Path, validationutil.PathRule(false)...),
+		validation.Field(&req.TargetURL, validation.NilOrNotEmpty, is.URL),
+		validation.Field(&req.IdleConnTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.TLSHandshakeTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.ExpectContinueTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.MaxIdleCons, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.MaxIdleConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.MaxConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.ResponseHeaderTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+	)
+}
+
 func (req IDRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),

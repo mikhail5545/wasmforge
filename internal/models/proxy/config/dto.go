@@ -14,33 +14,13 @@
  * limitations under the License.
  */
 
-package app
+package config
 
-type (
-	LogConfig struct {
-		Directory    string
-		UseTimestamp bool
-		FileLevel    string
-		ConsoleLevel string
-	}
+type UpdateRequest struct {
+	ListenPort        *int `json:"listen_port,omitempty"`
+	ReadHeaderTimeout *int `json:"read_header_timeout,omitempty"` // In seconds
 
-	AdminServerConfig struct {
-		Port int64
-	}
-
-	DatabaseConfig struct {
-		DSN string
-	}
-
-	UploadsConfig struct {
-		PluginsDirectory string
-		CertsDirectory   string
-	}
-
-	Config struct {
-		LogConfig         LogConfig
-		AdminServerConfig AdminServerConfig
-		DatabaseConfig    DatabaseConfig
-		UploadsConfig     UploadsConfig
-	}
-)
+	TLSEnabled  *bool   `json:"tls_enabled,omitempty"`
+	TLSCertPath *string `json:"tls_cert_path,omitempty"`
+	TLSKeyPath  *string `json:"tls_key_path,omitempty"`
+}

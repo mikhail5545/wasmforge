@@ -41,6 +41,21 @@ type CreateRequest struct {
 	ResponseHeaderTimeout *int `json:"response_header_timeout"`
 }
 
+type UpdateRequest struct {
+	ID        string  `json:"-"`
+	Path      *string `json:"path,omitempty"`
+	TargetURL *string `json:"target_url,omitempty"`
+
+	IdleConnTimeout       *int `json:"idle_conn_timeout,omitempty"`
+	TLSHandshakeTimeout   *int `json:"tls_handshake_timeout,omitempty"`
+	ExpectContinueTimeout *int `json:"expect_continue_timeout,omitempty"`
+
+	MaxIdleCons           *int `json:"max_idle_conns,omitempty"`
+	MaxIdleConsPerHost    *int `json:"max_idle_conns_per_host,omitempty"`
+	MaxConsPerHost        *int `json:"max_conns_per_host,omitempty"`
+	ResponseHeaderTimeout *int `json:"response_header_timeout"`
+}
+
 type IDRequest struct {
 	ID string `param:"id" json:"-"`
 }

@@ -18,6 +18,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net"
@@ -25,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	configmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/config"
 	"github.com/mikhail5545/wasmforge/internal/proxy"
 	"github.com/mikhail5545/wasmforge/internal/proxy/wasm"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
@@ -42,6 +44,12 @@ type Server struct {
 	httpSrv  *http.Server
 	mu       sync.Mutex
 	lastAddr string
+}
+
+func (s *Server) HTTPServerInstance() *http.Server {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.httpSrv
 }
 
 func New(ctx context.Context, manager *uploads.Manager, logger *zap.Logger) (*Server, error) {
@@ -62,12 +70,12 @@ func New(ctx context.Context, manager *uploads.Manager, logger *zap.Logger) (*Se
 	}, nil
 }
 
-func (s *Server) Start(addr string, ready chan<- error) {
+func (s *Server) Start(cfg *configmodel.Config, tlsCfg *tls.Config, ready chan<- error) {
 	s.mu.Lock()
-	if addr == "" {
-		addr = s.lastAddr
-	} else {
-		s.lastAddr = addr
+	if cfg == nil {
+		s.mu.Unlock()
+		ready <- fmt.Errorf("config cannot be nil")
+		return
 	}
 
 	if s.httpSrv != nil {
@@ -77,27 +85,41 @@ func (s *Server) Start(addr string, ready chan<- error) {
 	}
 
 	// Try to bind the address before starting the server to fail fast if the address is already in use or invalid
-	lis, err := net.Listen("tcp", addr)
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", cfg.ListenPort))
 	if err != nil {
 		s.mu.Unlock()
-		ready <- fmt.Errorf("failed to bind address %s: %w", addr, err)
+		ready <- fmt.Errorf("failed to bind address %s: %w", fmt.Sprintf(":%d", cfg.ListenPort), err)
 		return
 	}
 
 	s.httpSrv = &http.Server{
-		Handler: s.director,
-		// TODO: Create customizable timeout config
-		ReadHeaderTimeout: 5 * time.Second,
+		Handler:           s.director,
+		TLSConfig:         tlsCfg, // can be nil for non-TLS
+		ReadHeaderTimeout: time.Duration(cfg.ReadHeaderTimeout) * time.Second,
 	}
 	s.mu.Unlock()
 
 	ready <- nil // Notify about success
 
-	s.logger.Info("starting proxy server", zap.String("address", addr))
+	s.logger.Info("address successfully claimed, starting proxy server")
 
-	// Serve will block until the server is stopped, either due to an error or a shutdown signal via StopTraffic or Shutdown.
-	if err := s.httpSrv.Serve(lis); err != nil && !errors.Is(err, http.ErrServerClosed) {
-		s.logger.Error("proxy server failed", zap.Error(err))
+	var serveFunc func() error
+
+	if tlsCfg != nil {
+		s.logger.Info("starting proxy server with TLS", zap.Int("port", cfg.ListenPort))
+		serveFunc = func() error {
+			return s.httpSrv.ServeTLS(lis, "", "")
+		}
+	} else {
+		s.logger.Info("starting proxy server without TLS", zap.Int("port", cfg.ListenPort))
+		serveFunc = func() error {
+			return s.httpSrv.Serve(lis)
+		}
+	}
+
+	// Serve will block until the server is stopped
+	if err := serveFunc(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		s.logger.Error("proxy server stopped with error", zap.Error(err))
 
 		// Reset state on failure to allow future restarts
 		s.mu.Lock()

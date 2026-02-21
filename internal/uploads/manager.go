@@ -23,8 +23,8 @@ import (
 	"mime/multipart"
 	"os"
 
+	"github.com/mikhail5545/wasmforge/internal/crypto"
 	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
-
 	"go.uber.org/zap"
 )
 
@@ -78,7 +78,7 @@ func (m *Manager) FromBase64(encodedData, filename string, uploadType UploadType
 		return "", fmt.Errorf("failed to decode Base64 data: %w", err)
 	}
 
-	if len(decoded) > 10*1024*1024 { // 10 MB limit
+	if len(decoded) > 100*1024*1024 { // 100 MB limit
 		m.logger.Warn("decoded data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(decoded)))
 		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 10 MB")
 	}
@@ -92,9 +92,30 @@ func (m *Manager) FromBase64(encodedData, filename string, uploadType UploadType
 		return "", fmt.Errorf("failed to write decoded data to file: %w", err)
 	}
 
-	hash := hashFromBytes(decoded)
+	hash := crypto.HashFromBytes(decoded)
 
 	m.logger.Debug("file created successfully from Base64 data", zap.String("filename", fullPath), zap.Int("size", len(decoded)), zap.String("hash", hash))
+	return hash, nil
+}
+
+func (m *Manager) FromBytes(data []byte, filename string, uploadType UploadType) (string, error) {
+	if len(data) > 100*1024*1024 { // 100 MB limit
+		m.logger.Warn("data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(data)))
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 100 MB")
+	}
+
+	fullPath, err := m.buildFullPath(uploadType, filename)
+	if err != nil {
+		return "", err
+	}
+	if err := os.WriteFile(fullPath, data, 0644); err != nil {
+		m.logger.Error("failed to write data to file", zap.String("filename", fullPath), zap.Error(err))
+		return "", fmt.Errorf("failed to write data to file: %w", err)
+	}
+
+	hash := crypto.HashFromBytes(data)
+
+	m.logger.Debug("file created successfully from bytes data", zap.String("filename", fullPath), zap.Int("size", len(data)), zap.String("hash", hash))
 	return hash, nil
 }
 
@@ -131,7 +152,7 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string,
 		m.logger.Error("failed to copy file", zap.String("source", file.Filename), zap.String("destination", dstPath), zap.Error(err))
 		return "", fmt.Errorf("failed to copy file: %w", err)
 	}
-	fileHash, err := hashFromOpen(src)
+	fileHash, err := crypto.HashFromOpen(src)
 	if err != nil {
 		m.logger.Error("failed to compute file hash", zap.String("filename", file.Filename), zap.Error(err))
 		return "", fmt.Errorf("failed to compute file hash: %w", err)

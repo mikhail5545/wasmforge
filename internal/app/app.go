@@ -93,6 +93,9 @@ func (a *App) Init(ctx context.Context) error {
 		RoutePluginSvc: a.services.RoutePluginSvc,
 		RouteSvc:       a.services.RouteSvc,
 		ProxyServer:    a.proxyServer,
+		CertSvc:        a.services.ProxyCertSvc,
+		ServerSvc:      a.services.ProxyServerSvc,
+		ConfigSvc:      a.services.ProxyConfigSvc,
 	}, a.logger)
 	return nil
 }
@@ -121,14 +124,14 @@ func (a *App) Start(ctx context.Context) error {
 
 func (a *App) Cleanup(ctx context.Context) error {
 	a.logger.Info("cleaning up resources")
-	if a.cleanup != nil {
-		a.cleanup()
-	}
 	if a.proxyServer != nil {
 		if err := a.proxyServer.Shutdown(ctx); err != nil {
 			a.logger.Error("failed to shutdown proxy server", zap.Error(err))
 			return err
 		}
+	}
+	if a.cleanup != nil {
+		a.cleanup()
 	}
 	return nil
 }

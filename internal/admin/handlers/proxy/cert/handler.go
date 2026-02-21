@@ -20,6 +20,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
+	"github.com/mikhail5545/wasmforge/internal/admin/handlers/generic"
 	"github.com/mikhail5545/wasmforge/internal/services/proxy/cert"
 )
 
@@ -54,4 +55,8 @@ func (h *Handler) Remove(c *echo.Context) error {
 		return err
 	}
 	return c.NoContent(http.StatusOK)
+}
+
+func (h *Handler) Generate(c *echo.Context) error {
+	return generic.HandleNoContent(c, h.service.GenerateSelfSignedCerts, http.StatusCreated)
 }

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package uploads
+package crypto
 
 import (
 	"crypto/sha256"
@@ -22,7 +22,7 @@ import (
 	"io"
 )
 
-func hashFromOpen(f io.Reader) (string, error) {
+func HashFromOpen(f io.Reader) (string, error) {
 	hasher := sha256.New()
 	if _, err := io.Copy(hasher, f); err != nil {
 		return "", err
@@ -30,7 +30,7 @@ func hashFromOpen(f io.Reader) (string, error) {
 	return hex.EncodeToString(hasher.Sum(nil)), nil
 }
 
-func hashFromBytes(data []byte) string {
+func HashFromBytes(data []byte) string {
 	hasher := sha256.New()
 	hasher.Write(data)
 	return hex.EncodeToString(hasher.Sum(nil))

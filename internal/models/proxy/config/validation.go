@@ -16,15 +16,23 @@
 
 package config
 
-import validation "github.com/go-ozzo/ozzo-validation/v4"
+import (
+	"regexp"
+
+	validation "github.com/go-ozzo/ozzo-validation/v4"
+)
 
 func (req UpdateRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ListenPort, validation.NilOrNotEmpty, validation.Min(1), validation.Max(65535)),
 		validation.Field(&req.ReadHeaderTimeout, validation.NilOrNotEmpty, validation.Min(1)),
+	)
+}
 
-		validation.Field(&req.TLSEnabled, validation.NilOrNotEmpty),
-		validation.Field(&req.TLSCertPath, validation.NilOrNotEmpty, validation.When(req.TLSEnabled != nil && *req.TLSEnabled, validation.Required)),
-		validation.Field(&req.TLSKeyPath, validation.NilOrNotEmpty, validation.When(req.TLSEnabled != nil && *req.TLSEnabled, validation.Required)),
+func (req GenerateCertificatesRequest) Validate() error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.CommonName, validation.Required, validation.Match(regexp.MustCompile(`^[a-z0-9]+(?:_[&?a-z0-9]+)*$`))),
+		validation.Field(&req.ValidDays, validation.Required, validation.Min(1)),
+		validation.Field(&req.RsaBits, validation.Required, validation.In(2048, 4096)),
 	)
 }

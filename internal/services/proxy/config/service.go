@@ -43,6 +43,16 @@ func New(server *server.Server, configRepo configrepo.Repository, logger *zap.Lo
 }
 
 func (s *Service) Init(ctx context.Context) error {
+	_, err := s.configRepo.Get(ctx)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		s.logger.Error("failed to get proxy config during initialization", zap.Error(err))
+		return fmt.Errorf("failed to get proxy config during initialization: %w", err)
+	}
+	if err == nil {
+		s.logger.Info("proxy config already exists, skipping initialization")
+		return nil
+	}
+
 	config := &configmodel.Config{
 		ListenPort:        9000,
 		ReadHeaderTimeout: 5,
@@ -50,6 +60,7 @@ func (s *Service) Init(ctx context.Context) error {
 	}
 
 	if err := s.configRepo.Create(ctx, config); err != nil {
+
 		s.logger.Error("failed to initialize proxy config", zap.Error(err))
 		return err
 	}

@@ -58,6 +58,18 @@ func (h *Handler) Create(c *echo.Context) error {
 	return generic.Handle(c, h.service.Create, http.StatusCreated, "route_plugin")
 }
 
+func (h *Handler) Update(c *echo.Context) error {
+	var req pluginmodel.UpdateRequest
+	if err := c.Bind(&req); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "invalid request parameters")
+	}
+	updates, err := h.service.Update(c.Request().Context(), &req)
+	if err != nil {
+		return err
+	}
+	return c.JSON(http.StatusOK, map[string]any{"updates": updates})
+}
+
 func (h *Handler) Delete(c *echo.Context) error {
 	return generic.HandleNoContent(c, h.service.Delete, http.StatusNoContent)
 }

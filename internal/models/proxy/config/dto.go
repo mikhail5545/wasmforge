@@ -19,8 +19,10 @@ package config
 type UpdateRequest struct {
 	ListenPort        *int `json:"listen_port,omitempty"`
 	ReadHeaderTimeout *int `json:"read_header_timeout,omitempty"` // In seconds
+}
 
-	TLSEnabled  *bool   `json:"tls_enabled,omitempty"`
-	TLSCertPath *string `json:"tls_cert_path,omitempty"`
-	TLSKeyPath  *string `json:"tls_key_path,omitempty"`
+type GenerateCertificatesRequest struct {
+	CommonName string `json:"common_name"`
+	ValidDays  int    `json:"valid_days"`
+	RsaBits    int    `json:"rsa_bits"`
 }

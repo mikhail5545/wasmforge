@@ -14,18 +14,3 @@
  * limitations under the License.
  */
 
-package config
-
-import (
-	configmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/config"
-	"github.com/mikhail5545/wasmforge/internal/util/patch"
-)
-
-func buildUpdates(existing *configmodel.Config, req *configmodel.UpdateRequest) map[string]any {
-	updates := make(map[string]any)
-
-	patch.UpdateIfChanged(updates, "listen_port", req.ListenPort, &existing.ListenPort)
-	patch.UpdateIfChanged(updates, "read_header_timeout", req.ReadHeaderTimeout, &existing.ReadHeaderTimeout)
-
-	return updates
-}

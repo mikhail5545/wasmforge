@@ -50,7 +50,7 @@ func (r *repository) WithTx(tx *gorm.DB) Repository {
 
 func (r *repository) Get(ctx context.Context) (*proxymodel.Config, error) {
 	var cfg proxymodel.Config
-	err := r.db.WithContext(ctx).First(cfg, "id = 1").Error
+	err := r.db.WithContext(ctx).First(&cfg).Error
 	return &cfg, err
 }
 

@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"mime/multipart"
 
+	"github.com/mikhail5545/wasmforge/internal/crypto"
 	configrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/config"
 	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/config"
@@ -144,6 +145,50 @@ func (s *Service) RemoveCerts(ctx context.Context) error {
 			return fmt.Errorf("failed to update proxy config to disable TLS and clear cert paths and hashes: %w", err)
 		}
 		s.logger.Info("successfully removed TLS certs and updated proxy config")
+		return nil
+	})
+}
+
+func (s *Service) GenerateSelfSignedCerts(ctx context.Context, req *configmodel.GenerateCertificatesRequest) error {
+	if err := req.Validate(); err != nil {
+		return inerrors.NewValidationError(err)
+	}
+
+	s.logger.Debug("generating self-signed TLS certs")
+
+	certPem, keyPem, err := crypto.GenerateSlefSignedCerts(req.CommonName, req.ValidDays, req.RsaBits, s.logger)
+	if err != nil {
+		s.logger.Error("failed to generate self-signed TLS certs", zap.Error(err))
+		return fmt.Errorf("failed to generate self-signed TLS certs: %w", err)
+	}
+
+	s.logger.Debug("successfully generated self-signed TLS certs, uploading to storage")
+	certHash, err := s.uploadManager.FromBytes(certPem, "selfsigned_cert.pem", uploads.CertUpload)
+	if err != nil {
+		s.logger.Error("failed to upload generated cert PEM data", zap.Error(err))
+		return fmt.Errorf("failed to upload generated cert PEM data: %w", err)
+	}
+	keyHash, err := s.uploadManager.FromBytes(keyPem, "selfsigned_key.pem", uploads.CertUpload)
+	if err != nil {
+		s.logger.Error("failed to upload generated key PEM data", zap.Error(err))
+		return fmt.Errorf("failed to upload generated key PEM data: %w", err)
+	}
+
+	s.logger.Info("successfully generated and uploaded self-signed TLS certs", zap.String("cert_hash", certHash), zap.String("key_hash", keyHash))
+
+	return s.configRepo.DB().Transaction(func(tx *gorm.DB) error {
+		txRepo := s.configRepo.WithTx(tx)
+
+		if err := txRepo.Updates(ctx, map[string]any{
+			"tls_cert_path": "selfsigned_cert.pem",
+			"tls_cert_hash": certHash,
+			"tls_key_path":  "selfsigned_key.pem",
+			"tls_key_hash":  keyHash,
+			"tls_enabled":   true,
+		}); err != nil {
+			s.logger.Error("failed to update proxy config with new self-signed cert paths and hashes", zap.Error(err))
+			return fmt.Errorf("failed to update proxy config with new self-signed cert paths and hashes: %w", err)
+		}
 		return nil
 	})
 }

@@ -73,6 +73,7 @@ func (r *router) registerProxy(e *echo.Group) {
 	certsGroup := proxy.Group("/certs")
 	certsGroup.POST("", certHandler.Upload)
 	certsGroup.DELETE("", certHandler.Remove)
+	certsGroup.POST("/generate", certHandler.Generate)
 
 	serverHandler := serverhandler.New(r.deps.ServerSvc)
 	serverGroup := proxy.Group("/server")
@@ -83,7 +84,7 @@ func (r *router) registerProxy(e *echo.Group) {
 	configHandler := cfghandler.New(r.deps.ConfigSvc)
 	configGroup := proxy.Group("/config")
 	configGroup.GET("", configHandler.Get)
-	configGroup.PUT("", configHandler.Update)
+	configGroup.PATCH("", configHandler.Update)
 }
 
 func (r *router) registerRouteRoutes(e *echo.Group) {
@@ -95,6 +96,7 @@ func (r *router) registerRouteRoutes(e *echo.Group) {
 	routes.POST("", routeHandler.Create)
 	routes.POST("/:id/enable", routeHandler.Enable)
 	routes.POST("/:id/disable", routeHandler.Disable)
+	routes.PATCH("/:id", routeHandler.Update)
 	routes.DELETE("/:id", routeHandler.Delete)
 }
 
@@ -105,6 +107,7 @@ func (r *router) registerRoutePluginRoutes(e *echo.Group) {
 	routePlugins.GET("/:id", routePluginHandler.Get)
 	routePlugins.GET("", routePluginHandler.List)
 	routePlugins.POST("", routePluginHandler.Create)
+	routePlugins.PATCH("/:id", routePluginHandler.Update)
 	routePlugins.DELETE("/:id", routePluginHandler.Delete)
 }
 

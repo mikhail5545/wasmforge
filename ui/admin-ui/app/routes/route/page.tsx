@@ -29,7 +29,7 @@ import {
     Handshake,
     Hourglass,
     Antenna,
-    X, ChevronRight, Pencil,
+    X, ChevronRight, Pencil, Check,
 } from "lucide-react";
 import React, {useEffect, useState, useCallback} from "react";
 import {AnimatePresence,motion} from "motion/react";
@@ -38,6 +38,7 @@ import PageLayout from "@/components/layout/PageLayout";
 import Scrollbar from "react-scrollbars-custom";
 import {ModalDialog} from "@/components/dialog/ModalDialog";
 import {useMutation} from "@/hooks/useMutation";
+import {Input} from "@headlessui/react";
 
 
 export default function RoutePage() {
@@ -50,7 +51,6 @@ export default function RoutePage() {
     const params = useSearchParams();
     const path = !params.get("path") ? "" : params.get("path")!;
     const routeDetails = useData<WasmForge.Route>(`http://localhost:8080/api/routes/${encodeURIComponent(path)}`, "route");
-
     const routePluginsPaginatedData = usePaginatedData<WasmForge.RoutePlugin>(
         `/api/route-plugins?r_ids=${routeDetails?.data?.id}`,
         "route_plugins",
@@ -75,7 +75,8 @@ export default function RoutePage() {
     const [showNewPluginDialog, setShowNewPluginDialog] = useState(false);
     const [selectedPluginId, setSelectedPluginId] = useState<string | null>(null);
     const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
-
+    const [editMode, setEditMode] = useState(false);
+    const [editableRoute, setEditableRoute] = useState<Omit<WasmForge.Route, "id" | "created_at"> | null>(null);
     const router = useRouter();
 
     const openNewPluginDialog = async () => {
@@ -121,6 +122,19 @@ export default function RoutePage() {
         }, [routeDetails, mutation]
     );
 
+    const handleSubmitChanges = useCallback(
+        async () => {
+            if (!routeDetails.data || !editableRoute) return;
+
+            const res = await mutation.mutate(`http://localhost:8080/api/routes/${routeDetails.data.id}`, "PATCH", JSON.stringify(editableRoute));
+            if (res.success) {
+                setEditMode(false);
+                setEditableRoute(null);
+                await routeDetails.refetch();
+            }
+        }, [routeDetails, editableRoute, mutation]
+    );
+
     const globalError = mutation.error || routeDetails.error || routePluginsPaginatedData.error || pluginPaginatedData.error;
     const unsetError = async () => {
         mutation.setError(null);
@@ -143,12 +157,33 @@ export default function RoutePage() {
                     <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-2/3"}>
                         <p className={"text-xl font-semibold"}>Route Details</p>
                         <div className={"flex flex-row gap-2"}>
+                            <AnimatePresence mode={"wait"}>
+                                {editMode && (
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={handleSubmitChanges}
+                                        disabled={routeDetails.loading || mutation.loading}
+                                        className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                    >
+                                        {mutation.loading ? (
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"w-4 h-4 border-2 border-t-black border-white rounded-full animate-spin"}/>
+                                            </div>
+                                        ) : (
+                                            <Check size={15}/>
+                                        )}
+                                    </motion.button>
+                                )}
+                            </AnimatePresence>
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
                                 whileTap={{ scale: 0.95 }}
-                                className={"px-2 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                                onClick={editMode ? () => setEditMode(false) : () => {setEditableRoute(routeDetails.data || {}); setEditMode(true)}}
+                                disabled={routeDetails.loading || mutation.loading}
+                                className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
                             >
-                                <Pencil size={15}/>
+                                {editMode ? <X size={15}/> : <Pencil size={15}/>}
                             </motion.button>
                             <motion.button
                                 whileHover={{ scale: 1.05 }}
@@ -336,9 +371,38 @@ export default function RoutePage() {
                                                 <Route size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Path</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.path}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Path</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                        <motion.div
+                                                            key={"edit"}
+                                                            initial={{ opacity: 0, y: -10 }}
+                                                            animate={{ opacity: 1, y: 0 }}
+                                                            exit={{ opacity: 0, y: -10 }}
+                                                            transition={{ duration: 0.2 }}
+                                                        >
+                                                            <Input
+                                                                required
+                                                                type={"text"}
+                                                                value={editableRoute?.path || ""}
+                                                                onChange={(e) => setEditableRoute(prev => prev ? {...prev, path: e.target.value} : null)}
+                                                                className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                            />
+                                                        </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.path}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -347,9 +411,38 @@ export default function RoutePage() {
                                                 <Link2 size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Target URL</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.target_url}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Target URL</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"text"}
+                                                            value={editableRoute?.target_url || ""}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, target_url: e.target.value} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.target_url}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -358,9 +451,9 @@ export default function RoutePage() {
                                                 <CalendarClock size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Created at</p>
-                                            <p className={"text-md font-semibold"}>{new Date(routeDetails.data.created_at).toLocaleString()}</p>
+                                        <div className={"flex flex-col gap-1"}>
+                                            <p className={"text-md px-2"}>Created at</p>
+                                            <p className={"text-md font-semibold px-2"}>{new Date(routeDetails.data.created_at).toLocaleString()}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -381,9 +474,38 @@ export default function RoutePage() {
                                                 <Hourglass size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Idle connection timeout</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.idle_conn_timeout}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Idle connection timeout</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.idle_conn_timeout || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, idle_conn_timeout: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.idle_conn_timeout}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -392,9 +514,38 @@ export default function RoutePage() {
                                                 <Handshake size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>TLS handshake timeout</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.tls_handshake_timeout}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>TLS handshake timeout</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.tls_handshake_timeout || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, tls_handshake_timeout: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.tls_handshake_timeout}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -403,9 +554,38 @@ export default function RoutePage() {
                                                 <Hourglass size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Expect continue timeout</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.expect_continue_timeout}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Expect continue timeout</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.expect_continue_timeout || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, expect_continue_timeout: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.expect_continue_timeout}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -414,9 +594,38 @@ export default function RoutePage() {
                                                 <Antenna size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Max connections per host</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.max_cons_per_host || "default"}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Max connections per host</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.max_cons_per_host || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, max_cons_per_host: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.max_cons_per_host || "default"}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -425,9 +634,38 @@ export default function RoutePage() {
                                                 <Antenna size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Max idle connections</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.max_idle_cons || "default"}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Max idle connections</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.max_idle_cons || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, max_idle_cons: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.max_idle_cons || "default"}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -436,9 +674,38 @@ export default function RoutePage() {
                                                 <Antenna size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Max idle connections per host</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.max_idle_cons_per_host || "default"}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Max idle connections per host</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.max_idle_cons_per_host || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, max_idle_cons_per_host: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.max_idle_cons_per_host || "default"}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                     <div className={"flex flex-row w-full gap-5"}>
@@ -447,9 +714,38 @@ export default function RoutePage() {
                                                 <Hourglass size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Response header timeout</p>
-                                            <p className={"text-md font-semibold"}>{routeDetails.data.response_header_timeout || "default"}</p>
+                                        <div className={"flex flex-col gap-1 w-full"}>
+                                            <p className={"text-md px-2"}>Response header timeout</p>
+                                            <AnimatePresence mode={"wait"}>
+                                                {editMode ? (
+                                                    <motion.div
+                                                        key={"edit"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                    >
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={editableRoute?.response_header_timeout || 0}
+                                                            onChange={(e) => setEditableRoute(prev => prev ? {...prev, response_header_timeout: parseInt(e.target.value)} : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routeDetails.data.response_header_timeout || "default"}
+                                                    </motion.p>
+                                                )}
+                                            </AnimatePresence>
                                         </div>
                                     </div>
                                 </div>

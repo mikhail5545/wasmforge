@@ -14,3 +14,19 @@
  * limitations under the License.
  */
 
+
+namespace WasmForge{
+    export interface ProxyServerStatus{
+        readonly running: boolean;
+        config: ProxyServerConfig;
+    }
+    export interface ProxyServerConfig{
+        listen_port: number;
+        read_header_timeout: number;
+        tls_enabled: boolean;
+        readonly tls_cert_path?: string;
+        readonly tls_key_path?: string;
+        readonly tls_cert_hash?: string;
+        readonly tls_key_hash?: string;
+    }
+}

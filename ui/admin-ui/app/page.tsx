@@ -5,8 +5,9 @@ import React from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import {motion,AnimatePresence} from "motion/react";
 import {usePaginatedData} from "@/hooks/usePaginatedData";
-import {ArrowUpRight,ChevronRight} from "lucide-react";
+import {ArrowUpRight, ChevronRight, Power} from "lucide-react";
 import {useRouter} from "next/navigation";
+import {useData} from "@/hooks/useData";
 
 export default function Home() {
     const routePaginatedData = usePaginatedData<WasmForge.Route>(
@@ -25,6 +26,8 @@ export default function Home() {
         "desc",
         { preload: true }
     );
+    const proxyServerStatus = useData<WasmForge.ProxyServerStatus>("http://localhost:8080/api/proxy/config", "status");
+
     const router = useRouter();
     const links = [
         { label: "Routes", href: "/routes", active: false },
@@ -38,33 +41,64 @@ export default function Home() {
             <div className={"flex flex-col lg:flex-row gap-5 w-full mt-20"}>
                 <div className={"border-box lg:w-1/5"}>
                     <div className={"border-box  bg-stone-800 rounded-4xl p-5"}>
-                        <div className={"flex flex-col"}>
-                            <div className={"flex flex-row items-center gap-5 justify-between"}>
-                                <p className={"text-xl font-semibold"}>Proxy Server</p>
-                                <div className={"flex items-center justify-center gap-2"}>
-                                    <div className={"bg-green-500 animate-pulse p-2 rounded-full"}></div>
+                        {proxyServerStatus.loading ?
+                            (
+                                <div className={"flex items-center justify-center py-10"}>
+                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
                                 </div>
-                            </div>
-                            <div className={"flex flex-row gap-2"}>
-                                <p className={"text-md"}>Running on port</p><p className={"text-amber-500"}>8080</p>
-                            </div>
-                            <div className={"flex flex-row items-center gap-2 mt-5"}>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className={"px-3 py-1 bg-green-500 hover:bg-green-500/80 transition-colors duration-200 rounded-4xl text-sm font-medium text-white"}
-                                >
-                                    Restart
-                                </motion.button>
-                                <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    className={"px-3 py-1 bg-red-500 hover:bg-red-500/80 transition-colors duration-200 rounded-4xl text-sm font-medium text-white"}
-                                >
-                                    Stop
-                                </motion.button>
-                            </div>
-                        </div>
+                            ) : (
+                                <div className={"flex flex-col"}>
+                                    <div className={"flex flex-row items-center gap-5 justify-between"}>
+                                        <div className={"flex flex-row items-center gap-2"}>
+                                            <p className={"text-xl font-semibold"}>Proxy Server</p>
+                                            <div className={`w-2 h-2 rounded-full animate-pulse ${proxyServerStatus.data.running ? "bg-green-500" : "bg-red-500"}`}/>
+                                        </div>
+                                        <div className={"flex items-center justify-center"}>
+                                            <motion.a
+                                                href={"/settings"}
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className={"p-2 rounded-full bg-white text-black"}
+                                            >
+                                                <ArrowUpRight size={15}/>
+                                            </motion.a>
+                                        </div>
+                                    </div>
+                                    {proxyServerStatus.data.running ? (
+                                        <div className={"flex flex-row gap-2"}>
+                                            <p className={"text-md"}>Running on port</p><p className={"text-amber-500"}>8080</p>
+                                        </div>
+                                    ) : (
+                                        <p className={"text-md"}>Not running</p>
+                                    )}
+                                    <div className={"flex flex-row items-center gap-2 mt-5 justify-between"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            className={"px-3 py-1 bg-white hover:bg-white/80 transition-colors duration-200 rounded-4xl text-sm font-medium text-black"}
+                                        >
+                                            Restart
+                                        </motion.button>
+                                        {proxyServerStatus.data.running ? (
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className={"px-3 py-1 bg-red-500 hover:bg-red-500/80 transition-colors duration-200 rounded-4xl text-sm font-medium text-white"}
+                                            >
+                                                Stop
+                                            </motion.button>
+                                        ) : (
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                className={"px-3 py-1 bg-green-500 hover:bg-green-500/80 transition-colors duration-200 rounded-4xl text-sm font-medium text-white"}
+                                            >
+                                                Start
+                                            </motion.button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                     </div>
                 </div>
                 <div className={"border-box lg:w-2/5"}>

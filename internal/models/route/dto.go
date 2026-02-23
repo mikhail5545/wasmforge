@@ -42,7 +42,7 @@ type CreateRequest struct {
 }
 
 type UpdateRequest struct {
-	ID        string  `json:"-"`
+	ID        string  `param:"id" json:"-"`
 	Path      *string `json:"path,omitempty"`
 	TargetURL *string `json:"target_url,omitempty"`
 

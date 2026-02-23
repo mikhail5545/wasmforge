@@ -16,25 +16,19 @@
 
 'use client';
 
-import React, {useState, useEffect, useCallback, Suspense} from "react";
+import React, {useState, useEffect, useCallback} from "react";
 import NavBar from "@/components/navigation/NavBar";
 import {useSearchParams,useRouter} from "next/navigation";
 import {useData} from "@/hooks/useData";
-import {motion, AnimatePresence} from "motion/react";
-import {Pencil, X, ChevronLeft, ChevronRight} from "lucide-react";
 import {usePaginatedData} from "@/hooks/usePaginatedData";
-import {PluginGridListCard,RouteGridListCard} from "@/components/card/GridListCard";
 import {JsonEditor,githubDarkTheme,JsonData} from "json-edit-react";
-import {
-    Fieldset,
-    Label,
-    Legend,
-    Field,
-    Input,
-} from "@headlessui/react";
+import PageLayout from "@/components/layout/PageLayout";
 import {useMutation} from "@/hooks/useMutation";
-import {InfoDialog} from "@/components/dialog/InfoDialog";
-import {ErrorDialog} from "@/components/dialog/ErrorDialog";
+import {motion} from "motion/react";
+import {ArrowLeft, Undo2, Link2, Route, BookKey, File, Pencil, Plus} from "lucide-react";
+import {ModalDialog} from "@/components/dialog/ModalDialog";
+import {Scrollbar} from "react-scrollbars-custom";
+import {Input} from "@headlessui/react";
 
 const initialRoutePluginFormState: Omit<WasmForge.RoutePlugin, "id" | "created_at" | "plugin"> = {
     route_id: "",
@@ -43,12 +37,12 @@ const initialRoutePluginFormState: Omit<WasmForge.RoutePlugin, "id" | "created_a
     config: "",
 };
 
-function NewRoutePluginPageContent() {
-   const links = [
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Routes", href: "/routes" },
-        { label: "Plugins", href: "/plugins" },
-   ];
+export default function NewRoutePluginPage() {
+    const links = [
+        { label: "Routes", href: "/routes", active: false },
+        { label: "Plugins", href: "/plugins", active: false },
+        { label: "Settings", href: "/settings", active: false },
+    ];
 
     const searchParams = useSearchParams();
     const routeId = searchParams.get("route_id");
@@ -121,21 +115,18 @@ function NewRoutePluginPageContent() {
         }
     }, [pluginId, pluginData.data, pluginData.loading, pluginData.error]);
 
-    const handleSubmitConfig = () => {
-        // Validate JSON config before submitting
-        try {
-            const configString = JSON.stringify(jsonConfig);
-            setRoutePluginFormState(prev => ({ ...prev, config: configString }));}
-        catch (error) {
-            setGlobalError({ code: "UNPROCESSABLE_ENTITY", "message": "Invalid JSON config", "details": error instanceof Error ? error.message : String(error)});
-            console.error("Invalid JSON config:", error);
-        }
-    };
-
     const handleSubmit = useCallback(
         async() => {
             if (!selectedPlugin || !selectedRoute) {
                 return;
+            }
+
+            try {
+                const configString = JSON.stringify(jsonConfig);
+                setRoutePluginFormState(prev => ({ ...prev, config: configString }));}
+            catch (error) {
+                setGlobalError({ code: "UNPROCESSABLE_ENTITY", "message": "Invalid JSON config", "details": error instanceof Error ? error.message : String(error)});
+                console.error("Invalid JSON config:", error);
             }
 
             const result = await mutation.mutate("http://localhost:8080/api/route-plugins", "POST", JSON.stringify(routePluginFormState));
@@ -148,424 +139,406 @@ function NewRoutePluginPageContent() {
         }, [selectedPlugin, selectedRoute]
     );
 
-    return (
-        <div className={"flex flex-col w-full"}>
-            <NavBar
-                title={"WasmForge"}
-                links={links}
-            />
-            <InfoDialog
-                title={"Success"}
-                message={"Plugin successfully created"}
-                isOpen={success}
-                onClose={() => router.push(selectedRoute ? `/routes?path=${selectedRoute.path}` : "/routes")}
-            />
-            <ErrorDialog
-                title={globalError?.message || "Unexpected error"}
-                message={globalError?.details || "No additional details available"}
-                isOpen={!!globalError} onClose={() => setGlobalError(null)}
-            />
-            <div className={"py-10 px-5 md:px-15 lg:px-30"}>
-                <h1 className={"text-xl font-semibold py-5"}>Add plugin to route</h1>
-                <div className={"flex flex-col lg:flex-row gap-5"}>
-                    <Fieldset className={"w-full lg:w-1/2 space-y-6 rounded-xl bg-white/5 p-6 sm:p-8"}>
-                        <Legend className={"text-lg font-semibold text-white"}>
-                            Plugin details
-                            <p className={"text-sm font-semibold text-white/50"}>Required fields are marked with *</p>
-                        </Legend>
-                        <Field>
-                            <Label className={"text-base/7 font-semibold text-white"}>Route ID</Label>
-                            <Input
-                                type={"text"}
-                                value={routePluginFormState.route_id}
-                                disabled={true}
-                                className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white disabled:opacity-50 focus:ring focus:ring-white"}
-                            />
-                        </Field>
-                        <Field>
-                            <Label className={"text-base/7 font-semibold text-white"}>Plugin ID</Label>
-                            <Input
-                                type={"text"}
-                                value={routePluginFormState.plugin_id}
-                                disabled={true}
-                                className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white disabled:opacity-50 focus:ring focus:ring-white"}
-                            />
-                        </Field>
-                        <Field>
-                            <Label className={"text-base/7 font-semibold text-white"}>Execution Order*</Label>
-                            <Input
-                                required
-                                type={"number"}
-                                value={routePluginFormState.execution_order}
-                                onChange={(e) => setRoutePluginFormState(prev => ({ ...prev, execution_order: parseInt(e.target.value) }))}
-                                className={"mt-1 w-full rounded-md border border-stone-700 bg-stone-800/50 px-3 py-2 text-sm text-white  focus:ring focus:ring-white"}
-                            />
-                        </Field>
-                        <div className={"flex flex-row gap-5 pt-4 justify-start"}>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                disabled={!selectedPlugin || !selectedRoute}
-                                onClick={handleSubmit}
-                                className={"bg-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                            >
-                                {mutation.loading ? (
-                                    <div className={"w-5 h-5 border-3 border-t-stone-800 border-white rounded-full animate-spin"}/>
-                                ) : (
-                                    <p>Submit</p>
-                                )}
-                            </motion.button>
+    return(
+        <PageLayout>
+            <NavBar links={links} />
+            <div className={"flex flex-col gap-5 w-full mt-20"}>
+                <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
+                    <p className={"text-xl font-semibold"}>Creating a new Route Plugin</p>
+                    <div className={"flex flex-row gap-2"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.back()}
+                            className={"px-2 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                        >
+                            <ArrowLeft size={15}/>
+                        </motion.button>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={"px-2 py-2 rounded-full bg-amber-500 text-white hover:bg-amber-500/80 transition-colors duration-200"}
+                        >
+                            <Undo2 size={15}/>
+                        </motion.button>
+                    </div>
+                </div>
+            </div>
+            <ModalDialog title={"Route Plugin successfully created"} visible={success} onClose={() => router.push(`/routes/route?path=${selectedRoute?.path}`)} >
+                <div className={"flex flex-col gap-5"}>
+                    <p className={"text-md font-semibold"}>You successfully created a new route plugin!</p>
+                    <p className={"text-sm"}>When route is enabled, it will be applied as middleware according to execution order</p>
+                    <div className={"flex flex-row items-end justify-end"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => router.push(`/routes/route?path=${selectedRoute?.path}`)}
+                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                        >
+                            Close
+                        </motion.button>
+                    </div>
+                </div>
+            </ModalDialog>
+            <ModalDialog title={"Error"} visible={!!globalError} onClose={() => setGlobalError(null)} >
+                <div className={"flex flex-col gap-5"}>
+                    <p className={"text-md font-semibold"}>{globalError?.message}</p>
+                    <Scrollbar style={{ height: 200 }}>
+                        <p className={"text-md"}>{globalError?.details}</p>
+                    </Scrollbar>
+                    <div className={"flex flex-row items-end justify-end"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => setGlobalError(null)}
+                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                        >
+                            Close
+                        </motion.button>
+                    </div>
+                </div>
+            </ModalDialog>
+            <ModalDialog title={"Select a Route"} visible={showRouteSelector} onClose={() => setShowRouteSelector(false)}>
+                <div className={"flex flex-col gap-5"}>
+                    {paginatedRouteData.loading ? (
+                        <div className={"flex items-center justify-center py-10"}>
+                            <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
                         </div>
-                    </Fieldset>
-                    <Fieldset className={"w-full lg:w-1/2 rounded-xl space-y-6 bg-white/5 p-6 sm:p-8"}>
-                        <div className={"flex flex-col justify-between h-full"}>
-                            <div className={"space-y-6"}>
-                                <Legend className={"text-lg font-semibold text-white"}>
-                                    Custom JSON configuration
-                                    <p className={"text-sm font-semibold text-white/50"}>You can specify JSON config that plugins can access during runtime</p>
-                                </Legend>
-                                <Field>
-                                    <JsonEditor
-                                        className={"w-full"}
-                                        theme={githubDarkTheme}
-                                        data={jsonConfig} setData={(data) => {
-                                        setJsonConfig(data);
-                                    }}/>
-                                </Field>
+                    ) : (
+                        <div>
+                            {paginatedRouteData.data.length === 0 ? (
+                                <div className={"flex flex-col items-center justify-center py-10"}>
+                                    <p className={"text-lg"}>You didn't create any routes yet</p>
+                                    <a href={"/routes/new"} className={"text-lg underline"}>Start with creating one</a>
+                                </div>
+                            ) : (
+                                <Scrollbar style={{ height: 500 }}>
+                                    <div className={"grid grid-cols-1 gap-2 pr-2 mt-5"}>
+                                        {paginatedRouteData.data.map((route, idx) => (
+                                            <motion.div
+                                                key={route.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.2, delay: idx * 0.1 }}
+                                                onClick={() => setSelectedRoute(route)}
+                                                className={`px-4 col-span-1 flex flex-row items-center p-1 rounded-2xl gap-20 ${
+                                                    selectedRoute?.id === route.id ? "bg-amber-500" : "border border-amber-500 hover:bg-amber-500 transition-colors duration-200"
+                                                }`}
+                                            >
+                                                <div className={"flex flex-col items-start justify-center"}>
+                                                    <p className={"text-sm"}>Path</p>
+                                                    <p className={"text-md font-semibold truncate"}>{route.path}</p>
+                                                </div>
+                                                <div className={"flex flex-col items-start justify-center"}>
+                                                    <p className={"text-sm"}>Target URL</p>
+                                                    <p className={"text-md font-semibold truncate"}>{route.target_url}</p>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </Scrollbar>
+                            )}
+                            {paginatedRouteData.nextPageToken && (
+                                <div className={"flex items-center justify-center pt-3"}>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => paginatedRouteData.nextPage(paginatedRouteData.nextPageToken, {append: true, force: true})}
+                                        className={"text-sm underline"}
+                                    >
+                                        Load more
+                                    </motion.button>
+                                </div>
+                            )}
+                            <div className={"flex flex-row items-center justify-end pt-5"}>
+                                <div className={"flex flex-row items-center justify-between gap-5"}>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setShowRouteSelector(false)}
+                                        className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        disabled={!selectedRoute}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setShowRouteSelector(false)}
+                                        className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                    >
+                                        Submit
+                                    </motion.button>
+                                </div>
                             </div>
-                            <div className={"flex flex-row gap-5 pt-4 justify-start"}>
+                        </div>
+                    )}
+                </div>
+            </ModalDialog>
+            <ModalDialog title={"Select a Plugin"} visible={showPluginSelector} onClose={() => setShowPluginSelector(false)}>
+                <div className={"flex flex-col gap-5"}>
+                    {paginatedPluginData.loading ? (
+                        <div className={"flex items-center justify-center py-10"}>
+                            <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                        </div>
+                    ) : (
+                        <div>
+                            {paginatedPluginData.data.length === 0 ? (
+                                <div className={"flex flex-col items-center justify-center py-10"}>
+                                    <p className={"text-lg"}>You didn't create any plugins yet</p>
+                                    <a href={"/plugins/new"} className={"text-lg underline"}>Start with creating one</a>
+                                </div>
+                            ) : (
+                                <Scrollbar style={{ height: 500 }}>
+                                    <div className={"grid grid-cols-1 gap-2 pr-2 mt-5"}>
+                                        {paginatedPluginData.data.map((plugin, idx) => (
+                                            <motion.div
+                                                key={plugin.id}
+                                                initial={{ opacity: 0, y: 10 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ duration: 0.2, delay: idx * 0.1 }}
+                                                onClick={() => setSelectedPlugin(plugin)}
+                                                className={`px-4 col-span-1 flex flex-row items-center p-1 rounded-2xl ${
+                                                    selectedPlugin?.id === plugin.id ? "bg-amber-500" : "border border-amber-500 hover:bg-amber-500 transition-colors duration-200"
+                                                }`}
+                                            >
+                                                <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                    <p className={"text-sm"}>Name</p>
+                                                    <p className={"text-md font-semibold truncate"}>{plugin.name}</p>
+                                                </div>
+                                                <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                    <p className={"text-sm"}>Filename</p>
+                                                    <p className={"text-md font-semibold truncate"}>{plugin.filename}</p>
+                                                </div>
+                                            </motion.div>
+                                        ))}
+                                    </div>
+                                </Scrollbar>
+                            )}
+                            {paginatedPluginData.nextPageToken && (
+                                <div className={"flex items-center justify-center pt-3"}>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => paginatedPluginData.nextPage(paginatedPluginData.nextPageToken, {append: true, force: true})}
+                                        className={"text-sm underline"}
+                                    >
+                                        Load more
+                                    </motion.button>
+                                </div>
+                            )}
+                            <div className={"flex flex-row items-center justify-end pt-5"}>
+                                <div className={"flex flex-row items-center justify-between gap-5"}>
+                                    <motion.button
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setShowPluginSelector(false)}
+                                        className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                    >
+                                        Cancel
+                                    </motion.button>
+                                    <motion.button
+                                        disabled={!selectedPlugin}
+                                        whileHover={{ scale: 1.05 }}
+                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => setShowPluginSelector(false)}
+                                        className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                    >
+                                        Submit
+                                    </motion.button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </ModalDialog>
+            <div className={"flex flex-col lg:flex-row gap-5 w-full"}>
+                <div className={"w-full lg:w-1/3"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {selectedPlugin ? (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row items-center justify-between"}>
+                                    <p className={"text-lg font-semibold"}>Selected Plugin</p>
+                                    <div className={"flex items-center justify-center"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={async () => {
+                                                await paginatedPluginData.refetch();
+                                                setShowPluginSelector(true);
+                                            }}
+                                            className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            <Pencil size={15}/>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <BookKey size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Name</p>
+                                        <p className={"text-md font-semibold"}>{selectedPlugin.name}</p>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <File size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Filename</p>
+                                        <p className={"text-md font-semibold"}>{selectedPlugin.filename}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row items-center justify-between"}>
+                                    <p className={"text-lg font-semibold"}>Selected Plugin</p>
+                                    <div className={"flex items-center justify-center"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={async () => {
+                                                await paginatedPluginData.refetch();
+                                                setShowPluginSelector(true);
+                                            }}
+                                            className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            <Plus size={15}/>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>Plugin not selected</p>
+                                    <p className={"text-sm text-gray-400"}>Please select a plugin to associate with this route.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className={"w-full lg:w-1/3"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {selectedRoute ? (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row items-center justify-between"}>
+                                    <p className={"text-lg font-semibold"}>Selected Route</p>
+                                    <div className={"flex items-center justify-center"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={async () => {
+                                                await paginatedRouteData.refetch();
+                                                setShowRouteSelector(true);
+                                            }}
+                                            className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            <Pencil size={15}/>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <Route size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Path</p>
+                                        <p className={"text-md font-semibold"}>{selectedRoute.path}</p>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <Link2 size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Target URL</p>
+                                        <p className={"text-md font-semibold"}>{selectedRoute.target_url}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row items-center justify-between"}>
+                                    <p className={"text-lg font-semibold"}>Selected Route</p>
+                                    <div className={"flex items-center justify-center"}>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            onClick={async () => {
+                                                await paginatedRouteData.refetch();
+                                                setShowRouteSelector(true);
+                                            }}
+                                            className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            <Plus size={15}/>
+                                        </motion.button>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-col gap-2"}>
+                                    <p className={"text-md font-semibold"}>Route not selected</p>
+                                    <p className={"text-sm text-gray-400"}>Please select a route to associate with this plugin.</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className={"w-full lg:w-1/3"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        <div className={"flex flex-col gap-5"}>
+                            <div className={"flex flex-row"}>
+                                <p className={"text-lg font-semibold"}>Route Plugin Details</p>
+                            </div>
+                            <div className={"flex flex-col gap-2"}>
+                                <p className={"text-md font-semibold"}>Execution Order</p>
+                                <Input
+                                    required
+                                    type={"number"}
+                                    value={routePluginFormState.execution_order}
+                                    onChange={(e) => setRoutePluginFormState(prev => ({ ...prev, execution_order: parseInt(e.target.value)}))}
+                                    className={"w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"}
+                                />
+                            </div>
+                            <div className={"flex flex-col gap-2"}>
+                                <p className={"text-md font-semibold"}>Custom JSON Config</p>
+                                <p className={"text-sm"}>You will be able to retrieve this config in the WASM plugin through host functions</p>
+                                <JsonEditor
+                                    data={jsonConfig}
+                                    setData={(data) => {
+                                        setJsonConfig(data);
+                                    }}
+                                    theme={githubDarkTheme}
+                                />
+                            </div>
+                            <div className={"flex flex-row items-center justify-end gap-5"}>
                                 <motion.button
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
-                                    disabled={!selectedPlugin || !selectedRoute}
-                                    onClick={handleSubmitConfig}
-                                    className={"bg-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
+                                    disabled={!selectedPlugin || !selectedRoute || mutation.loading}
+                                    onClick={handleSubmit}
+                                    className={"px-3 py-2 rounded-4xl bg-white text-black hover:bg-white/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
                                 >
-                                    Submit
+                                    {mutation.loading ? (
+                                        <div className={"flex items-center justify-center px-2"}>
+                                            <div className={"w-5 h-5 border-2 border-t-black border-white rounded-full animate-spin"}/>
+                                        </div>
+                                    ) : (
+                                        <p className={"text-sm font-semibold"}>Submit</p>
+                                    )}
                                 </motion.button>
                             </div>
                         </div>
-                    </Fieldset>
-                </div>
-                <div className={"flex flex-col lg:flex-row gap-5 mt-5"}>
-                    <div className={"flex w-full lg:w-1/2"}>
-                        <div className={"border-box w-full border border-stone-700 rounded"}>
-                            <div className={"flex flex-col space-y-6 p-5"}>
-                                {!showPluginSelector ? (
-                                    <div className={"flex flex-row gap-5"}>
-                                        <h2 className={"text-lg font-semibold"}>
-                                            Selected Plugin
-                                        </h2>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={ async () => {setShowPluginSelector(true); await paginatedPluginData.refetch()} }
-                                            className={"px-2 py-2 bg-stone-800 text-sm rounded flex items-center justify-center text-center"}
-                                        >
-                                            <Pencil size={10}/>
-                                        </motion.button>
-                                    </div>
-                                ) : (
-                                    <div className={"flex flex-row gap-5"}>
-                                        <h2 className={"text-lg font-semibold"}>
-                                            Select a Plugin
-                                        </h2>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={ () => setShowPluginSelector(false) }
-                                            className={"px-2 py-2 bg-stone-800 text-sm rounded flex items-center justify-center text-center"}
-                                        >
-                                            <X size={10}/>
-                                        </motion.button>
-                                    </div>
-                                )}
-                                <AnimatePresence
-                                    mode={"wait"}
-                                >
-                                    {!selectedPlugin && !showPluginSelector && (
-                                        <motion.div
-                                            key={"selected-plugin-info"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5 bg-stone-800 rounded w-full"}
-                                        >
-                                            <div className={"text-start"}>
-                                                <p className={"text-lg font-semibold"}>No plugin selected</p>
-                                                <p className={"text-md text-stone-400"}>Click the edit button to select a plugin to add to this route.</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                    {selectedPlugin && !showPluginSelector &&(
-                                        <motion.div
-                                            key={"selected-plugin-info"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5 bg-stone-800 rounded w-full"}
-                                        >
-                                            <div className={"flex flex-row justify-between"}>
-                                                <p className={"text-md text-stone-400"}>Name</p>
-                                                <p className={"text-md font-semibold"}>{selectedPlugin.name}</p>
-                                            </div>
-                                            <div className={"flex flex-row justify-between"}>
-                                                <p className={"text-md text-stone-400"}>Filename</p>
-                                                <p className={"text-md font-semibold"}>{selectedPlugin.filename}</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                    {showPluginSelector && (
-                                        <motion.div
-                                            key={"plugin-selector"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5  rounded w-full"}
-                                        >
-                                            {paginatedPluginData.loading ? (
-                                                <div className={"flex justify-center items-center py-20"}>
-                                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    {paginatedPluginData.data.length === 0 ? (
-                                                        <div className={"flex justify-center items-center py-20"}>
-                                                            <p className={"text-center text-stone-400"}>No plugins found.</p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <div className={"grid grid-cols-1 gap-1"}>
-                                                                {paginatedPluginData.data.map((plugin, idx) => (
-                                                                    <PluginGridListCard
-                                                                        key={plugin.id}
-                                                                        plugin={plugin}
-                                                                        index={idx}
-                                                                        onClick={() => setSelectedPlugin(plugin)}
-                                                                        currentlySelected={plugin.id === selectedPlugin?.id}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            <div className={"flex flex-row justify-between items-center mt-5"}>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    onClick={ async () => await paginatedPluginData.refetch() }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    <ChevronLeft size={10}/>First page
-                                                                </motion.button>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    disabled={paginatedPluginData.nextPageToken === ""}
-                                                                    onClick={ async () => { await paginatedPluginData.nextPage(paginatedPluginData.nextPageToken, { append: false })} }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    Next page<ChevronRight size={10}/>
-                                                                </motion.button>
-                                                            </div>
-                                                            <div className={"flex flex-row justify-between items-center mt-5"}>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    onClick={ () => setShowPluginSelector(false) }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    <ChevronLeft size={10}/>Back
-                                                                </motion.button>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    disabled={!selectedPlugin}
-                                                                    onClick={ () => setShowPluginSelector(false) }
-                                                                    className={"bg-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    Submit selection<ChevronRight size={10}/>
-                                                                </motion.button>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
-                    </div>
-                    <div className={"flex w-full lg:w-1/2"}>
-                        <div className={"border-box w-full border border-stone-700 rounded"}>
-                            <div className={"flex flex-col space-y-6 p-5"}>
-                                {!showRouteSelector ? (
-                                    <div className={"flex flex-row gap-5"}>
-                                        <h2 className={"text-lg font-semibold"}>
-                                            Selected Route
-                                        </h2>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={ async () => {setShowRouteSelector(true); await paginatedRouteData.refetch()} }
-                                            className={"px-2 py-2 bg-stone-800 text-sm rounded flex items-center justify-center text-center"}
-                                        >
-                                            <Pencil size={10}/>
-                                        </motion.button>
-                                    </div>
-                                ) : (
-                                    <div className={"flex flex-row gap-5"}>
-                                        <h2 className={"text-lg font-semibold"}>
-                                            Select a Route
-                                        </h2>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            onClick={ () => setShowRouteSelector(false) }
-                                            className={"px-2 py-2 bg-stone-800 text-sm rounded flex items-center justify-center text-center"}
-                                        >
-                                            <X size={10}/>
-                                        </motion.button>
-                                    </div>
-                                )}
-                                <AnimatePresence
-                                    mode={"wait"}
-                                >
-                                    {!selectedRoute && !showRouteSelector && (
-                                        <motion.div
-                                            key={"selected-plugin-info"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5 bg-stone-800 rounded w-full"}
-                                        >
-                                            <div className={"text-start"}>
-                                                <p className={"text-lg font-semibold"}>No route selected</p>
-                                                <p className={"text-md text-stone-400"}>Click the edit button to select a route.</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                    {selectedRoute && !showRouteSelector && (
-                                        <motion.div
-                                            key={"selected-plugin-info"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5 bg-stone-800 rounded w-full"}
-                                        >
-                                            <div className={"flex flex-row justify-between"}>
-                                                <p className={"text-md text-stone-400"}>Path</p>
-                                                <p className={"text-md font-semibold"}>{selectedRoute.path}</p>
-                                            </div>
-                                            <div className={"flex flex-row justify-between"}>
-                                                <p className={"text-md text-stone-400"}>Target URL</p>
-                                                <p className={"text-md font-semibold"}>{selectedRoute.target_url}</p>
-                                            </div>
-                                        </motion.div>
-                                    )}
-                                    {showRouteSelector && (
-                                        <motion.div
-                                            key={"plugin-selector"}
-                                            initial={{ opacity: 0, x: -20 }}
-                                            animate={{ opacity: 1, x: 0 }}
-                                            exit={{ opacity: 0, x: 20 }}
-                                            transition={{ duration: 0.3 }}
-                                            className={"flex flex-col gap-4 p-5  rounded w-full"}
-                                        >
-                                            {paginatedRouteData.loading ? (
-                                                <div className={"flex justify-center items-center py-20"}>
-                                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
-                                                </div>
-                                            ) : (
-                                                <div>
-                                                    {paginatedRouteData.data.length === 0 ? (
-                                                        <div className={"flex justify-center items-center py-20"}>
-                                                            <p className={"text-center text-stone-400"}>No plugins found.</p>
-                                                        </div>
-                                                    ) : (
-                                                        <>
-                                                            <div className={"grid grid-cols-1 gap-1"}>
-                                                                {paginatedRouteData.data.map((route, idx) => (
-                                                                    <RouteGridListCard
-                                                                        key={route.id}
-                                                                        route={route}
-                                                                        index={idx}
-                                                                        onClick={() => setSelectedRoute(route)}
-                                                                        currentlySelected={route.id === selectedRoute?.id}
-                                                                    />
-                                                                ))}
-                                                            </div>
-                                                            <div className={"flex flex-row justify-between items-center mt-5"}>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    onClick={ async () => await paginatedRouteData.refetch() }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    <ChevronLeft size={10}/>First page
-                                                                </motion.button>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    disabled={paginatedRouteData.nextPageToken === ""}
-                                                                    onClick={ async () => { await paginatedRouteData.nextPage(paginatedRouteData.nextPageToken, { append: false })} }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    Next page<ChevronRight size={10}/>
-                                                                </motion.button>
-                                                            </div>
-                                                            <div className={"flex flex-row justify-between items-center mt-5"}>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    onClick={ () => setShowRouteSelector(false) }
-                                                                    className={"border border-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    <ChevronLeft size={10}/>Back
-                                                                </motion.button>
-                                                                <motion.button
-                                                                    whileHover={{ scale: 1.05 }}
-                                                                    whileTap={{ scale: 0.95 }}
-                                                                    disabled={!selectedPlugin}
-                                                                    onClick={ () => setShowRouteSelector(false) }
-                                                                    className={"bg-stone-800 text-sm font-semibold px-3 py-1 rounded disabled:opacity-50 flex items-center justify-center gap-2"}
-                                                                >
-                                                                    Submit selection<ChevronRight size={10}/>
-                                                                </motion.button>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            )}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-                            </div>
-                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    );
-}
-
-export default function NewRoutePluginPage() {
-    return(
-        <Suspense fallback={
-            <div className={"flex min-h-screen bg-stone-950 font-mono text-white"}>
-                <div className={"flex flex-col w-full"}>
-                    <div className={"flex justify-center items-center py-20"}>
-                        <div className={"w-10 h-10 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
-                    </div>
-                </div>
-            </div>
-        }>
-            <div className={"flex min-h-screen bg-stone-950 font-mono text-white"}>
-                <NewRoutePluginPageContent />
-            </div>
-        </Suspense>
+        </PageLayout>
     );
 }

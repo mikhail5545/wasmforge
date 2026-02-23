@@ -70,35 +70,4 @@ The system is divided into two distinct parts:
 4.  **Open the Dashboard**
     Visit `http://localhost:8080` to configure routes and upload plugins.
 
-### Building options
-
-*   `make build` - Builds the entire project (UI + Go binary).
-*   `make build-ui` - Builds the Next.js UI as static files.
-*   `make build-go` - Compiles the Go gateway without rebuilding the UI.
-*   `make clean` - Cleans the build artifacts.
-*   `make npm-run` - Runs the npm build for the UI without affecting the Go build.
-*   `run-separate` - Runs the UI build and Go build in parallel, ensuring the UI is ready before the Go build starts. Default ports are :3000 for the UI and :8080 for the Go server.
-
-## Writing a Plugin (C++ Example)
-
-You can write plugins in any language that targets WASI. Here is a simple C++ example that blocks requests missing a header.
-
-```cpp
-#include "proxy_sdk.h"
-
-void on_request() {
-    // 1. Get Configuration from Gateway
-    auto config = Proxy::getConfig(); 
-    
-    // 2. Check for Header
-    std::string secret = Proxy::getHeader("X-Secret-Token");
-    
-    if (secret != "super-secret") {
-        Proxy::log(WARN, "Unauthorized access attempt");
-        Proxy::sendResponse(403, "Access Denied");
-        return;
-    }
-    
-    // 3. Allow request to proceed
-    Proxy::log(INFO, "Access granted");
-}
+## Not all features are fully implemented yet

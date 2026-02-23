@@ -52,6 +52,10 @@ func (s *Server) HTTPServerInstance() *http.Server {
 	return s.httpSrv
 }
 
+func (s *Server) Factory() proxy.Factory {
+	return s.factory
+}
+
 func New(ctx context.Context, manager *uploads.Manager, logger *zap.Logger) (*Server, error) {
 	runtime, cleanup, err := wasm.NewWasmRuntime(ctx, logger)
 	if err != nil {

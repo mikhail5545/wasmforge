@@ -29,6 +29,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -destination=../mocks/proxy/factory.go -package=proxy . Factory
+
 type (
 	// Factory is responsible for assembling the middleware chain for a given route based
 	// on its associated plugins and call inner Builder to construct and register the final handler.

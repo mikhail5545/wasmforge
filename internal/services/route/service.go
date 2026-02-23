@@ -39,10 +39,12 @@ type Service struct {
 	logger          *zap.Logger
 }
 
-func New(routeRepo routerepo.Repository, logger *zap.Logger) *Service {
+func New(routeRepo routerepo.Repository, routePluginRepo routepluginrepo.Repository, factory proxy.Factory, logger *zap.Logger) *Service {
 	return &Service{
-		routeRepo: routeRepo,
-		logger:    logger.With(zap.String("service", "route")),
+		routeRepo:       routeRepo,
+		routePluginRepo: routePluginRepo,
+		routeFactory:    factory,
+		logger:          logger.With(zap.String("service", "route")),
 	}
 }
 

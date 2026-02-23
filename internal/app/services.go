@@ -41,7 +41,7 @@ func (a *App) setupServices() {
 			RouteRepo:     a.repos.RouteRepo,
 			UploadManager: a.uploadsManager,
 		}, a.logger),
-		RouteSvc: routeservice.New(a.repos.RouteRepo, a.logger),
+		RouteSvc: routeservice.New(a.repos.RouteRepo, a.repos.RoutePluginRepo, a.proxyServer.Factory(), a.logger),
 		RoutePluginSvc: routepluginservice.New(a.repos.RoutePluginRepo, routepluginservice.ServiceParams{
 			RouteRepo:  a.repos.RouteRepo,
 			PluginRepo: a.repos.PluginRepo,

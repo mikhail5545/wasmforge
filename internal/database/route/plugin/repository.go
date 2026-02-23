@@ -23,6 +23,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockgen -destination=../../../mocks/database/route/plugin/repository.go -package=plugin . Repository
+
 type (
 	Repository interface {
 		DB() *gorm.DB

@@ -24,7 +24,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (m *Manager) buildFullPath(uploadType UploadType, filename string) (string, error) {
+func (m *manager) buildFullPath(uploadType UploadType, filename string) (string, error) {
 	var baseDir string
 	switch uploadType {
 	case PluginUpload:
@@ -38,7 +38,7 @@ func (m *Manager) buildFullPath(uploadType UploadType, filename string) (string,
 	return path.Join(baseDir, filename), nil
 }
 
-func (m *Manager) ensureDirectory(dir string) error {
+func (m *manager) ensureDirectory(dir string) error {
 	_, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {

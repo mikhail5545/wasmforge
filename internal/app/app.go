@@ -38,7 +38,7 @@ type App struct {
 	logger         *zap.Logger
 	repos          *Repositories
 	services       *Services
-	uploadsManager *uploads.Manager
+	uploadsManager uploads.Manager
 	cleanup        func()
 	cfg            *Config
 }

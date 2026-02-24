@@ -36,14 +36,14 @@ import (
 type Service struct {
 	pluginRepo    pluginrepo.Repository
 	routeRepo     routerepo.Repository
-	uploadManager *uploads.Manager
+	uploadManager uploads.Manager
 	logger        *zap.Logger
 }
 
 type Dependencies struct {
 	PluginRepo    pluginrepo.Repository
 	RouteRepo     routerepo.Repository
-	UploadManager *uploads.Manager
+	UploadManager uploads.Manager
 }
 
 func New(deps Dependencies, logger *zap.Logger) *Service {

@@ -28,3 +28,6 @@ mockgen -destination=./internal/mocks/database/plugin/repository.go -package=plu
 mockgen -destination=./internal/mocks/database/proxy/config/repository.go -package=config source=./internal/database/proxy/config/repository.go Repository
 
 mockgen -destination=./internal/mocks/proxy/factory.go -package=proxy source=./internal/proxy/factory.go Factory
+mockgen -destination=./internal/mocks/proxy/builder.go -package=proxy source=./internal/proxy/builder.go Builder
+
+mockgen -destination=./internal/mocks/uploads/manager.go -package=uploads source=./internal/uploads/manager.go Manager

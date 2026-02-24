@@ -35,11 +35,11 @@ import (
 type Service struct {
 	server        *server.Server
 	configRepo    configrepo.Repository
-	uploadManager *uploads.Manager
+	uploadManager uploads.Manager
 	logger        *zap.Logger
 }
 
-func New(server *server.Server, configRepo configrepo.Repository, uploadManager *uploads.Manager, logger *zap.Logger) *Service {
+func New(server *server.Server, configRepo configrepo.Repository, uploadManager uploads.Manager, logger *zap.Logger) *Service {
 	return &Service{
 		server:        server,
 		configRepo:    configRepo,

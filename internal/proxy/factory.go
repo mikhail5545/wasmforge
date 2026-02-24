@@ -62,11 +62,11 @@ type (
 		rt      wazero.Runtime
 		logger  *zap.Logger
 		builder Builder
-		manager *uploads.Manager
+		manager uploads.Manager
 	}
 )
 
-func NewFactory(rt wazero.Runtime, builder Builder, manager *uploads.Manager, logger *zap.Logger) Factory {
+func NewFactory(rt wazero.Runtime, builder Builder, manager uploads.Manager, logger *zap.Logger) Factory {
 	return &factory{
 		rt:      rt,
 		builder: builder,

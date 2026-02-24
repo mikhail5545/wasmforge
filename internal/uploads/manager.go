@@ -28,7 +28,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type Manager struct {
+//go:generate mockgen -destination=../mocks/uploads/manager.go -package=uploads . Manager
+
+type Manager interface {
+	PluginUploadDir() string
+	CertUploadDir() string
+	EnsureDirectory(uploadType UploadType) error
+	FromBase64(encodedData, filename string, uploadType UploadType) (string, error)
+	FromBytes(data []byte, filename string, uploadType UploadType) (string, error)
+	FromMultipartFile(file *multipart.FileHeader, filename string, uploadType UploadType) (string, error)
+	Delete(filename string, uploadType UploadType) error
+	Read(filename string, uploadType UploadType) ([]byte, error)
+}
+
+type manager struct {
 	pluginUploadDir string
 	certUploadDir   string
 	logger          *zap.Logger
@@ -41,23 +54,23 @@ const (
 	CertUpload
 )
 
-func New(pluginUploadDir string, certUploadDir string, logger *zap.Logger) *Manager {
-	return &Manager{
+func New(pluginUploadDir string, certUploadDir string, logger *zap.Logger) Manager {
+	return &manager{
 		pluginUploadDir: pluginUploadDir,
 		certUploadDir:   certUploadDir,
 		logger:          logger.With(zap.String("component", "uploads_manager")),
 	}
 }
 
-func (m *Manager) PluginUploadDir() string {
+func (m *manager) PluginUploadDir() string {
 	return m.pluginUploadDir
 }
 
-func (m *Manager) CertUploadDir() string {
+func (m *manager) CertUploadDir() string {
 	return m.certUploadDir
 }
 
-func (m *Manager) EnsureDirectory(uploadType UploadType) error {
+func (m *manager) EnsureDirectory(uploadType UploadType) error {
 	var dir string
 	switch uploadType {
 	case PluginUpload:
@@ -71,7 +84,7 @@ func (m *Manager) EnsureDirectory(uploadType UploadType) error {
 	return m.ensureDirectory(dir)
 }
 
-func (m *Manager) FromBase64(encodedData, filename string, uploadType UploadType) (string, error) {
+func (m *manager) FromBase64(encodedData, filename string, uploadType UploadType) (string, error) {
 	decoded, err := base64.StdEncoding.DecodeString(encodedData)
 	if err != nil {
 		m.logger.Error("failed to decode Base64 data", zap.String("filename", filename), zap.Error(err))
@@ -98,7 +111,7 @@ func (m *Manager) FromBase64(encodedData, filename string, uploadType UploadType
 	return hash, nil
 }
 
-func (m *Manager) FromBytes(data []byte, filename string, uploadType UploadType) (string, error) {
+func (m *manager) FromBytes(data []byte, filename string, uploadType UploadType) (string, error) {
 	if len(data) > 100*1024*1024 { // 100 MB limit
 		m.logger.Warn("data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(data)))
 		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 100 MB")
@@ -119,7 +132,7 @@ func (m *Manager) FromBytes(data []byte, filename string, uploadType UploadType)
 	return hash, nil
 }
 
-func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string, uploadType UploadType) (string, error) {
+func (m *manager) FromMultipartFile(file *multipart.FileHeader, filename string, uploadType UploadType) (string, error) {
 	src, err := file.Open()
 	if err != nil {
 		m.logger.Error("failed to open source file", zap.String("filename", file.Filename), zap.Error(err))
@@ -161,7 +174,7 @@ func (m *Manager) FromMultipartFile(file *multipart.FileHeader, filename string,
 	return fileHash, nil
 }
 
-func (m *Manager) Delete(filename string, uploadType UploadType) error {
+func (m *manager) Delete(filename string, uploadType UploadType) error {
 	fullPath, err := m.buildFullPath(uploadType, filename)
 	if err != nil {
 		return err
@@ -178,7 +191,7 @@ func (m *Manager) Delete(filename string, uploadType UploadType) error {
 	return nil
 }
 
-func (m *Manager) Read(filename string, uploadType UploadType) ([]byte, error) {
+func (m *manager) Read(filename string, uploadType UploadType) ([]byte, error) {
 	fullPath, err := m.buildFullPath(uploadType, filename)
 	if err != nil {
 		return nil, err

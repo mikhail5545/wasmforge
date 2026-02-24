@@ -26,6 +26,8 @@ import (
 	"time"
 )
 
+//go:generate mockgen -destination=../mocks/proxy/builder.go -package=proxy . Builder
+
 type (
 	Builder interface {
 		Director() *Director

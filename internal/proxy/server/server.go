@@ -56,7 +56,7 @@ func (s *Server) Factory() proxy.Factory {
 	return s.factory
 }
 
-func New(ctx context.Context, manager *uploads.Manager, logger *zap.Logger) (*Server, error) {
+func New(ctx context.Context, manager uploads.Manager, logger *zap.Logger) (*Server, error) {
 	runtime, cleanup, err := wasm.NewWasmRuntime(ctx, logger)
 	if err != nil {
 		logger.Error("failed to create new WASM runtime", zap.Error(err))

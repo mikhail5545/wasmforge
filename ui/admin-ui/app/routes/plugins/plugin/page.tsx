@@ -34,13 +34,7 @@ import {useMutation} from "@/hooks/useMutation";
 import {ModalDialog} from "@/components/dialog/ModalDialog";
 import Scrollbar from "react-scrollbars-custom";
 
-export default function RoutePluginPage() {
-    const links = [
-        { label: "Routes", href: "/routes", active: false },
-        { label: "Plugins", href: "/plugins", active: false },
-        { label: "Settings", href: "/settings", active: false },
-    ];
-
+function RoutePluginPageContent() {
     const router = useRouter();
     const params = useSearchParams();
     const pluginId = params.get("id");
@@ -158,360 +152,372 @@ export default function RoutePluginPage() {
     };
 
     return (
-        <PageLayout>
-            <NavBar links={links} />
-            <div className={"flex flex-col gap-5 w-full mt-20"}>
-                <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
-                    <p className={"text-xl font-semibold"}>Route Plugin Details</p>
-                    <div className={"flex flex-row"}>
+        <div className={"flex flex-col gap-5 w-full mt-20"}>
+            <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
+                <p className={"text-xl font-semibold"}>Route Plugin Details</p>
+                <div className={"flex flex-row"}>
+                    <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        disabled={mutation.loading}
+                        onClick={() => setShowDeleteConfirmation(true)}
+                        className={"px-2 py-2 rounded-full bg-red-500 text-white hover:bg-red-500/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                    >
+                        <Trash size={15}/>
+                    </motion.button>
+                </div>
+            </div>
+            <ModalDialog title={"Error"} visible={!!globalError} onClose={unsetError} >
+                <div className={"flex flex-col gap-5"}>
+                    <p className={"text-md font-semibold"}>{globalError?.message}</p>
+                    <Scrollbar style={{ height: 200 }}>
+                        <p className={"text-md"}>{globalError?.details}</p>
+                    </Scrollbar>
+                    <div className={"flex flex-row items-end justify-end"}>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            disabled={mutation.loading}
-                            onClick={() => setShowDeleteConfirmation(true)}
-                            className={"px-2 py-2 rounded-full bg-red-500 text-white hover:bg-red-500/80 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                            onClick={unsetError}
+                            className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
                         >
-                            <Trash size={15}/>
+                            Close
                         </motion.button>
                     </div>
                 </div>
-                <ModalDialog title={"Error"} visible={!!globalError} onClose={unsetError} >
-                    <div className={"flex flex-col gap-5"}>
-                        <p className={"text-md font-semibold"}>{globalError?.message}</p>
-                        <Scrollbar style={{ height: 200 }}>
-                            <p className={"text-md"}>{globalError?.details}</p>
-                        </Scrollbar>
-                        <div className={"flex flex-row items-end justify-end"}>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={unsetError}
-                                className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
-                            >
-                                Close
-                            </motion.button>
-                        </div>
+            </ModalDialog>
+            <ModalDialog title={"Delete Route Plugin"} visible={showDeleteConfirmation} onClose={() => setShowDeleteConfirmation(false)} >
+                <div className={"flex flex-col gap-5"}>
+                    <p className={"text-md"}>Are you sure? This action is irreversible.</p>
+                    <div className={"flex flex-row items-end justify-end"}>
+                        <motion.button
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={deleteRoutePlugin}
+                            className={"px-3 py-2 rounded-full bg-red-500 text-white hover:bg-red-500/80 transition-colors duration-200"}
+                        >
+                            Delete Route Plugin
+                        </motion.button>
                     </div>
-                </ModalDialog>
-                <ModalDialog title={"Delete Route Plugin"} visible={showDeleteConfirmation} onClose={() => setShowDeleteConfirmation(false)} >
-                    <div className={"flex flex-col gap-5"}>
-                        <p className={"text-md"}>Are you sure? This action is irreversible.</p>
-                        <div className={"flex flex-row items-end justify-end"}>
-                            <motion.button
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                onClick={deleteRoutePlugin}
-                                className={"px-3 py-2 rounded-full bg-red-500 text-white hover:bg-red-500/80 transition-colors duration-200"}
-                            >
-                                Delete Route Plugin
-                            </motion.button>
-                        </div>
-                    </div>
-                </ModalDialog>
-                <div className={"flex flex-col lg:flex-row gap-5 w-full"}>
-                    <div className={"w-full lg:w-1/3 flex flex-col gap-5"}>
-                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
-                            {routePluginDetails.loading ? (
-                                <div className={"flex items-center justify-center py-20"}>
-                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
-                                </div>
-                            ) : (
-                                <div className={"flex flex-col gap-5"}>
-                                    <div className={"flex flex-row justify-between items-center"}>
-                                        <div className={"flex flex-row w-full gap-5"}>
-                                            <div className={"flex items-center justify-center"}>
-                                                <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                    <ListOrdered size={15}/>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-col gap-1"}>
-                                                <p className={"text-md px-2"}>Execution Order</p>
-                                                <AnimatePresence mode={"wait"}>
-                                                    {editExecutionOrder ? (
-                                                        <motion.div
-                                                            key={"edit-port"}
-                                                            initial={{ opacity: 0, y: -10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: -10 }}
-                                                            transition={{ duration: 0.2 }}
-                                                        >
-                                                            <Input
-                                                                required
-                                                                type={"number"}
-                                                                value={routePluginEditableData?.execution_order || 0}
-                                                                disabled={!editExecutionOrder}
-                                                                onChange={(e) => setRoutePluginEditableData(prev => prev ? ({ ...prev, execution_order: parseInt(e.target.value) }) : null)}
-                                                                className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
-                                                            />
-                                                        </motion.div>
-                                                    ) : (
-                                                        <motion.p
-                                                            key={"view-port"}
-                                                            initial={{ opacity: 0, y: -10 }}
-                                                            animate={{ opacity: 1, y: 0 }}
-                                                            exit={{ opacity: 0, y: -10 }}
-                                                            transition={{ duration: 0.2 }}
-                                                            className={"text-md font-semibold px-2"}
-                                                        >
-                                                            {routePluginDetails.data.execution_order}
-                                                        </motion.p>
-                                                    )}
-                                                </AnimatePresence>
-                                            </div>
-                                        </div>
-                                        <div className={"flex items-center justify-center gap-2"}>
-                                            <AnimatePresence mode={"wait"}>
-                                                {editExecutionOrder && (
-                                                    <motion.button
-                                                        key={"submit-execution-order"}
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        disabled={mutation.loading || editJSONConfig}
-                                                        onClick={handleSubmitChange}
-                                                        className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
-                                                    >
-                                                        {mutation.loading ? (
-                                                            <div className={"flex items-center justify-center"}>
-                                                                <div className={"w-4 h-4 border-2 border-t-black border-white rounded-full animate-spin"}/>
-                                                            </div>
-                                                        ) : (
-                                                            <Check size={15}/>
-                                                        )}
-                                                    </motion.button>
-                                                )}
-                                            </AnimatePresence>
-                                            <motion.button
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                disabled={mutation.loading || editJSONConfig}
-                                                onClick={editExecutionOrder ? () => {
-                                                    setEditExecutionOrder(false);
-                                                    setRoutePluginEditableData(routePluginDetails.data);
-                                                } : () => {
-                                                    setEditExecutionOrder(true);
-                                                    setRoutePluginEditableData(routePluginDetails.data);
-                                                }}
-                                                className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
-                                            >
-                                                {editExecutionOrder ? <X size={15}/> : <Pencil size={15}/> }
-                                            </motion.button>
-                                        </div>
-                                    </div>
+                </div>
+            </ModalDialog>
+            <div className={"flex flex-col lg:flex-row gap-5 w-full"}>
+                <div className={"w-full lg:w-1/3 flex flex-col gap-5"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {routePluginDetails.loading ? (
+                            <div className={"flex items-center justify-center py-20"}>
+                                <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                            </div>
+                        ) : (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row justify-between items-center"}>
                                     <div className={"flex flex-row w-full gap-5"}>
                                         <div className={"flex items-center justify-center"}>
                                             <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                <CalendarClock size={15}/>
+                                                <ListOrdered size={15}/>
                                             </div>
                                         </div>
-                                        <div className={"flex flex-col"}>
-                                            <p className={"text-md"}>Created at</p>
-                                            <p className={"text-md font-semibold"}>{new Date(routePluginDetails.data.created_at).toLocaleString()}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
-                            {routePluginDetails.loading ? (
-                                <div className={"flex items-center justify-center py-20"}>
-                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
-                                </div>
-                            ) : (
-                                <div className={"flex flex-col gap-5"}>
-                                    <div className={"flex flex-row items-center justify-between"}>
-                                        <p className={"text-lg font-semibold"}>JSON Config</p>
-                                        <div className={"flex items-center justify-center gap-2"}>
+                                        <div className={"flex flex-col gap-1"}>
+                                            <p className={"text-md px-2"}>Execution Order</p>
                                             <AnimatePresence mode={"wait"}>
-                                                {editJSONConfig && (
-                                                    <motion.button
-                                                        key={"submit-config"}
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        disabled={mutation.loading || editExecutionOrder}
-                                                        onClick={handleSubmitChange}
-                                                        className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                                {editExecutionOrder ? (
+                                                    <motion.div
+                                                        key={"edit-port"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
                                                     >
-                                                        {mutation.loading ? (
-                                                            <div className={"flex items-center justify-center"}>
-                                                                <div className={"w-4 h-4 border-2 border-t-black border-white rounded-full animate-spin"}/>
-                                                            </div>
-                                                        ) : (
-                                                            <Check size={15}/>
-                                                        )}
-                                                    </motion.button>
+                                                        <Input
+                                                            required
+                                                            type={"number"}
+                                                            value={routePluginEditableData?.execution_order || 0}
+                                                            disabled={!editExecutionOrder}
+                                                            onChange={(e) => setRoutePluginEditableData(prev => prev ? ({ ...prev, execution_order: parseInt(e.target.value) }) : null)}
+                                                            className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                        />
+                                                    </motion.div>
+                                                ) : (
+                                                    <motion.p
+                                                        key={"view-port"}
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        transition={{ duration: 0.2 }}
+                                                        className={"text-md font-semibold px-2"}
+                                                    >
+                                                        {routePluginDetails.data.execution_order}
+                                                    </motion.p>
                                                 )}
                                             </AnimatePresence>
-                                            <motion.button
-                                                whileHover={{ scale: 1.05 }}
-                                                whileTap={{ scale: 0.95 }}
-                                                disabled={mutation.loading || editExecutionOrder}
-                                                onClick={editJSONConfig ? () => {
-                                                    setEditJSONConfig(false);
-                                                    setJsonConfig({});
-                                                } : () => {
-                                                    setEditJSONConfig(true);
-                                                    try {
-                                                        const parsedConfig = JSON.parse(routePluginDetails.data.config);
-                                                        setJsonConfig(parsedConfig);
-                                                    } catch (err) {
-                                                        console.error("Failed to parse JSON config:", err);
-                                                        setJsonConfig({});
-                                                    }
-                                                }}
-                                                className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
-                                            >
-                                                <Pencil size={15}/>
-                                            </motion.button>
                                         </div>
                                     </div>
-                                    <JsonEditor
-                                        theme={monoDarkTheme}
-                                        restrictEdit={!editJSONConfig}
-                                        restrictAdd={!editJSONConfig}
-                                        restrictDrag={!editJSONConfig}
-                                        restrictDelete={!editJSONConfig}
-                                        restrictTypeSelection={!editJSONConfig}
-                                        setData={editJSONConfig ? (data) => setJsonConfig(data) : undefined}
-                                        data={editJSONConfig ? jsonConfig : JSON.parse(routePluginDetails.data.config)}
-                                    />
+                                    <div className={"flex items-center justify-center gap-2"}>
+                                        <AnimatePresence mode={"wait"}>
+                                            {editExecutionOrder && (
+                                                <motion.button
+                                                    key={"submit-execution-order"}
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    disabled={mutation.loading || editJSONConfig}
+                                                    onClick={handleSubmitChange}
+                                                    className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                                >
+                                                    {mutation.loading ? (
+                                                        <div className={"flex items-center justify-center"}>
+                                                            <div className={"w-4 h-4 border-2 border-t-black border-white rounded-full animate-spin"}/>
+                                                        </div>
+                                                    ) : (
+                                                        <Check size={15}/>
+                                                    )}
+                                                </motion.button>
+                                            )}
+                                        </AnimatePresence>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            disabled={mutation.loading || editJSONConfig}
+                                            onClick={editExecutionOrder ? () => {
+                                                setEditExecutionOrder(false);
+                                                setRoutePluginEditableData(routePluginDetails.data);
+                                            } : () => {
+                                                setEditExecutionOrder(true);
+                                                setRoutePluginEditableData(routePluginDetails.data);
+                                            }}
+                                            className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            {editExecutionOrder ? <X size={15}/> : <Pencil size={15}/> }
+                                        </motion.button>
+                                    </div>
                                 </div>
-                            )}
-                        </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <CalendarClock size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Created at</p>
+                                        <p className={"text-md font-semibold"}>{new Date(routePluginDetails.data.created_at).toLocaleString()}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
-                    <div className={"w-full lg:w-1/3"}>
-                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
-                            {pluginDetails.loading ? (
-                                <div className={"flex items-center justify-center py-20"}>
-                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {routePluginDetails.loading ? (
+                            <div className={"flex items-center justify-center py-20"}>
+                                <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                            </div>
+                        ) : (
+                            <div className={"flex flex-col gap-5"}>
+                                <div className={"flex flex-row items-center justify-between"}>
+                                    <p className={"text-lg font-semibold"}>JSON Config</p>
+                                    <div className={"flex items-center justify-center gap-2"}>
+                                        <AnimatePresence mode={"wait"}>
+                                            {editJSONConfig && (
+                                                <motion.button
+                                                    key={"submit-config"}
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    disabled={mutation.loading || editExecutionOrder}
+                                                    onClick={handleSubmitChange}
+                                                    className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                                >
+                                                    {mutation.loading ? (
+                                                        <div className={"flex items-center justify-center"}>
+                                                            <div className={"w-4 h-4 border-2 border-t-black border-white rounded-full animate-spin"}/>
+                                                        </div>
+                                                    ) : (
+                                                        <Check size={15}/>
+                                                    )}
+                                                </motion.button>
+                                            )}
+                                        </AnimatePresence>
+                                        <motion.button
+                                            whileHover={{ scale: 1.05 }}
+                                            whileTap={{ scale: 0.95 }}
+                                            disabled={mutation.loading || editExecutionOrder}
+                                            onClick={editJSONConfig ? () => {
+                                                setEditJSONConfig(false);
+                                                setJsonConfig({});
+                                            } : () => {
+                                                setEditJSONConfig(true);
+                                                try {
+                                                    const parsedConfig = JSON.parse(routePluginDetails.data.config);
+                                                    setJsonConfig(parsedConfig);
+                                                } catch (err) {
+                                                    console.error("Failed to parse JSON config:", err);
+                                                    setJsonConfig({});
+                                                }
+                                            }}
+                                            className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
+                                        >
+                                            <Pencil size={15}/>
+                                        </motion.button>
+                                    </div>
                                 </div>
-                            ) : (
-                                <div>
-                                    {pluginDetails.data ? (
-                                        <div className={"flex flex-col gap-5"}>
-                                            <div className={"flex flex-row items-center justify-between"}>
-                                                <p className={"text-lg font-semibold"}>Plugin Origin</p>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <motion.a
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        href={`/plugins/plugin?name=${pluginDetails.data.name}`}
-                                                        className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
-                                                    >
-                                                        <ArrowUpRight size={15}/>
-                                                    </motion.a>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <BookKey size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Name</p>
-                                                    <p className={"text-md font-semibold"}>{pluginDetails.data.name}</p>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <File size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Filename</p>
-                                                    <p className={"text-md font-semibold"}>{pluginDetails.data.filename}</p>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <CalendarClock size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Created at</p>
-                                                    <p className={"text-md font-semibold"}>{new Date(pluginDetails.data.created_at).toLocaleString()}</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <div className={"flex items-center justify-center py-10"}>
-                                            <p className={"text-lg font-semibold"}>Failed to fetch plugin details</p>
-                                        </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                                <JsonEditor
+                                    theme={monoDarkTheme}
+                                    restrictEdit={!editJSONConfig}
+                                    restrictAdd={!editJSONConfig}
+                                    restrictDrag={!editJSONConfig}
+                                    restrictDelete={!editJSONConfig}
+                                    restrictTypeSelection={!editJSONConfig}
+                                    setData={editJSONConfig ? (data) => setJsonConfig(data) : undefined}
+                                    data={editJSONConfig ? jsonConfig : JSON.parse(routePluginDetails.data.config)}
+                                />
+                            </div>
+                        )}
                     </div>
-                    <div className={"w-full lg:w-1/3"}>
-                        <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
-                            {routeDetails.loading ? (
-                                <div className={"flex items-center justify-center py-20"}>
-                                    <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
-                                </div>
-                            ) : (
-                                <div>
-                                    {routeDetails.data ? (
-                                        <div className={"flex flex-col gap-5"}>
-                                            <div className={"flex flex-row items-center justify-between"}>
-                                                <p className={"text-lg font-semibold"}>Attached to Route</p>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <motion.a
-                                                        whileHover={{ scale: 1.05 }}
-                                                        whileTap={{ scale: 0.95 }}
-                                                        href={`/routes/route?path=${routeDetails.data.path}`}
-                                                        className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
-                                                    >
-                                                        <ArrowUpRight size={15}/>
-                                                    </motion.a>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <Route size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Path</p>
-                                                    <p className={"text-md font-semibold"}>{routeDetails.data.path}</p>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <Link2 size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Target URL</p>
-                                                    <p className={"text-md font-semibold"}>{routeDetails.data.target_url}</p>
-                                                </div>
-                                            </div>
-                                            <div className={"flex flex-row w-full gap-5"}>
-                                                <div className={"flex items-center justify-center"}>
-                                                    <div className={"bg-amber-500 p-2 rounded-full"}>
-                                                        <CalendarClock size={15}/>
-                                                    </div>
-                                                </div>
-                                                <div className={"flex flex-col"}>
-                                                    <p className={"text-md"}>Created at</p>
-                                                    <p className={"text-md font-semibold"}>{new Date(routeDetails.data.created_at).toLocaleString()}</p>
-                                                </div>
+                </div>
+                <div className={"w-full lg:w-1/3"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {pluginDetails.loading ? (
+                            <div className={"flex items-center justify-center py-20"}>
+                                <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                            </div>
+                        ) : (
+                            <div>
+                                {pluginDetails.data ? (
+                                    <div className={"flex flex-col gap-5"}>
+                                        <div className={"flex flex-row items-center justify-between"}>
+                                            <p className={"text-lg font-semibold"}>Plugin Origin</p>
+                                            <div className={"flex items-center justify-center"}>
+                                                <motion.a
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    href={`/plugins/plugin?name=${pluginDetails.data.name}`}
+                                                    className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                                                >
+                                                    <ArrowUpRight size={15}/>
+                                                </motion.a>
                                             </div>
                                         </div>
-                                    ) : (
-                                        <div className={"flex items-center justify-center py-10"}>
-                                            <p className={"text-lg font-semibold"}>Failed to fetch route details</p>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <BookKey size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Name</p>
+                                                <p className={"text-md font-semibold"}>{pluginDetails.data.name}</p>
+                                            </div>
                                         </div>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <File size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Filename</p>
+                                                <p className={"text-md font-semibold"}>{pluginDetails.data.filename}</p>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <CalendarClock size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Created at</p>
+                                                <p className={"text-md font-semibold"}>{new Date(pluginDetails.data.created_at).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className={"flex items-center justify-center py-10"}>
+                                        <p className={"text-lg font-semibold"}>Failed to fetch plugin details</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                <div className={"w-full lg:w-1/3"}>
+                    <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
+                        {routeDetails.loading ? (
+                            <div className={"flex items-center justify-center py-20"}>
+                                <div className={"w-10 h-10 border-4 border-t-white border-stone-800 rounded-full animate-spin"}/>
+                            </div>
+                        ) : (
+                            <div>
+                                {routeDetails.data ? (
+                                    <div className={"flex flex-col gap-5"}>
+                                        <div className={"flex flex-row items-center justify-between"}>
+                                            <p className={"text-lg font-semibold"}>Attached to Route</p>
+                                            <div className={"flex items-center justify-center"}>
+                                                <motion.a
+                                                    whileHover={{ scale: 1.05 }}
+                                                    whileTap={{ scale: 0.95 }}
+                                                    href={`/routes/route?path=${routeDetails.data.path}`}
+                                                    className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
+                                                >
+                                                    <ArrowUpRight size={15}/>
+                                                </motion.a>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <Route size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Path</p>
+                                                <p className={"text-md font-semibold"}>{routeDetails.data.path}</p>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <Link2 size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Target URL</p>
+                                                <p className={"text-md font-semibold"}>{routeDetails.data.target_url}</p>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <CalendarClock size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Created at</p>
+                                                <p className={"text-md font-semibold"}>{new Date(routeDetails.data.created_at).toLocaleString()}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className={"flex items-center justify-center py-10"}>
+                                        <p className={"text-lg font-semibold"}>Failed to fetch route details</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+export default function RoutePluginPage() {
+    const links = [
+        { label: "Routes", href: "/routes", active: false },
+        { label: "Plugins", href: "/plugins", active: false },
+        { label: "Settings", href: "/settings", active: false },
+    ];
+
+    return (
+        <PageLayout>
+            <NavBar links={links} />
+            <RoutePluginPageContent/>
         </PageLayout>
     );
 }

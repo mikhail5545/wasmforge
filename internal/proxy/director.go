@@ -28,6 +28,7 @@ import (
 // lock-free reads and a mutex for safe updates. It allows adding and removing routes at runtime without downtime.
 // It's based on http.ServeMux for zero-dependency efficient path matching but optimized for dynamic route management in a high-concurrency environment,
 // making it suitable for use in a reverse proxy setup where routes may need to be updated frequently without downtime.
+
 type Director struct {
 	// Atomic value to hold the current http.ServeMux for lock-free reads, which allows for hot swapping routes without downtime.
 	mux atomic.Value

@@ -18,6 +18,7 @@ package errors
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/labstack/echo/v5"
@@ -52,6 +53,6 @@ func HTTPErrorHandler(c *echo.Context, err error) {
 		cErr = c.JSON(code, resp)
 	}
 	if cErr != nil {
-		c.Logger().Error("failed to send error response", cErr)
+		c.Logger().Error("failed to send error response", slog.Any("error", cErr))
 	}
 }

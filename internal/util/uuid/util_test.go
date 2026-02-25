@@ -60,6 +60,6 @@ func TestMustParseSlice(t *testing.T) {
 		var strIDs []string
 
 		uids := MustParseSlice(strIDs)
-		assert.Nil(t, uids)
+		assert.Empty(t, uids)
 	})
 }

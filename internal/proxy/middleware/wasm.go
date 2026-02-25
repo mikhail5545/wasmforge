@@ -18,7 +18,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
@@ -40,25 +39,6 @@ type (
 		WasmBytes    []byte
 	}
 )
-
-func New(ctx context.Context, rt wazero.Runtime, logger *zap.Logger, cfg WasmMiddlewareConfig) (func(http.Handler) http.Handler, error) {
-	compiled, err := rt.CompileModule(ctx, cfg.WasmBytes)
-	if err != nil {
-		logger.Error("failed to compile WASM module", zap.Error(err))
-		return nil, fmt.Errorf("failed to compile WASM module: %w", err)
-	}
-	mw := &WasmMiddleware{
-		logger:         logger,
-		rt:             rt,
-		compiledModule: compiled,
-		pluginConfig:   cfg.PluginConfig,
-	}
-	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			mw.ServeHTTP(w, r, next)
-		})
-	}, nil
-}
 
 func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
 	state := &reqctx.RequestState{Interrupted: false}

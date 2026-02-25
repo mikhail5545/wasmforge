@@ -159,7 +159,11 @@ func hostGetQueryParam(ctx context.Context, mod api.Module, keyPtr, keyLen, bufP
 	}
 	key := string(keyBytes)
 
-	valueBytes := []byte(req.URL.Query().Get(key))
+	value := req.URL.Query().Get(key)
+	if value == "" {
+		return 0xFFFFFFFF
+	}
+	valueBytes := []byte(value)
 	valueLen := uint32(len(valueBytes))
 
 	if valueLen > bufMaxLen {
@@ -215,6 +219,10 @@ func hostSendResponse(ctx context.Context, mod api.Module, statusCode uint32, bo
 		return
 	}
 
+	if statusCode >= 200 && statusCode < 300 {
+		logger.Debug("WASM module intercepted request and returned success (2XX). Upstream will not be called.", zap.Uint32("status_code", statusCode))
+	}
+
 	state.Interrupted = true
 	state.StatusCode = int(statusCode)
 
@@ -245,4 +253,29 @@ func hostLog(ctx context.Context, mod api.Module, level uint32, msgPtr, msgLen u
 	default:
 		logger.Info(message) // Default to info if level is unrecognized
 	}
+}
+
+func hostGetJSONConfig(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint32) uint32 {
+	logger := reqctx.LoggerFromContext(ctx)
+
+	configPtr, ok := reqctx.JSONConfigFromContext(ctx)
+	if !ok || configPtr == nil {
+		return 0xFFFFFFFF
+	}
+
+	configBytes := []byte(*configPtr)
+	configLen := uint32(len(configBytes))
+
+	if configLen > bufMaxLen {
+		configLen = bufMaxLen // Truncate if the config exceeds the buffer size
+	}
+
+	if !mod.Memory().Write(bufPtr, configBytes[:configLen]) {
+		logger.Error("WASM Access Violation: Failed to write JSON config",
+			zap.Uint32("buffer_ptr", bufPtr),
+			zap.Uint32("len", configLen),
+		)
+		return 0xFFFFFFFF
+	}
+	return configLen
 }

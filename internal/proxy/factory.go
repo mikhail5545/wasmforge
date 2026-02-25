@@ -25,7 +25,6 @@ import (
 	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	wasmmiddleware "github.com/mikhail5545/wasmforge/internal/proxy/middleware"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
-	"github.com/tetratelabs/wazero"
 	"go.uber.org/zap"
 )
 
@@ -59,19 +58,19 @@ type (
 	}
 
 	factory struct {
-		rt      wazero.Runtime
-		logger  *zap.Logger
-		builder Builder
-		manager uploads.Manager
+		logger            *zap.Logger
+		builder           Builder
+		middlewareFactory wasmmiddleware.Factory
+		manager           uploads.Manager
 	}
 )
 
-func NewFactory(rt wazero.Runtime, builder Builder, manager uploads.Manager, logger *zap.Logger) Factory {
+func NewFactory(builder Builder, mwFactory wasmmiddleware.Factory, uploadsManager uploads.Manager, logger *zap.Logger) Factory {
 	return &factory{
-		rt:      rt,
-		builder: builder,
-		manager: manager,
-		logger:  logger.With(zap.String("component", "proxy_factory")),
+		builder:           builder,
+		manager:           uploadsManager,
+		middlewareFactory: mwFactory,
+		logger:            logger.With(zap.String("component", "proxy-factory")),
 	}
 }
 
@@ -158,10 +157,7 @@ func (f *factory) composeMiddlewares(ctx context.Context, plugins []*routeplugin
 		}
 		f.logger.Debug("successfully read WASM bytes for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Int("size_bytes", len(wasmBytes)))
 		// Create a new WASM middleware instance for this plugin
-		mw, err := wasmmiddleware.New(ctx, f.rt, f.logger, wasmmiddleware.WasmMiddlewareConfig{
-			PluginConfig: rtPlugin.Config,
-			WasmBytes:    wasmBytes,
-		})
+		mw, err := f.middlewareFactory.Create(ctx, wasmBytes, rtPlugin.Config)
 		if err != nil {
 			f.logger.Error("failed to create WASM middleware for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Error(err))
 			return nil, fmt.Errorf("failed to create WASM middleware for plugin %s: %w", rtPlugin.Plugin.Filename, err)

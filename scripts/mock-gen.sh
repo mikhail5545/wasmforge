@@ -23,11 +23,14 @@ if ! command -v mockgen &>/dev/null; then
     exit 1
 fi
 
+# Repository (database) packages
 mockgen -destination=./internal/mocks/database/route/repository.go -package=route source=./internal/database/route/repository.go Repository
 mockgen -destination=./internal/mocks/database/plugin/repository.go -package=plugin source=./internal/database/plugin/repository.go Repository
 mockgen -destination=./internal/mocks/database/proxy/config/repository.go -package=config source=./internal/database/proxy/config/repository.go Repository
 
+# Proxy packages
 mockgen -destination=./internal/mocks/proxy/factory.go -package=proxy source=./internal/proxy/factory.go Factory
 mockgen -destination=./internal/mocks/proxy/builder.go -package=proxy source=./internal/proxy/builder.go Builder
+mockgen -destination=./internal/mocks/proxy/middleware/factory.go -package=middleware source=./internal/proxy/middleware/factory.go Factory
 
 mockgen -destination=./internal/mocks/uploads/manager.go -package=uploads source=./internal/uploads/manager.go Manager

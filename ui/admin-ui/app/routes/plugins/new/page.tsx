@@ -37,13 +37,7 @@ const initialRoutePluginFormState: Omit<WasmForge.RoutePlugin, "id" | "created_a
     config: "",
 };
 
-export default function NewRoutePluginPage() {
-    const links = [
-        { label: "Routes", href: "/routes", active: false },
-        { label: "Plugins", href: "/plugins", active: false },
-        { label: "Settings", href: "/settings", active: false },
-    ];
-
+function NewRoutePluginPageContent() {
     const searchParams = useSearchParams();
     const routeId = searchParams.get("route_id");
     const pluginId = searchParams.get("plugin_id");
@@ -139,10 +133,8 @@ export default function NewRoutePluginPage() {
         }, [selectedPlugin, selectedRoute]
     );
 
-    return(
-        <PageLayout>
-            <NavBar links={links} />
-            <div className={"flex flex-col gap-5 w-full mt-20"}>
+    return (
+        <div className={"flex flex-col gap-5 w-full mt-20"}>
                 <div className={"flex flex-row px-4 items-center justify-between bg-stone-800 rounded-4xl p-3 w-1/3"}>
                     <p className={"text-xl font-semibold"}>Creating a new Route Plugin</p>
                     <div className={"flex flex-row gap-2"}>
@@ -163,7 +155,6 @@ export default function NewRoutePluginPage() {
                         </motion.button>
                     </div>
                 </div>
-            </div>
             <ModalDialog title={"Route Plugin successfully created"} visible={success} onClose={() => router.push(`/routes/route?path=${selectedRoute?.path}`)} >
                 <div className={"flex flex-col gap-5"}>
                     <p className={"text-md font-semibold"}>You successfully created a new route plugin!</p>
@@ -539,6 +530,22 @@ export default function NewRoutePluginPage() {
                     </div>
                 </div>
             </div>
+        </div>
+    );
+}
+
+export default function NewRoutePluginPage() {
+    const links = [
+        { label: "Routes", href: "/routes", active: false },
+        { label: "Plugins", href: "/plugins", active: false },
+        { label: "Settings", href: "/settings", active: false },
+    ];
+
+
+    return(
+        <PageLayout>
+            <NavBar links={links} />
+            <NewRoutePluginPageContent/>
         </PageLayout>
     );
 }

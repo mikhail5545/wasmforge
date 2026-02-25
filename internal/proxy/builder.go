@@ -68,10 +68,7 @@ type (
 )
 
 func NewBuilder() Builder {
-	d := &Director{
-		routes: make(map[string]http.Handler),
-	}
-	d.mux.Store(http.NewServeMux())
+	d := NewDirector()
 	return &builder{
 		director: d,
 		routes:   make(map[string]*internalRoute),

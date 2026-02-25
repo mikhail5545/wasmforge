@@ -386,7 +386,7 @@ func TestService_Update(t *testing.T) {
 
 		txRouteRepoMock.EXPECT().Get(gomock.Any(), gomock.Any()).Return(getReturn, getErr).Times(1)
 
-		if getErr == nil {
+		if getErr == nil && getReturn != nil && !getReturn.Enabled {
 			txRouteRepoMock.EXPECT().Updates(gomock.Any(), gomock.Any(), gomock.Any()).Return(createAffected, createErr).Times(1)
 		}
 	}

@@ -28,6 +28,7 @@ import (
 
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/config"
 	"github.com/mikhail5545/wasmforge/internal/proxy"
+	"github.com/mikhail5545/wasmforge/internal/proxy/middleware"
 	"github.com/mikhail5545/wasmforge/internal/proxy/wasm"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
 	"github.com/tetratelabs/wazero"
@@ -63,7 +64,8 @@ func New(ctx context.Context, manager uploads.Manager, logger *zap.Logger) (*Ser
 		return nil, fmt.Errorf("failed to create new WASM runtime: %w", err)
 	}
 	builder := proxy.NewBuilder()
-	factory := proxy.NewFactory(runtime, builder, manager, logger)
+	mwFactory := middleware.NewFactory(runtime, logger)
+	factory := proxy.NewFactory(builder, mwFactory, manager, logger)
 	return &Server{
 		rt:       runtime,
 		director: builder.Director(),

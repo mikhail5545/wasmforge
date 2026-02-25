@@ -25,6 +25,7 @@ import (
 
 type requestKey struct{}
 type loggerKey struct{}
+type configKey struct{}
 
 func WithRequest(ctx context.Context, r *http.Request) context.Context {
 	return context.WithValue(ctx, requestKey{}, r)
@@ -44,4 +45,13 @@ func LoggerFromContext(ctx context.Context) *zap.Logger {
 		return logger
 	}
 	return zap.NewNop()
+}
+
+func WithJSONConfig(ctx context.Context, config *string) context.Context {
+	return context.WithValue(ctx, configKey{}, config)
+}
+
+func JSONConfigFromContext(ctx context.Context) (*string, bool) {
+	config, ok := ctx.Value(configKey{}).(*string)
+	return config, ok
 }

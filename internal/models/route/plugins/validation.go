@@ -43,6 +43,7 @@ func (req CreateRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.PluginID, validationutil.UUIDRule(true)...),
 		validation.Field(&req.RouteID, validationutil.UUIDRule(true)...),
+		validation.Field(&req.VersionConstraint, validationutil.SemverConstraintRule(true)...),
 		validation.Field(&req.ExecutionOrder, validation.Required, validation.Min(1)),
 		validation.Field(&req.Config, validation.NilOrNotEmpty, is.JSON),
 	)
@@ -51,6 +52,8 @@ func (req CreateRequest) Validate() error {
 func (req UpdateRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
+		validation.Field(&req.PluginID, append([]validation.Rule{validation.NilOrNotEmpty}, validationutil.UUIDRule(false)...)...),
+		validation.Field(&req.VersionConstraint, append([]validation.Rule{validation.NilOrNotEmpty}, validationutil.SemverConstraintRule(false)...)...),
 		validation.Field(&req.ExecutionOrder, validation.NilOrNotEmpty, validation.Min(1)),
 		validation.Field(&req.Config, validation.NilOrNotEmpty, is.JSON),
 	)

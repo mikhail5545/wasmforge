@@ -294,17 +294,17 @@ function RoutePageContent() {
                                                                 selectedPluginId === plugin.id ? "bg-amber-500" : "border border-amber-500 hover:bg-amber-500 transition-colors duration-200"
                                                             }`}
                                                         >
-                                                            <div className={"flex flex-col items-start justify-center w-1/2"}>
-                                                                <p className={"text-sm"}>Name</p>
-                                                                <p className={"text-md font-semibold truncate"}>{plugin.name}</p>
-                                                            </div>
-                                                            <div className={"flex flex-col items-start justify-center w-1/2"}>
-                                                                <p className={"text-sm"}>Filename</p>
-                                                                <p className={"text-md font-semibold truncate"}>{plugin.filename}</p>
-                                                            </div>
-                                                        </motion.div>
-                                                    ))}
-                                                </div>
+                                                        <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                            <p className={"text-sm"}>Name</p>
+                                                            <p className={"text-md font-semibold truncate"}>{plugin.name}</p>
+                                                        </div>
+                                                        <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                            <p className={"text-sm"}>Version</p>
+                                                            <p className={"text-md font-semibold truncate"}>{plugin.version}</p>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                            </div>
                                             </Scrollbar>
                                         )}
                                         {pluginPaginatedData.nextPageToken && (
@@ -789,6 +789,10 @@ function RoutePageContent() {
                                                     <div className={"flex flex-col items-start justify-center px-4"}>
                                                         <p className={"text-sm"}>Name</p>
                                                         <p className={"text-md font-semibold"}>{plugin.plugin?.name}</p>
+                                                        <p className={"text-sm pt-1"}>Constraint</p>
+                                                        <p className={"text-md font-semibold"}>{plugin.version_constraint}</p>
+                                                        <p className={"text-sm pt-1"}>Resolved</p>
+                                                        <p className={"text-md font-semibold"}>{plugin.resolved_plugin_version || plugin.plugin?.version || "n/a"}</p>
                                                     </div>
                                                     <div className={"flex items-center justify-center h-ful"}>
                                                         <motion.a

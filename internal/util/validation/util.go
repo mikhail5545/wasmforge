@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"regexp"
 
+	semver "github.com/Masterminds/semver/v3"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
 	"github.com/google/uuid"
 )
@@ -28,8 +29,9 @@ import (
 var pathRegexp = regexp.MustCompile("^/.*$")
 
 // wasmFilenameRegexp matches strings that consist of a valid filename (letters, numbers, underscores, or hyphens) followed by the .wasm extension.
-var wasmFilenameRegexp = regexp.MustCompile(`^([a-zA-Z0-9_-]+)\\.(wasm)$`)
+var wasmFilenameRegexp = regexp.MustCompile(`^([a-zA-Z0-9_-]+)\.(wasm)$`)
 var pluginNameRegexp = regexp.MustCompile(`^[a-z0-9]+(?:_[&?a-z0-9]+)*$`)
+var semverRegexp = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`)
 
 func composeRules(required bool, additional ...validation.Rule) []validation.Rule {
 	rules := additional
@@ -142,6 +144,40 @@ func IsValidPluginName(value any) error {
 	return nil
 }
 
+func IsValidSemver(value any) error {
+	if value == nil {
+		return nil
+	}
+	var version string
+	if err := extractValue(&version, value); err != nil {
+		return fmt.Errorf("must be a string: %w", err)
+	}
+	if version == "" {
+		return nil
+	}
+	if !semverRegexp.MatchString(version) {
+		return fmt.Errorf("must be a valid semantic version")
+	}
+	return nil
+}
+
+func IsValidSemverConstraint(value any) error {
+	if value == nil {
+		return nil
+	}
+	var constraint string
+	if err := extractValue(&constraint, value); err != nil {
+		return fmt.Errorf("must be a string: %w", err)
+	}
+	if constraint == "" {
+		return nil
+	}
+	if _, err := semver.NewConstraint(constraint); err != nil {
+		return fmt.Errorf("must be a valid semantic version constraint")
+	}
+	return nil
+}
+
 // UUIDRule returns the ozzo-validation rules for a UUID.
 func UUIDRule(required bool) []validation.Rule {
 	return composeRules(required, validation.By(IsValidUUIDv7))
@@ -157,4 +193,12 @@ func WasmFilenameRule(required bool) []validation.Rule {
 
 func PluginNameRule(required bool) []validation.Rule {
 	return composeRules(required, validation.By(IsValidPluginName))
+}
+
+func SemverRule(required bool) []validation.Rule {
+	return composeRules(required, validation.By(IsValidSemver))
+}
+
+func SemverConstraintRule(required bool) []validation.Rule {
+	return composeRules(required, validation.By(IsValidSemverConstraint))
 }

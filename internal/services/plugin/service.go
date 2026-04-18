@@ -25,8 +25,10 @@ import (
 	"github.com/google/uuid"
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
+	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 	serviceerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
+	"github.com/mikhail5545/wasmforge/internal/proxy"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
 	uuidutil "github.com/mikhail5545/wasmforge/internal/util/uuid"
 	"go.uber.org/zap"
@@ -34,33 +36,39 @@ import (
 )
 
 type Service struct {
-	pluginRepo    pluginrepo.Repository
-	routeRepo     routerepo.Repository
-	uploadManager uploads.Manager
-	logger        *zap.Logger
+	pluginRepo      pluginrepo.Repository
+	routeRepo       routerepo.Repository
+	routePluginRepo routepluginrepo.Repository
+	routeFactory    proxy.Factory
+	uploadManager   uploads.Manager
+	logger          *zap.Logger
 }
 
 type Dependencies struct {
-	PluginRepo    pluginrepo.Repository
-	RouteRepo     routerepo.Repository
-	UploadManager uploads.Manager
+	PluginRepo      pluginrepo.Repository
+	RouteRepo       routerepo.Repository
+	RoutePluginRepo routepluginrepo.Repository
+	RouteFactory    proxy.Factory
+	UploadManager   uploads.Manager
 }
 
 func New(deps Dependencies, logger *zap.Logger) *Service {
 	return &Service{
-		pluginRepo:    deps.PluginRepo,
-		routeRepo:     deps.RouteRepo,
-		uploadManager: deps.UploadManager,
-		logger:        logger.With(zap.String("service", "plugin")),
+		pluginRepo:      deps.PluginRepo,
+		routeRepo:       deps.RouteRepo,
+		routePluginRepo: deps.RoutePluginRepo,
+		routeFactory:    deps.RouteFactory,
+		uploadManager:   deps.UploadManager,
+		logger:          logger.With(zap.String("service", "plugin")),
 	}
 }
 
 func (s *Service) Get(ctx context.Context, req *pluginmodel.GetRequest) (*pluginmodel.Plugin, error) {
-	opt, err := extractIdentifier(req)
+	opts, err := extractIdentifier(req)
 	if err != nil {
 		return nil, err
 	}
-	plugin, err := s.pluginRepo.Get(ctx, opt)
+	plugin, err := s.pluginRepo.Get(ctx, opts...)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			return nil, serviceerrors.NewNotFoundError(err)
@@ -76,7 +84,7 @@ func (s *Service) List(ctx context.Context, req *pluginmodel.ListRequest) ([]*pl
 		return nil, "", serviceerrors.NewValidationError(err)
 	}
 	plugins, token, err := s.pluginRepo.List(ctx, pluginrepo.WithIDs(uuidutil.MustParseSlice(req.IDs)...), pluginrepo.WithFilenames(req.Filenames...),
-		pluginrepo.WithNames(req.Names...), pluginrepo.WithOrder(req.OrderField, req.OrderDirection),
+		pluginrepo.WithNames(req.Names...), pluginrepo.WithVersions(req.Versions...), pluginrepo.WithOrder(req.OrderField, req.OrderDirection),
 		pluginrepo.WithPagination(req.PageSize, req.PageToken),
 	)
 	if err != nil {
@@ -93,13 +101,16 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 	var plugin *pluginmodel.Plugin
 	err := s.pluginRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.pluginRepo.WithTx(tx)
+		txRouteRepo := s.routeRepo.WithTx(tx)
+		txRoutePluginRepo := s.routePluginRepo.WithTx(tx)
 
 		plugin = &pluginmodel.Plugin{
 			Name:     req.Name,
+			Version:  req.Version,
 			Filename: req.Filename,
 		}
 
-		s.logger.Debug("creating plugin record", zap.String("name", req.Name), zap.String("filename", req.Filename))
+		s.logger.Debug("creating plugin record", zap.String("name", req.Name), zap.String("version", req.Version), zap.String("filename", req.Filename))
 
 		hash, err := s.uploadManager.FromMultipartFile(file, req.Filename, uploads.PluginUpload)
 		if err != nil {
@@ -110,12 +121,15 @@ func (s *Service) Create(ctx context.Context, file *multipart.FileHeader, req *p
 
 		if err := txRepo.Create(ctx, plugin); err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return serviceerrors.NewAlreadyExistsError("file with the same name or filename already exists")
+				return serviceerrors.NewAlreadyExistsError("plugin with the same name/version or filename/version already exists")
 			}
 			s.logger.Error("failed to create plugin record", zap.Error(err))
 			return fmt.Errorf("failed to create plugin record: %w", err)
 		}
 		s.logger.Debug("plugin record created successfully", zap.String("id", plugin.ID.String()), zap.String("checksum", plugin.Checksum))
+		if err := s.autoSwitchMatchingRoutePluginsInTx(ctx, txRepo, txRouteRepo, txRoutePluginRepo, plugin); err != nil {
+			return err
+		}
 		return nil
 	})
 	if err != nil {

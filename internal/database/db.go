@@ -22,5 +22,44 @@ func New(path string) (*gorm.DB, error) {
 		_ = sqlDB.Close()
 		return nil, fmt.Errorf("failed to migrate database: %v", err)
 	}
+	if err = migratePluginVersions(db); err != nil {
+		sqlDB, _ := db.DB()
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("failed to migrate plugin versions: %v", err)
+	}
+	if err = migrateRoutePluginVersionConstraints(db); err != nil {
+		sqlDB, _ := db.DB()
+		_ = sqlDB.Close()
+		return nil, fmt.Errorf("failed to migrate route plugin version constraints: %v", err)
+	}
 	return db, nil
+}
+
+func migratePluginVersions(db *gorm.DB) error {
+	if err := db.Model(&plugin.Plugin{}).
+		Where("version IS NULL OR version = ''").
+		Update("version", plugin.DefaultVersion).Error; err != nil {
+		return err
+	}
+	if db.Migrator().HasIndex(&plugin.Plugin{}, "idx_plugins_name") {
+		if err := db.Migrator().DropIndex(&plugin.Plugin{}, "idx_plugins_name"); err != nil {
+			return err
+		}
+	}
+	if db.Migrator().HasIndex(&plugin.Plugin{}, "idx_plugins_filename") {
+		if err := db.Migrator().DropIndex(&plugin.Plugin{}, "idx_plugins_filename"); err != nil {
+			return err
+		}
+	}
+	if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_plugins_name_version ON plugins(name, version)").Error; err != nil {
+		return err
+	}
+	if err := db.Exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_plugins_filename_version ON plugins(filename, version)").Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func migrateRoutePluginVersionConstraints(db *gorm.DB) error {
+	return db.Exec("UPDATE route_plugins SET version_constraint = '*' WHERE version_constraint IS NULL OR version_constraint = ''").Error
 }

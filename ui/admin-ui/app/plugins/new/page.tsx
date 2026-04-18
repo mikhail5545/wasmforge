@@ -33,6 +33,7 @@ import {ModalDialog} from "@/components/dialog/ModalDialog";
 
 const initialPluginFormState: Omit<WasmForge.Plugin, "id" | "created_at" | "checksum"> = {
     name: "my_new_plugin",
+    version: "0.0.0",
     filename: "my_new_plugin.wasm",
 };
 
@@ -48,7 +49,7 @@ function NewPluginPageContent() {
     const router = useRouter();
     const mutation = useMutation();
 
-    const [createdPluginName, setCreatedPluginName] = useState<string | null>(null);
+    const pluginDetailsLink = `/plugins/plugin?name=${encodeURIComponent(pluginFormData.name)}&version=${encodeURIComponent(pluginFormData.version)}`;
 
     const handleSubmit = useCallback(
         async() => {
@@ -67,14 +68,7 @@ function NewPluginPageContent() {
                 formData.delete("metadata");
                 return;
             }
-            if (res.success && res.response) {
-                try{
-                    const createdPlugin: WasmForge.Plugin = await res.response.json();
-                    setCreatedPluginName(createdPlugin.name);
-                }catch (error) {
-                    console.log("Error parsing response:", error);
-                    setCreatedPluginName(null);
-                }
+            if (res.success) {
                 setSuccess(true);
             }
         }, [file, pluginFormData, mutation]
@@ -126,7 +120,7 @@ function NewPluginPageContent() {
                     </div>
                 </div>
             </ModalDialog>
-            <ModalDialog title={"Plugin successfully created"} visible={success} onClose={() => router.push(createdPluginName ? `/plugins/plugin?name=${createdPluginName}` : "/plugins")} >
+            <ModalDialog title={"Plugin successfully created"} visible={success} onClose={() => router.push(pluginDetailsLink)} >
                 <div className={"flex flex-col gap-5"}>
                     <p className={"text-md font-semibold"}>You successfully created a new plugin!</p>
                     <p className={"text-sm"}>You can now attach it to a route</p>
@@ -134,7 +128,7 @@ function NewPluginPageContent() {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => router.push(createdPluginName ? `/plugins/plugin?name=${createdPluginName}` : "/plugins")}
+                            onClick={() => router.push(pluginDetailsLink)}
                             className={"px-3 py-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
                         >
                             Close
@@ -147,7 +141,7 @@ function NewPluginPageContent() {
                     <div className={"border-box w-full bg-stone-800 rounded-4xl p-5"}>
                         <div className={"flex flex-col gap-5"}>
                             <div className={"flex flex-row w-full gap-5"}>
-                                <Field className={"flex flex-col w-full gap-2"}>
+                                <Field className={"flex flex-col w-1/3 gap-2"}>
                                     <Label className={"text-md font-semibold"}>Name *</Label>
                                     <Input
                                         required
@@ -157,7 +151,17 @@ function NewPluginPageContent() {
                                         className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
                                     />
                                 </Field>
-                                <Field className={"flex flex-col w-full gap-2"}>
+                                <Field className={"flex flex-col w-1/3 gap-2"}>
+                                    <Label className={"text-md font-semibold"}>Version *</Label>
+                                    <Input
+                                        required
+                                        type={"text"}
+                                        value={pluginFormData.version}
+                                        onChange={(e) => setPluginFormData(prev => ({ ...prev, version: e.target.value }))}
+                                        className={"text-md font-semibold px-3 py-2 w-full border border-white focus:border-amber-500 focus:ring focus:ring-amber-500 rounded-xl"}
+                                    />
+                                </Field>
+                                <Field className={"flex flex-col w-1/3 gap-2"}>
                                     <Label className={"text-md font-semibold"}>Filename *</Label>
                                     <Input
                                         required
@@ -217,6 +221,10 @@ function NewPluginPageContent() {
                             <div className={"flex flex-col gap-2"}>
                                 <p className={"text-md font-semibold"}>Name and Filename</p>
                                 <p className={"text-sm"}>Name and Filename are just unique identifiers for plugin that will help you to track and manage them.</p>
+                            </div>
+                            <div className={"flex flex-col gap-2"}>
+                                <p className={"text-md font-semibold"}>Version</p>
+                                <p className={"text-sm"}>Use semantic versioning to publish different plugin artifacts under the same plugin name.</p>
                             </div>
                             <div className={"flex flex-col gap-2"}>
                                 <p className={"text-md font-semibold"}>WASM File</p>

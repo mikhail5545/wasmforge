@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 
+	semver "github.com/Masterminds/semver/v3"
 	"github.com/google/uuid"
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
@@ -56,6 +57,61 @@ func (s *Service) getPluginInTx(ctx context.Context, txRepo pluginrepo.Repositor
 		return nil, fmt.Errorf("failed to retrieve plugin: %w", err)
 	}
 	return plugin, nil
+}
+
+func (s *Service) resolvePluginForConstraintInTx(
+	ctx context.Context,
+	txRepo pluginrepo.Repository,
+	pluginID uuid.UUID,
+	versionConstraint string,
+) (*pluginmodel.Plugin, error) {
+	constraint, err := semver.NewConstraint(versionConstraint)
+	if err != nil {
+		return nil, serviceerrors.NewValidationError("invalid version constraint")
+	}
+
+	anchorPlugin, err := s.getPluginInTx(ctx, txRepo, pluginID)
+	if err != nil {
+		return nil, err
+	}
+
+	candidates, err := txRepo.UnpaginatedList(ctx, pluginrepo.WithNames(anchorPlugin.Name))
+	if err != nil {
+		s.logger.Error("failed to retrieve plugin candidates for constraint resolution", zap.String("plugin_name", anchorPlugin.Name), zap.Error(err))
+		return nil, fmt.Errorf("failed to retrieve plugin candidates for constraint resolution: %w", err)
+	}
+
+	var (
+		resolved        *pluginmodel.Plugin
+		resolvedVersion *semver.Version
+	)
+	for _, candidate := range candidates {
+		version, parseErr := semver.NewVersion(candidate.Version)
+		if parseErr != nil {
+			s.logger.Error("failed to parse plugin version while resolving constraint", zap.String("plugin_id", candidate.ID.String()), zap.String("version", candidate.Version), zap.Error(parseErr))
+			return nil, fmt.Errorf("failed to parse plugin version while resolving constraint: %w", parseErr)
+		}
+		if !constraint.Check(version) {
+			continue
+		}
+		if resolvedVersion == nil || version.GreaterThan(resolvedVersion) {
+			resolved = candidate
+			resolvedVersion = version
+		}
+	}
+
+	if resolved == nil {
+		return nil, serviceerrors.NewConflictError(fmt.Sprintf("no plugin artifact found for '%s' matching version constraint '%s'", anchorPlugin.Name, versionConstraint))
+	}
+
+	return resolved, nil
+}
+
+func hydrateResolvedPluginVersion(routePlugin *routepluginmodel.RoutePlugin) {
+	if routePlugin == nil {
+		return
+	}
+	routePlugin.ResolvedPluginVersion = routePlugin.Plugin.Version
 }
 
 func (s *Service) create(ctx context.Context, txRepo routepluginrepo.Repository, routePlugin *routepluginmodel.RoutePlugin) error {
@@ -106,6 +162,7 @@ func (s *Service) update(ctx context.Context, txRepo routepluginrepo.Repository,
 func buildUpdates(existing *routepluginmodel.RoutePlugin, req *routepluginmodel.UpdateRequest) map[string]any {
 	updates := make(map[string]any)
 
+	patch.UpdateIfChanged(updates, "version_constraint", req.VersionConstraint, &existing.VersionConstraint)
 	patch.UpdateIfChanged(updates, "execution_order", req.ExecutionOrder, &existing.ExecutionOrder)
 	patch.UpdateIfChanged(updates, "config", req.Config, existing.Config)
 

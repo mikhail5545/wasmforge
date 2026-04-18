@@ -26,6 +26,7 @@ func (req GetRequest) Validate() error {
 		validation.Field(&req.ID, validationutil.UUIDRule(false)...),
 		validation.Field(&req.Name, validationutil.PluginNameRule(false)...),
 		validation.Field(&req.Filename, validationutil.WasmFilenameRule(false)...),
+		validation.Field(&req.Version, validationutil.SemverRule(false)...),
 	)
 }
 
@@ -34,7 +35,8 @@ func (req ListRequest) Validate() error {
 		validation.Field(&req.IDs, validation.Each(validationutil.UUIDRule(false)...)),
 		validation.Field(&req.Filenames, validation.Each(validationutil.WasmFilenameRule(false)...)),
 		validation.Field(&req.Names, validation.Each(validationutil.PluginNameRule(false)...)),
-		validation.Field(&req.OrderField, validation.In(OrderFieldName, OrderFieldFilename, OrderFieldCreatedAt).Error("invalid order field")),
+		validation.Field(&req.Versions, validation.Each(validationutil.SemverRule(false)...)),
+		validation.Field(&req.OrderField, validation.In(OrderFieldName, OrderFieldVersion, OrderFieldFilename, OrderFieldCreatedAt).Error("invalid order field")),
 		validation.Field(&req.OrderDirection, validation.In("asc", "desc").Error("invalid order direction")),
 		validation.Field(&req.PageSize, validation.Required, validation.Min(1), validation.Max(100)),
 	)
@@ -43,6 +45,7 @@ func (req ListRequest) Validate() error {
 func (req CreateRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.Name, validationutil.PluginNameRule(true)...),
+		validation.Field(&req.Version, validationutil.SemverRule(true)...),
 		validation.Field(&req.Filename, validationutil.WasmFilenameRule(true)...),
 	)
 }

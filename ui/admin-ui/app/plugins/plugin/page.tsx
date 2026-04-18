@@ -41,16 +41,23 @@ function PluginPageContent() {
     });
 
     const params = useSearchParams();
-    const name = params.get("name") || "";
-    const pluginDetails = useData<WasmForge.Plugin>(`http://localhost:8080/api/plugins/${name}`, "plugin");
+    const pluginId = params.get("id");
+    const name = params.get("name");
+    const version = params.get("version");
+    const pluginPath = pluginId
+        ? `http://localhost:8080/api/plugins/${pluginId}`
+        : name
+            ? `http://localhost:8080/api/plugins/${encodeURIComponent(name)}${version ? `?v=${encodeURIComponent(version)}` : ""}`
+            : null;
+    const pluginDetails = useData<WasmForge.Plugin>(pluginPath, "plugin");
 
     const routePluginsPaginatedData = usePaginatedData<WasmForge.RoutePlugin>(
-        `api/route-plugins?p_ids=${pluginDetails.data?.id}`,
+        `api/route-plugins${pluginDetails.data?.id ? `?p_ds=${pluginDetails.data.id}` : ""}`,
         "route_plugins",
         5,
         "created_at",
         "desc",
-        { preload: true },
+        { preload: false },
     );
 
     const routesPaginatedData = usePaginatedData<WasmForge.Route>(
@@ -82,6 +89,12 @@ function PluginPageContent() {
     );
 
     const globalError = pluginDetails.error || routePluginsPaginatedData.error || routesPaginatedData.error;
+    useEffect(() => {
+        if (pluginDetails.data?.id) {
+            routePluginsPaginatedData.refetch();
+        }
+    }, [pluginDetails.data?.id, routePluginsPaginatedData.refetch]);
+
     const unsetError = async () => {
         mutation.setError(null);
         if (pluginDetails.error) {
@@ -257,6 +270,17 @@ function PluginPageContent() {
                                 <div className={"flex flex-row w-full gap-5"}>
                                     <div className={"flex items-center justify-center"}>
                                         <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <BookKey size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Version</p>
+                                        <p className={"text-md font-semibold"}>{pluginDetails.data.version}</p>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
                                             <File size={15}/>
                                         </div>
                                     </div>
@@ -335,6 +359,10 @@ function PluginPageContent() {
                                                     <div className={"flex flex-col items-start justify-center px-4"}>
                                                         <p className={"text-sm"}>Route ID</p>
                                                         <p className={"text-md font-semibold"}>{plugin.route_id}</p>
+                                                        <p className={"text-sm pt-1"}>Constraint</p>
+                                                        <p className={"text-md font-semibold"}>{plugin.version_constraint}</p>
+                                                        <p className={"text-sm pt-1"}>Resolved</p>
+                                                        <p className={"text-md font-semibold"}>{plugin.resolved_plugin_version || plugin.plugin?.version || "n/a"}</p>
                                                     </div>
                                                     <div className={"flex items-center justify-center h-ful"}>
                                                         <motion.a

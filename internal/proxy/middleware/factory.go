@@ -57,11 +57,16 @@ func (f *factory) Create(ctx context.Context, wasmBytes []byte, jsonConfig *stri
 		f.logger.Error("failed to compile WASM module", zap.Error(err))
 		return nil, fmt.Errorf("failed to compile WASM module: %w", err)
 	}
+	instance, err := f.runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig())
+	if err != nil {
+		f.logger.Error("failed to instantiate WASM module", zap.Error(err))
+		return nil, fmt.Errorf("failed to instantiate WASM module: %w", err)
+	}
+
 	mw := &WasmMiddleware{
-		logger:         f.logger,
-		rt:             f.runtime,
-		compiledModule: compiled,
-		pluginConfig:   jsonConfig,
+		logger:       f.logger,
+		module:       instance,
+		pluginConfig: jsonConfig,
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

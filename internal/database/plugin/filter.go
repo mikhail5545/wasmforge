@@ -25,6 +25,7 @@ type filter struct {
 	IDs uuid.UUIDs
 
 	Names     []string
+	Versions  []string
 	Filenames []string
 
 	OrderField     plugin.OrderField
@@ -45,6 +46,12 @@ func WithIDs(ids ...uuid.UUID) FilterOption {
 func WithNames(names ...string) FilterOption {
 	return func(f *filter) {
 		f.Names = names
+	}
+}
+
+func WithVersions(versions ...string) FilterOption {
+	return func(f *filter) {
+		f.Versions = versions
 	}
 }
 

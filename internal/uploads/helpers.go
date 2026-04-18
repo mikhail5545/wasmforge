@@ -19,7 +19,8 @@ package uploads
 import (
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
+	"strings"
 
 	"go.uber.org/zap"
 )
@@ -35,7 +36,27 @@ func (m *manager) buildFullPath(uploadType UploadType, filename string) (string,
 		return "", fmt.Errorf("invalid upload type: %d", uploadType)
 	}
 
-	return path.Join(baseDir, filename), nil
+	if filename == "" {
+		return "", fmt.Errorf("invalid filename: cannot be empty")
+	}
+	if filepath.IsAbs(filename) || strings.Contains(filename, "/") || strings.Contains(filename, `\`) {
+		return "", fmt.Errorf("invalid filename: path separators are not allowed")
+	}
+	cleanFilename := filepath.Clean(filename)
+	if cleanFilename == "." || cleanFilename == ".." || cleanFilename != filename {
+		return "", fmt.Errorf("invalid filename: path traversal is not allowed")
+	}
+
+	baseDir = filepath.Clean(baseDir)
+	fullPath := filepath.Join(baseDir, cleanFilename)
+	relativePath, err := filepath.Rel(baseDir, fullPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to validate upload path: %w", err)
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("invalid filename: path traversal is not allowed")
+	}
+	return fullPath, nil
 }
 
 func (m *manager) ensureDirectory(dir string) error {

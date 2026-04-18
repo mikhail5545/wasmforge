@@ -34,6 +34,12 @@ import {useMutation} from "@/hooks/useMutation";
 import {ModalDialog} from "@/components/dialog/ModalDialog";
 import Scrollbar from "react-scrollbars-custom";
 
+type RoutePluginUpdateData = {
+    execution_order: number;
+    version_constraint: string;
+    config: string | null;
+};
+
 function RoutePluginPageContent() {
     const router = useRouter();
     const params = useSearchParams();
@@ -54,7 +60,7 @@ function RoutePluginPageContent() {
     const [editExecutionOrder, setEditExecutionOrder] = useState(false);
     const [editJSONConfig, setEditJSONConfig] = useState(false);
     const [jsonConfig, setJsonConfig] = useState<JsonData>({});
-    const [routePluginEditableData, setRoutePluginEditableData] = useState<Omit<WasmForge.RoutePlugin, "id" | "created_at" | "route_id" | "plugin_id"> | null>(null);
+    const [routePluginEditableData, setRoutePluginEditableData] = useState<RoutePluginUpdateData | null>(null);
     const mutation = useMutation();
 
     useEffect(() => {
@@ -110,22 +116,31 @@ function RoutePluginPageContent() {
         async () => {
             if (!routePluginEditableData) return;
 
-            try{
-                const configString = JSON.stringify(jsonConfig);
-                setRoutePluginEditableData(prev => prev ? ({ ...prev, config: configString }) : null);
-            } catch (err: any) {
-                mutation.setError({ code: "UNPROCESSABLE_ENTITY", "message": "Invalid JSON config", "details": err instanceof Error ? err.message : String(err)});
-                console.error("Invalid JSON config:", err);
+            let configString = routePluginEditableData.config ?? "{}";
+            if (editJSONConfig) {
+                try{
+                    configString = JSON.stringify(jsonConfig);
+                } catch (err: any) {
+                    mutation.setError({ code: "UNPROCESSABLE_ENTITY", "message": "Invalid JSON config", "details": err instanceof Error ? err.message : String(err)});
+                    console.error("Invalid JSON config:", err);
+                    return;
+                }
             }
 
-            const res = await mutation.mutate(`http://localhost:8080/api/route-plugins/${pluginId}`, "PATCH", JSON.stringify(routePluginEditableData));
+            const payload = {
+                execution_order: routePluginEditableData.execution_order,
+                version_constraint: routePluginEditableData.version_constraint,
+                config: configString,
+            };
+
+            const res = await mutation.mutate(`http://localhost:8080/api/route-plugins/${pluginId}`, "PATCH", JSON.stringify(payload));
             if (res.success) {
                 await routePluginDetails.refetch();
                 setEditExecutionOrder(false);
                 setEditJSONConfig(false);
                 setRoutePluginEditableData(null);
             }
-        }, [routePluginEditableData, jsonConfig, mutation, routePluginDetails, pluginId]
+        }, [routePluginEditableData, jsonConfig, mutation, routePluginDetails, pluginId, editJSONConfig]
     );
 
     const deleteRoutePlugin = useCallback(
@@ -278,15 +293,71 @@ function RoutePluginPageContent() {
                                             disabled={mutation.loading || editJSONConfig}
                                             onClick={editExecutionOrder ? () => {
                                                 setEditExecutionOrder(false);
-                                                setRoutePluginEditableData(routePluginDetails.data);
+                                                setRoutePluginEditableData(null);
                                             } : () => {
                                                 setEditExecutionOrder(true);
-                                                setRoutePluginEditableData(routePluginDetails.data);
+                                                setRoutePluginEditableData({
+                                                    execution_order: routePluginDetails.data.execution_order,
+                                                    version_constraint: routePluginDetails.data.version_constraint,
+                                                    config: routePluginDetails.data.config ?? "{}",
+                                                });
                                             }}
                                             className={"p-2 rounded-full  text-white hover:bg-white/5 transition-colors duration-200 disabled:opacity-70 disabled:cursor-not-allowed"}
                                         >
                                             {editExecutionOrder ? <X size={15}/> : <Pencil size={15}/> }
                                         </motion.button>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <BookKey size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col gap-1 w-full"}>
+                                        <p className={"text-md px-2"}>Version Constraint</p>
+                                        <AnimatePresence mode={"wait"}>
+                                            {editExecutionOrder ? (
+                                                <motion.div
+                                                    key={"edit-version-constraint"}
+                                                    initial={{ opacity: 0, y: -10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -10 }}
+                                                    transition={{ duration: 0.2 }}
+                                                >
+                                                    <Input
+                                                        required
+                                                        type={"text"}
+                                                        value={routePluginEditableData?.version_constraint || "*"}
+                                                        disabled={!editExecutionOrder}
+                                                        onChange={(e) => setRoutePluginEditableData(prev => prev ? ({ ...prev, version_constraint: e.target.value }) : null)}
+                                                        className={`w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500`}
+                                                    />
+                                                </motion.div>
+                                            ) : (
+                                                <motion.p
+                                                    key={"view-version-constraint"}
+                                                    initial={{ opacity: 0, y: -10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    exit={{ opacity: 0, y: -10 }}
+                                                    transition={{ duration: 0.2 }}
+                                                    className={"text-md font-semibold px-2"}
+                                                >
+                                                    {routePluginDetails.data.version_constraint}
+                                                </motion.p>
+                                            )}
+                                        </AnimatePresence>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <BookKey size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Resolved Plugin Version</p>
+                                        <p className={"text-md font-semibold"}>{routePluginDetails.data.resolved_plugin_version || pluginDetails.data?.version || "n/a"}</p>
                                     </div>
                                 </div>
                                 <div className={"flex flex-row w-full gap-5"}>
@@ -343,7 +414,7 @@ function RoutePluginPageContent() {
                                             } : () => {
                                                 setEditJSONConfig(true);
                                                 try {
-                                                    const parsedConfig = JSON.parse(routePluginDetails.data.config);
+                                                    const parsedConfig = JSON.parse(routePluginDetails.data.config || "{}");
                                                     setJsonConfig(parsedConfig);
                                                 } catch (err) {
                                                     console.error("Failed to parse JSON config:", err);
@@ -364,7 +435,7 @@ function RoutePluginPageContent() {
                                     restrictDelete={!editJSONConfig}
                                     restrictTypeSelection={!editJSONConfig}
                                     setData={editJSONConfig ? (data) => setJsonConfig(data) : undefined}
-                                    data={editJSONConfig ? jsonConfig : JSON.parse(routePluginDetails.data.config)}
+                                    data={editJSONConfig ? jsonConfig : JSON.parse(routePluginDetails.data.config || "{}")}
                                 />
                             </div>
                         )}
@@ -386,7 +457,7 @@ function RoutePluginPageContent() {
                                                 <motion.a
                                                     whileHover={{ scale: 1.05 }}
                                                     whileTap={{ scale: 0.95 }}
-                                                    href={`/plugins/plugin?name=${pluginDetails.data.name}`}
+                                                    href={`/plugins/plugin?name=${encodeURIComponent(pluginDetails.data.name)}&version=${encodeURIComponent(pluginDetails.data.version)}`}
                                                     className={"p-2 rounded-full bg-white text-black hover:bg-white/80 transition-colors duration-200"}
                                                 >
                                                     <ArrowUpRight size={15}/>
@@ -413,6 +484,28 @@ function RoutePluginPageContent() {
                                             <div className={"flex flex-col"}>
                                                 <p className={"text-md"}>Filename</p>
                                                 <p className={"text-md font-semibold"}>{pluginDetails.data.filename}</p>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <BookKey size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Version</p>
+                                                <p className={"text-md font-semibold"}>{routePluginDetails.data.resolved_plugin_version || pluginDetails.data.version}</p>
+                                            </div>
+                                        </div>
+                                        <div className={"flex flex-row w-full gap-5"}>
+                                            <div className={"flex items-center justify-center"}>
+                                                <div className={"bg-amber-500 p-2 rounded-full"}>
+                                                    <BookKey size={15}/>
+                                                </div>
+                                            </div>
+                                            <div className={"flex flex-col"}>
+                                                <p className={"text-md"}>Resolved Artifact ID</p>
+                                                <p className={"text-md font-semibold break-all"}>{pluginDetails.data.id}</p>
                                             </div>
                                         </div>
                                         <div className={"flex flex-row w-full gap-5"}>

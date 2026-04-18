@@ -123,8 +123,12 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 // Factory will just build the middleware chain in the given order.
 func (f *factory) Reassemble(ctx context.Context, route *routemodel.Route, plugins []*routepluginmodel.RoutePlugin) error {
 	if len(plugins) == 0 {
-		f.logger.Debug("no plugins provided for reassembly, aborting due to potential risk of accidentally removing all middleware from the route", zap.String("route_id", route.ID.String()))
-		return fmt.Errorf("no plugins provided for reassembly, aborting due to potential risk of accidentally removing all middleware from the route")
+		f.logger.Debug("no plugins provided for reassembly, rebuilding route with bare proxy handler", zap.String("route_id", route.ID.String()))
+		if err := f.builder.RebuildRouteMiddlewares(route.Path); err != nil {
+			f.logger.Error("failed to rebuild route middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to rebuild route middleware chain: %w", err)
+		}
+		return nil
 	}
 	middlewares, err := f.composeMiddlewares(ctx, plugins)
 	if err != nil {

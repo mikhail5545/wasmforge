@@ -33,8 +33,9 @@ import {Input} from "@headlessui/react";
 const initialRoutePluginFormState: Omit<WasmForge.RoutePlugin, "id" | "created_at" | "plugin"> = {
     route_id: "",
     plugin_id: "",
+    version_constraint: "*",
     execution_order: 1,
-    config: "",
+    config: null,
 };
 
 function NewRoutePluginPageContent() {
@@ -117,20 +118,25 @@ function NewRoutePluginPageContent() {
 
             try {
                 const configString = JSON.stringify(jsonConfig);
-                setRoutePluginFormState(prev => ({ ...prev, config: configString }));}
+                const payload = {
+                    route_id: selectedRoute.id,
+                    plugin_id: selectedPlugin.id,
+                    version_constraint: routePluginFormState.version_constraint,
+                    execution_order: routePluginFormState.execution_order,
+                    config: configString,
+                };
+                const result = await mutation.mutate("http://localhost:8080/api/route-plugins", "POST", JSON.stringify(payload));
+                if (result.success){
+                    setSuccess(true);
+                } else {
+                    setGlobalError(mutation.error);
+                }
+            }
             catch (error) {
                 setGlobalError({ code: "UNPROCESSABLE_ENTITY", "message": "Invalid JSON config", "details": error instanceof Error ? error.message : String(error)});
                 console.error("Invalid JSON config:", error);
             }
-
-            const result = await mutation.mutate("http://localhost:8080/api/route-plugins", "POST", JSON.stringify(routePluginFormState));
-            if (result.success){
-                setSuccess(true);
-            } else {
-                setGlobalError(mutation.error);
-            }
-
-        }, [selectedPlugin, selectedRoute]
+        }, [selectedPlugin, selectedRoute, jsonConfig, routePluginFormState.version_constraint, routePluginFormState.execution_order, mutation]
     );
 
     return (
@@ -293,15 +299,15 @@ function NewRoutePluginPageContent() {
                                                     selectedPlugin?.id === plugin.id ? "bg-amber-500" : "border border-amber-500 hover:bg-amber-500 transition-colors duration-200"
                                                 }`}
                                             >
-                                                <div className={"flex flex-col items-start justify-center w-1/2"}>
-                                                    <p className={"text-sm"}>Name</p>
-                                                    <p className={"text-md font-semibold truncate"}>{plugin.name}</p>
-                                                </div>
-                                                <div className={"flex flex-col items-start justify-center w-1/2"}>
-                                                    <p className={"text-sm"}>Filename</p>
-                                                    <p className={"text-md font-semibold truncate"}>{plugin.filename}</p>
-                                                </div>
-                                            </motion.div>
+                                                 <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                     <p className={"text-sm"}>Name</p>
+                                                     <p className={"text-md font-semibold truncate"}>{plugin.name}</p>
+                                                 </div>
+                                                 <div className={"flex flex-col items-start justify-center w-1/2"}>
+                                                    <p className={"text-sm"}>Version</p>
+                                                    <p className={"text-md font-semibold truncate"}>{plugin.version}</p>
+                                                 </div>
+                                             </motion.div>
                                         ))}
                                     </div>
                                 </Scrollbar>
@@ -384,6 +390,17 @@ function NewRoutePluginPageContent() {
                                     <div className={"flex flex-col"}>
                                         <p className={"text-md"}>Filename</p>
                                         <p className={"text-md font-semibold"}>{selectedPlugin.filename}</p>
+                                    </div>
+                                </div>
+                                <div className={"flex flex-row w-full gap-5"}>
+                                    <div className={"flex items-center justify-center"}>
+                                        <div className={"bg-amber-500 p-2 rounded-full"}>
+                                            <BookKey size={15}/>
+                                        </div>
+                                    </div>
+                                    <div className={"flex flex-col"}>
+                                        <p className={"text-md"}>Version</p>
+                                        <p className={"text-md font-semibold"}>{selectedPlugin.version}</p>
                                     </div>
                                 </div>
                             </div>
@@ -495,6 +512,16 @@ function NewRoutePluginPageContent() {
                                     type={"number"}
                                     value={routePluginFormState.execution_order}
                                     onChange={(e) => setRoutePluginFormState(prev => ({ ...prev, execution_order: parseInt(e.target.value)}))}
+                                    className={"w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"}
+                                />
+                            </div>
+                            <div className={"flex flex-col gap-2"}>
+                                <p className={"text-md font-semibold"}>Version Constraint</p>
+                                <Input
+                                    required
+                                    type={"text"}
+                                    value={routePluginFormState.version_constraint}
+                                    onChange={(e) => setRoutePluginFormState(prev => ({ ...prev, version_constraint: e.target.value }))}
                                     className={"w-full px-3 py-2 rounded-lg bg-stone-700 text-white focus:outline-none focus:ring-2 focus:ring-amber-500"}
                                 />
                             </div>

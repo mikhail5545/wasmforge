@@ -80,4 +80,3 @@ WasmForge is actively evolving. See:
 
 - [CONTRIBUTING.md](./CONTRIBUTING.md) for contribution workflow
 - [ROADMAP.md](./ROADMAP.md) for planned improvements
-- [WEBSITE_CONTENT.md](./WEBSITE_CONTENT.md) for website copy draft

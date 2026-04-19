@@ -43,6 +43,9 @@ func (h *Handler) Get(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "missing plugin identifier")
 	}
 	req := &pluginmodel.GetRequest{}
+	if version := c.QueryParam("v"); version != "" {
+		req.Version = &version
+	}
 	if err := validationutil.IsValidUUIDv7(identifier); err == nil {
 		req.ID = &identifier
 	} else if err := validationutil.IsValidPluginName(identifier); err == nil {

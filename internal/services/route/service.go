@@ -103,7 +103,7 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 
 		if err := txRepo.Create(ctx, route); err != nil {
 			if errors.Is(err, gorm.ErrDuplicatedKey) {
-				return inerrors.NewConflictError("route with the same path already exists")
+				return inerrors.NewAlreadyExistsError("route with the same path already exists")
 			}
 			s.logger.Error("failed to create route", zap.Error(err))
 			return fmt.Errorf("failed to create route: %w", err)

@@ -29,6 +29,7 @@ func cleanFilter(filter *filter) {
 
 	filter.IDs = util.CleanUUIDs(filter.IDs)
 	filter.Names = util.CleanStrings(filter.Names)
+	filter.Versions = util.CleanStrings(filter.Versions)
 	filter.Filenames = util.CleanStrings(filter.Filenames)
 }
 
@@ -38,6 +39,9 @@ func applyFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	}
 	if len(filter.Names) > 0 {
 		db = db.Where("name IN ?", filter.Names)
+	}
+	if len(filter.Versions) > 0 {
+		db = db.Where("version IN ?", filter.Versions)
 	}
 	if len(filter.Filenames) > 0 {
 		db = db.Where("filename IN ?", filter.Filenames)
@@ -51,6 +55,8 @@ func getCursorValue(plugin *pluginmodel.Plugin, field pluginmodel.OrderField) an
 		return plugin.Name
 	case pluginmodel.OrderFieldFilename:
 		return plugin.Filename
+	case pluginmodel.OrderFieldVersion:
+		return plugin.Version
 	case pluginmodel.OrderFieldCreatedAt:
 		fallthrough
 	default:

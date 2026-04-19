@@ -20,8 +20,10 @@ namespace WasmForge {
         readonly created_at: string;
         route_id: string;
         plugin_id: string;
+        version_constraint: string;
         execution_order: number;
-        config: string;
+        config: string | null;
+        resolved_plugin_version?: string;
         readonly plugin?: WasmForge.Plugin;
     }
 }

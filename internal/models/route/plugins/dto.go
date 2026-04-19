@@ -40,9 +40,10 @@ type ListRequest struct {
 }
 
 type CreateRequest struct {
-	RouteID        string `json:"route_id"`
-	PluginID       string `json:"plugin_id"`
-	ExecutionOrder int    `json:"execution_order"`
+	RouteID           string `json:"route_id"`
+	PluginID          string `json:"plugin_id"`
+	VersionConstraint string `json:"version_constraint"`
+	ExecutionOrder    int    `json:"execution_order"`
 
 	Config *string `json:"config,omitempty"`
 }
@@ -50,8 +51,10 @@ type CreateRequest struct {
 type UpdateRequest struct {
 	ID string `param:"id" json:"-"`
 
-	ExecutionOrder *int    `json:"execution_order,omitempty"`
-	Config         *string `json:"config,omitempty"`
+	PluginID          *string `json:"plugin_id,omitempty"`
+	VersionConstraint *string `json:"version_constraint,omitempty"`
+	ExecutionOrder    *int    `json:"execution_order,omitempty"`
+	Config            *string `json:"config,omitempty"`
 }
 
 type DeleteRequest struct {

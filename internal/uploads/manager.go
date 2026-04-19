@@ -17,7 +17,9 @@
 package uploads
 
 import (
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -52,6 +54,11 @@ type UploadType uint
 const (
 	PluginUpload UploadType = iota
 	CertUpload
+)
+
+const (
+	maxUploadSizeBytes = 100 * 1024 * 1024
+	maxUploadSizeLabel = "100 MB"
 )
 
 func New(pluginUploadDir string, certUploadDir string, logger *zap.Logger) Manager {
@@ -91,9 +98,9 @@ func (m *manager) FromBase64(encodedData, filename string, uploadType UploadType
 		return "", fmt.Errorf("failed to decode Base64 data: %w", err)
 	}
 
-	if len(decoded) > 100*1024*1024 { // 100 MB limit
+	if len(decoded) > maxUploadSizeBytes {
 		m.logger.Warn("decoded data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(decoded)))
-		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 10 MB")
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of " + maxUploadSizeLabel)
 	}
 
 	fullPath, err := m.buildFullPath(uploadType, filename)
@@ -112,9 +119,9 @@ func (m *manager) FromBase64(encodedData, filename string, uploadType UploadType
 }
 
 func (m *manager) FromBytes(data []byte, filename string, uploadType UploadType) (string, error) {
-	if len(data) > 100*1024*1024 { // 100 MB limit
+	if len(data) > maxUploadSizeBytes {
 		m.logger.Warn("data exceeds size limit", zap.String("filename", filename), zap.Int("size", len(data)))
-		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of 100 MB")
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of " + maxUploadSizeLabel)
 	}
 
 	fullPath, err := m.buildFullPath(uploadType, filename)
@@ -133,6 +140,11 @@ func (m *manager) FromBytes(data []byte, filename string, uploadType UploadType)
 }
 
 func (m *manager) FromMultipartFile(file *multipart.FileHeader, filename string, uploadType UploadType) (string, error) {
+	if file.Size > maxUploadSizeBytes {
+		m.logger.Warn("multipart data exceeds size limit", zap.String("filename", filename), zap.Int64("size", file.Size))
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of " + maxUploadSizeLabel)
+	}
+
 	src, err := file.Open()
 	if err != nil {
 		m.logger.Error("failed to open source file", zap.String("filename", file.Filename), zap.Error(err))
@@ -161,15 +173,21 @@ func (m *manager) FromMultipartFile(file *multipart.FileHeader, filename string,
 	}()
 
 	m.logger.Debug("starting to copy file", zap.String("source", file.Filename), zap.String("destination", dstPath))
-	if _, err := io.Copy(dst, src); err != nil {
+	hasher := sha256.New()
+	written, err := io.Copy(io.MultiWriter(dst, hasher), io.LimitReader(src, maxUploadSizeBytes+1))
+	if err != nil {
 		m.logger.Error("failed to copy file", zap.String("source", file.Filename), zap.String("destination", dstPath), zap.Error(err))
 		return "", fmt.Errorf("failed to copy file: %w", err)
 	}
-	fileHash, err := crypto.HashFromOpen(src)
-	if err != nil {
-		m.logger.Error("failed to compute file hash", zap.String("filename", file.Filename), zap.Error(err))
-		return "", fmt.Errorf("failed to compute file hash: %w", err)
+	if written > maxUploadSizeBytes {
+		m.logger.Warn("multipart data exceeded size limit while streaming", zap.String("filename", filename), zap.Int64("size", written))
+		if removeErr := os.Remove(dstPath); removeErr != nil {
+			m.logger.Warn("failed to remove oversized destination file", zap.String("filename", dstPath), zap.Error(removeErr))
+		}
+		return "", inerrors.NewSizeLimitExceededError("file size exceeds the limit of " + maxUploadSizeLabel)
 	}
+
+	fileHash := hex.EncodeToString(hasher.Sum(nil))
 	m.logger.Debug("file saved successfully", zap.String("filename", dstPath), zap.String("hash", fileHash))
 	return fileHash, nil
 }

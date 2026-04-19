@@ -20,6 +20,7 @@ type OrderField string
 
 const (
 	OrderFieldName      OrderField = "name"
+	OrderFieldVersion   OrderField = "version"
 	OrderFieldFilename  OrderField = "filename"
 	OrderFieldCreatedAt OrderField = "created_at"
 )
@@ -28,12 +29,14 @@ type GetRequest struct {
 	ID       *string `param:"id" json:"-"`
 	Name     *string `param:"id" json:"-"`
 	Filename *string `param:"id" json:"-"`
+	Version  *string `query:"v" json:"-"`
 }
 
 type ListRequest struct {
 	IDs []string `query:"ids" json:"-"`
 
 	Names     []string `query:"n" json:"-"`
+	Versions  []string `query:"v" json:"-"`
 	Filenames []string `query:"fn" json:"-"`
 
 	OrderField     OrderField `query:"of" json:"-"`
@@ -45,6 +48,7 @@ type ListRequest struct {
 
 type CreateRequest struct {
 	Name     string `json:"name"`
+	Version  string `json:"version"`
 	Filename string `json:"filename"`
 	Data     string `json:"data"` // Base64-encoded plugin data
 }

@@ -37,14 +37,17 @@ type Services struct {
 func (a *App) setupServices() {
 	a.services = &Services{
 		PluginSvc: pluginservice.New(pluginservice.Dependencies{
-			PluginRepo:    a.repos.PluginRepo,
-			RouteRepo:     a.repos.RouteRepo,
-			UploadManager: a.uploadsManager,
+			PluginRepo:      a.repos.PluginRepo,
+			RouteRepo:       a.repos.RouteRepo,
+			RoutePluginRepo: a.repos.RoutePluginRepo,
+			RouteFactory:    a.proxyServer.Factory(),
+			UploadManager:   a.uploadsManager,
 		}, a.logger),
 		RouteSvc: routeservice.New(a.repos.RouteRepo, a.repos.RoutePluginRepo, a.proxyServer.Factory(), a.logger),
 		RoutePluginSvc: routepluginservice.New(a.repos.RoutePluginRepo, routepluginservice.ServiceParams{
-			RouteRepo:  a.repos.RouteRepo,
-			PluginRepo: a.repos.PluginRepo,
+			RouteRepo:    a.repos.RouteRepo,
+			PluginRepo:   a.repos.PluginRepo,
+			RouteFactory: a.proxyServer.Factory(),
 		}, a.logger),
 		ProxyConfigSvc: configservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.logger),
 		ProxyCertSvc:   certservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.uploadsManager, a.logger),

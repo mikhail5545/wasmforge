@@ -17,21 +17,21 @@
 package middleware
 
 import (
-	"context"
+	"fmt"
 	"net/http"
+	"sync"
 
 	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
-	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 	"go.uber.org/zap"
 )
 
 type (
 	WasmMiddleware struct {
-		logger         *zap.Logger
-		rt             wazero.Runtime
-		compiledModule wazero.CompiledModule
-		pluginConfig   *string
+		logger       *zap.Logger
+		module       api.Module
+		pluginConfig *string
+		mu           sync.Mutex
 	}
 
 	WasmMiddlewareConfig struct {
@@ -48,23 +48,26 @@ func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next 
 	ctx = reqctx.WithRequestState(ctx, state)
 	ctx = reqctx.WithLogger(ctx, reqLogger)
 	ctx = reqctx.WithRequest(ctx, r)
+	ctx = reqctx.WithJSONConfig(ctx, m.pluginConfig)
 
-	instance, err := m.rt.InstantiateModule(ctx, m.compiledModule, wazero.NewModuleConfig())
-	if err != nil {
-		reqLogger.Error("failed to instantiate WASM module", zap.Error(err))
+	if m.module == nil {
+		reqLogger.Error("WASM module is not initialized")
 		http.Error(w, "Internal Gateway Error", http.StatusInternalServerError)
 		return
 	}
-	defer func(instance api.Module, ctx context.Context) {
-		err := instance.Close(ctx)
-		if err != nil {
-			reqLogger.Error("failed to close WASM module instance", zap.Error(err))
-		}
-	}(instance, ctx)
 
-	_, err = instance.ExportedFunction("on_request").Call(ctx)
+	fn := m.module.ExportedFunction("on_request")
+	if fn == nil {
+		reqLogger.Error("WASM module does not export on_request")
+		http.Error(w, "Plugin Error", http.StatusInternalServerError)
+		return
+	}
+
+	m.mu.Lock()
+	_, err := fn.Call(ctx)
+	m.mu.Unlock()
 	if err != nil {
-		reqLogger.Error("Plugin crashed during execution", zap.Error(err))
+		reqLogger.Error("plugin crashed during execution", zap.Error(fmt.Errorf("on_request call failed: %w", err)))
 		http.Error(w, "Plugin Error", http.StatusInternalServerError)
 		return
 	}

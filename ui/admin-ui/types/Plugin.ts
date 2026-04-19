@@ -20,6 +20,7 @@ namespace WasmForge{
         created_at: string;
         filename: string;
         name: string;
+        version: string;
         checksum: string;
     }
 }

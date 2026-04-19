@@ -69,6 +69,7 @@ func (s *Service) Get(ctx context.Context, req *routepluginmodel.GetRequest) (*r
 		s.logger.Error("failed to retrieve route plugin", zap.Error(err))
 		return nil, fmt.Errorf("failed to retrieve route plugin: %w", err)
 	}
+	hydrateResolvedPluginVersion(plugin)
 	return plugin, nil
 }
 
@@ -84,6 +85,9 @@ func (s *Service) List(ctx context.Context, req *routepluginmodel.ListRequest) (
 	if err != nil {
 		s.logger.Error("failed to retrieve route plugins", zap.Error(err))
 		return nil, "", fmt.Errorf("failed to retrieve route plugins: %w", err)
+	}
+	for _, plugin := range plugins {
+		hydrateResolvedPluginVersion(plugin)
 	}
 	return plugins, token, nil
 }
@@ -108,17 +112,24 @@ func (s *Service) Create(ctx context.Context, req *routepluginmodel.CreateReques
 		if err != nil {
 			return err
 		}
+		resolvedPlugin, err := s.resolvePluginForConstraintInTx(ctx, txPluginRepo, plugin.ID, req.VersionConstraint)
+		if err != nil {
+			return err
+		}
 
 		routePlugin = &routepluginmodel.RoutePlugin{
-			RouteID:        route.ID,
-			PluginID:       plugin.ID,
-			ExecutionOrder: req.ExecutionOrder,
-			Config:         req.Config,
+			RouteID:           route.ID,
+			PluginID:          resolvedPlugin.ID,
+			VersionConstraint: req.VersionConstraint,
+			ExecutionOrder:    req.ExecutionOrder,
+			Config:            req.Config,
 		}
 
 		if err := s.create(ctx, txRepo, routePlugin); err != nil {
 			return err
 		}
+		routePlugin.Plugin = *resolvedPlugin
+		hydrateResolvedPluginVersion(routePlugin)
 		s.logger.Debug("route plugin created successfully", zap.String("route_plugin_id", routePlugin.ID.String()))
 
 		if !route.Enabled {
@@ -146,6 +157,7 @@ func (s *Service) Update(ctx context.Context, req *routepluginmodel.UpdateReques
 	err := s.repo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.repo.WithTx(tx)
 		txRouteRepo := s.routeRepo.WithTx(tx)
+		txPluginRepo := s.pluginRepo.WithTx(tx)
 
 		plugin, err := txRepo.Get(ctx, routepluginrepo.WithIDs(uuid.MustParse(req.ID)))
 		if err != nil {
@@ -156,10 +168,36 @@ func (s *Service) Update(ctx context.Context, req *routepluginmodel.UpdateReques
 			return fmt.Errorf("failed to retrieve route plugin for update: %w", err)
 		}
 
-		updates = buildUpdates(plugin, req)
-		if err := s.update(ctx, txRepo, plugin.ID, updates); err != nil {
+		targetPluginID := plugin.PluginID
+		if req.PluginID != nil {
+			targetPluginID = uuid.MustParse(*req.PluginID)
+		}
+		versionConstraint := plugin.VersionConstraint
+		if req.VersionConstraint != nil {
+			versionConstraint = *req.VersionConstraint
+		}
+		resolvedPlugin, err := s.resolvePluginForConstraintInTx(ctx, txPluginRepo, targetPluginID, versionConstraint)
+		if err != nil {
 			return err
 		}
+
+		updates = buildUpdates(plugin, req)
+		if resolvedPlugin.ID != plugin.PluginID {
+			updates["plugin_id"] = resolvedPlugin.ID
+		}
+		if versionConstraint != plugin.VersionConstraint {
+			updates["version_constraint"] = versionConstraint
+		}
+		updatesToPersist := make(map[string]any, len(updates))
+		for key, value := range updates {
+			updatesToPersist[key] = value
+		}
+		if err := s.update(ctx, txRepo, plugin.ID, updatesToPersist); err != nil {
+			return err
+		}
+		updates["plugin_id"] = resolvedPlugin.ID
+		updates["version_constraint"] = versionConstraint
+		updates["resolved_plugin_version"] = resolvedPlugin.Version
 
 		route, err := s.getRouteInTx(ctx, txRouteRepo, plugin.RouteID)
 		if err != nil {

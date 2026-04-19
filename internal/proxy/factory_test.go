@@ -315,11 +315,21 @@ func TestFactory_Reassemble(t *testing.T) {
 			route:   route,
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
-				// Expect no interactions with uploads manager, middleware factory or builder, and just an error returned immediately
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path).Return(nil)
 			},
-			wantErr: true,
+			wantErr: false,
+		},
+		{
+			name:    "no plugins provided and middleware rebuild fails",
+			route:   route,
+			plugins: []*routepluginmodel.RoutePlugin{},
+			mockSetup: func() {
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path).Return(assert.AnError)
+			},
+			wantErr:   true,
+			targetErr: assert.AnError,
 			checkErr: func(err error) bool {
-				return assert.ErrorContains(t, err, "no plugins provided for reassembly, aborting due to potential risk of accidentally removing all middleware from the route")
+				return assert.ErrorContains(t, err, "failed to rebuild route middleware chain")
 			},
 		},
 		{

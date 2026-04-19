@@ -126,15 +126,19 @@ export default function PluginsPage() {
                                                             className={"col-span-1 flex flex-row justify-between items-center rounded-4xl bg-stone-800 p-4"}
                                                         >
                                                             <div className={"px-3 flex flex-row w-4/5 gap-10"}>
-                                                                <div className={"flex flex-col w-1/3"}>
+                                                                <div className={"flex flex-col w-1/4"}>
                                                                     <p className={"text-sm"}>Name</p>
                                                                     <p className={"text-md font-bold truncate"}>{plugin.name}</p>
                                                                 </div>
-                                                                <div className={"flex flex-col w-1/3"}>
+                                                                <div className={"flex flex-col w-1/4"}>
+                                                                    <p className={"text-sm"}>Version</p>
+                                                                    <p className={"text-md font-bold truncate"}>{plugin.version}</p>
+                                                                </div>
+                                                                <div className={"flex flex-col w-1/4"}>
                                                                     <p className={"text-sm"}>Filename</p>
                                                                     <p className={"text-md font-bold truncate"}>{plugin.filename}</p>
                                                                 </div>
-                                                                <div className={"flex flex-col w-1/3"}>
+                                                                <div className={"flex flex-col w-1/4"}>
                                                                     <p className={"text-sm"}>Created at</p>
                                                                     <p className={"text-md font-bold truncate"}>{new Date(plugin.created_at).toLocaleString()}</p>
                                                                 </div>
@@ -143,7 +147,7 @@ export default function PluginsPage() {
                                                                 <motion.a
                                                                     whileHover={{ scale: 1.05 }}
                                                                     whileTap={{ scale: 0.95 }}
-                                                                    href={`/plugins/plugin?name=${plugin.name}`}
+                                                                    href={`/plugins/plugin?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
                                                                     className={"h-full px-4 items-center justify-center flex bg-amber-500 hover:bg-amber-500/80 transition-colors duration-200 rounded-2xl"}
                                                                 >
                                                                     <ChevronRight size={15}/>
@@ -172,10 +176,13 @@ export default function PluginsPage() {
                                                             className={"col-span-1 flex flex-col gap-5 rounded-4xl bg-stone-800 p-4"}
                                                         >
                                                             <div className={"flex flex-row justify-between items-center"}>
-                                                                <p className={"text-lg font-semibold"}>{plugin.name}</p>
+                                                                <div className={"flex flex-col"}>
+                                                                    <p className={"text-lg font-semibold"}>{plugin.name}</p>
+                                                                    <p className={"text-sm text-gray-300"}>{plugin.version}</p>
+                                                                </div>
                                                                 <div className={"justify-center items-center flex"}>
                                                                     <motion.a
-                                                                        href={`/plugins/plugin?name=${plugin.name}`}
+                                                                        href={`/plugins/plugin?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
                                                                         whileHover={{ scale: 1.05 }}
                                                                         whileTap={{ scale: 0.95 }}
                                                                         className={"p-2 rounded-full bg-white text-black"}
@@ -183,6 +190,10 @@ export default function PluginsPage() {
                                                                         <ArrowUpRight size={15}/>
                                                                     </motion.a>
                                                                 </div>
+                                                            </div>
+                                                            <div className={"flex flex-col p-2 rounded-lg bg-stone-900"}>
+                                                                <p className={"text-md"}>Version</p>
+                                                                <p className={"text-md font-semibold"}>{plugin.version}</p>
                                                             </div>
                                                             <div className={"flex flex-col p-2 rounded-lg bg-stone-900"}>
                                                                 <p className={"text-md"}>Filename</p>

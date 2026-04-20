@@ -15,6 +15,7 @@ Build plugins in your language of choice, compile to WASM, and manage everything
 - **Extensible middleware** with sandboxed WASM modules
 - **Route-level control** with plugin ordering and config
 - **Dynamic management** via REST API + embedded Next.js dashboard
+- **Async proxy statistics** (latency, status codes, RPS) for overall and per-route visibility
 - **Persistent state** with SQLite + GORM
 
 ## Architecture at a glance

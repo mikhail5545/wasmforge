@@ -27,6 +27,7 @@ export default function PluginsPage() {
     const links = [
         { label: "Routes", href: "/routes", active: false },
         { label: "Plugins", href: "/plugins", active: true },
+        { label: "Stats", href: "/stats", active: false },
         { label: "Settings", href: "/settings", active: false },
     ];
 

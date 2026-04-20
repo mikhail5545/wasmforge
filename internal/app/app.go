@@ -26,6 +26,7 @@ import (
 	"github.com/mikhail5545/wasmforge/internal/admin"
 	"github.com/mikhail5545/wasmforge/internal/database"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
+	statsservice "github.com/mikhail5545/wasmforge/internal/services/proxy/stats"
 	"github.com/mikhail5545/wasmforge/internal/uploads"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -39,6 +40,8 @@ type App struct {
 	repos          *Repositories
 	services       *Services
 	uploadsManager uploads.Manager
+	statsCollector *statsservice.Collector
+	statsCancel    context.CancelFunc
 	cleanup        func()
 	cfg            *Config
 }
@@ -73,14 +76,24 @@ func (a *App) Init(ctx context.Context) error {
 		return err
 	}
 
-	proxyServer, err := server.New(ctx, a.uploadsManager, a.logger)
+	a.setupRepositories()
+
+	a.statsCollector = statsservice.NewCollector(a.repos.ProxyStatsRepo, statsservice.DefaultCollectorConfig(), a.logger)
+	collectorCtx, collectorCancel := context.WithCancel(context.Background())
+	a.statsCancel = collectorCancel
+	a.statsCollector.Start(collectorCtx)
+
+	proxyServer, err := server.New(ctx, a.uploadsManager, a.statsCollector, a.logger)
 	if err != nil {
+		if a.statsCancel != nil {
+			a.statsCancel()
+		}
+		_ = a.statsCollector.Shutdown(context.Background())
 		a.logger.Error("failed to create proxy server", zap.Error(err))
 		return err
 	}
 	a.proxyServer = proxyServer
 
-	a.setupRepositories()
 	a.setupServices()
 
 	if err := a.services.ProxyConfigSvc.Init(ctx); err != nil {
@@ -96,6 +109,7 @@ func (a *App) Init(ctx context.Context) error {
 		CertSvc:        a.services.ProxyCertSvc,
 		ServerSvc:      a.services.ProxyServerSvc,
 		ConfigSvc:      a.services.ProxyConfigSvc,
+		ProxyStatsSvc:  a.services.ProxyStatsSvc,
 	}, a.logger)
 	return nil
 }
@@ -124,14 +138,26 @@ func (a *App) Start(ctx context.Context) error {
 
 func (a *App) Cleanup(ctx context.Context) error {
 	a.logger.Info("cleaning up resources")
+	var cleanupErr error
 	if a.proxyServer != nil {
 		if err := a.proxyServer.Shutdown(ctx); err != nil {
 			a.logger.Error("failed to shutdown proxy server", zap.Error(err))
-			return err
+			cleanupErr = err
+		}
+	}
+	if a.statsCancel != nil {
+		a.statsCancel()
+	}
+	if a.statsCollector != nil {
+		if err := a.statsCollector.Shutdown(ctx); err != nil {
+			a.logger.Error("failed to shutdown proxy stats collector", zap.Error(err))
+			if cleanupErr == nil {
+				cleanupErr = err
+			}
 		}
 	}
 	if a.cleanup != nil {
 		a.cleanup()
 	}
-	return nil
+	return cleanupErr
 }

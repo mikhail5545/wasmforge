@@ -242,6 +242,7 @@ export default function NewPluginPage() {
     const links = [
         { label: "Routes", href: "/routes", active: false },
         { label: "Plugins", href: "/plugins", active: false },
+        { label: "Stats", href: "/stats", active: false },
         { label: "Settings", href: "/settings", active: false },
     ];
 

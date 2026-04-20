@@ -22,6 +22,7 @@ import (
 	certhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/cert"
 	cfghandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/config"
 	serverhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/server"
+	statshandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/stats"
 	routehandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route"
 	routepluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route/plugin"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
@@ -29,6 +30,7 @@ import (
 	certservice "github.com/mikhail5545/wasmforge/internal/services/proxy/cert"
 	cfgservice "github.com/mikhail5545/wasmforge/internal/services/proxy/config"
 	serverservice "github.com/mikhail5545/wasmforge/internal/services/proxy/server"
+	statsservice "github.com/mikhail5545/wasmforge/internal/services/proxy/stats"
 	routeservice "github.com/mikhail5545/wasmforge/internal/services/route"
 	routepluginservice "github.com/mikhail5545/wasmforge/internal/services/route/plugin"
 )
@@ -42,6 +44,7 @@ type (
 		CertSvc        *certservice.Service
 		ConfigSvc      *cfgservice.Service
 		ServerSvc      *serverservice.Service
+		ProxyStatsSvc  *statsservice.Service
 	}
 
 	router struct {
@@ -85,6 +88,12 @@ func (r *router) registerProxy(e *echo.Group) {
 	configGroup := proxy.Group("/config")
 	configGroup.GET("", configHandler.Get)
 	configGroup.PATCH("", configHandler.Update)
+
+	statsHandler := statshandler.New(r.deps.ProxyStatsSvc)
+	statsGroup := proxy.Group("/stats")
+	statsGroup.GET("/overview", statsHandler.Overview)
+	statsGroup.GET("/routes", statsHandler.Routes)
+	statsGroup.GET("/timeseries", statsHandler.Timeseries)
 }
 
 func (r *router) registerRouteRoutes(e *echo.Group) {

@@ -29,4 +29,33 @@ namespace WasmForge{
         readonly tls_cert_hash?: string;
         readonly tls_key_hash?: string;
     }
+
+    export interface ProxyStatsOverview {
+        from: string;
+        to: string;
+        scope: "overall" | "route";
+        route_path?: string;
+        total_requests: number;
+        avg_rps: number;
+        avg_latency_ms: number;
+        status_code_counts: Record<string, number>;
+        status_code_percentages: Record<string, number>;
+        dropped_events: number;
+    }
+
+    export interface ProxyRouteStats {
+        route_path: string;
+        total_requests: number;
+        avg_rps: number;
+        avg_latency_ms: number;
+        status_code_counts: Record<string, number>;
+        status_code_percentages: Record<string, number>;
+    }
+
+    export interface ProxyTimeseriesPoint {
+        bucket_start: string;
+        total_requests: number;
+        avg_latency_ms: number;
+        status_code_counts: Record<string, number>;
+    }
 }

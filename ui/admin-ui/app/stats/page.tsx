@@ -16,10 +16,11 @@
 
 'use client';
 
-import React, {useEffect, useMemo} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import NavBar from "@/components/navigation/NavBar";
 import {useData} from "@/hooks/useData";
+import {mockProxyStats} from "@/lib/mockProxyStats";
 import {motion} from "motion/react";
 
 function toSortedPercentages(input: Record<string, number> | undefined): Array<[string, number]> {
@@ -30,6 +31,9 @@ function toSortedPercentages(input: Record<string, number> | undefined): Array<[
 }
 
 export default function StatsPage() {
+    const mockMode = mockProxyStats.isProxyStatsMockEnabled();
+    const [mockNow, setMockNow] = useState(() => new Date());
+
     const links = [
         { label: "Routes", href: "/routes", active: false },
         { label: "Plugins", href: "/plugins", active: false },
@@ -37,69 +41,103 @@ export default function StatsPage() {
         { label: "Settings", href: "/settings", active: false },
     ];
 
+    const mockData = useMemo(() => {
+        return mockMode ? mockProxyStats.buildMockProxyStats(mockNow) : null;
+    }, [mockMode, mockNow]);
+
     const overview = useData<WasmForge.ProxyStatsOverview>(
-        "http://localhost:8080/api/proxy/stats/overview",
+        mockMode ? null : "http://localhost:8080/api/proxy/stats/overview",
         "overview"
     );
     const routeStats = useData<WasmForge.ProxyRouteStats[]>(
-        "http://localhost:8080/api/proxy/stats/routes?limit=10",
+        mockMode ? null : "http://localhost:8080/api/proxy/stats/routes?limit=10",
         "routes"
     );
     const timeseries = useData<WasmForge.ProxyTimeseriesPoint[]>(
-        "http://localhost:8080/api/proxy/stats/timeseries?bucket_seconds=60",
+        mockMode ? null : "http://localhost:8080/api/proxy/stats/timeseries?bucket_seconds=60",
         "timeseries"
     );
+
+    useEffect(() => {
+        if (!mockMode) {
+            return;
+        }
+
+        const interval = window.setInterval(() => {
+            setMockNow(new Date());
+        }, 5000);
+
+        return () => window.clearInterval(interval);
+    }, [mockMode]);
+
     const refetchOverview = overview.refetch;
     const refetchRouteStats = routeStats.refetch;
     const refetchTimeseries = timeseries.refetch;
 
     useEffect(() => {
+        if (mockMode) {
+            return;
+        }
+
         const interval = window.setInterval(() => {
             void refetchOverview();
             void refetchRouteStats();
             void refetchTimeseries();
         }, 5000);
         return () => window.clearInterval(interval);
-    }, [refetchOverview, refetchRouteStats, refetchTimeseries]);
+    }, [mockMode, refetchOverview, refetchRouteStats, refetchTimeseries]);
+
+    const overviewData = mockMode ? mockData?.overview : overview.data;
+    const routeStatsData = mockMode ? mockData?.routes : routeStats.data;
+    const timeseriesData = mockMode ? mockData?.timeseries : timeseries.data;
+    const overviewLoading = mockMode ? false : overview.loading;
+    const routeStatsLoading = mockMode ? false : routeStats.loading;
+    const timeseriesLoading = mockMode ? false : timeseries.loading;
 
     const statusPercentages = useMemo(() => {
-        return toSortedPercentages(overview.data?.status_code_percentages);
-    }, [overview.data]);
+        return toSortedPercentages(overviewData?.status_code_percentages);
+    }, [overviewData]);
 
     const maxSeriesCount = useMemo(() => {
-        if (!timeseries.data || timeseries.data.length === 0) {
+        if (!timeseriesData || timeseriesData.length === 0) {
             return 1;
         }
-        return Math.max(...timeseries.data.map((point) => point.total_requests), 1);
-    }, [timeseries.data]);
+        return Math.max(...timeseriesData.map((point) => point.total_requests), 1);
+    }, [timeseriesData]);
 
     return (
         <PageLayout>
             <NavBar links={links}/>
             <div className={"flex flex-col gap-5 w-full mt-20"}>
+                {mockMode ? (
+                    <div className={"rounded-3xl border border-amber-600/50 bg-amber-500/10 px-4 py-3 text-amber-100"}>
+                        Mock stats mode is enabled. Data is generated locally from the proxy stats models.
+                    </div>
+                ) : null}
+
                 <div className={"grid grid-cols-1 xl:grid-cols-4 gap-5"}>
                     <div className={"col-span-1 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-lg font-semibold"}>Total Requests</p>
-                        <p className={"text-4xl mt-3"}>{overview.data?.total_requests ?? 0}</p>
+                        <p className={"text-4xl mt-3"}>{overviewData?.total_requests ?? 0}</p>
                     </div>
                     <div className={"col-span-1 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-lg font-semibold"}>Average RPS</p>
-                        <p className={"text-4xl mt-3"}>{(overview.data?.avg_rps ?? 0).toFixed(2)}</p>
+                        <p className={"text-4xl mt-3"}>{(overviewData?.avg_rps ?? 0).toFixed(2)}</p>
                     </div>
                     <div className={"col-span-1 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-lg font-semibold"}>Average Latency</p>
-                        <p className={"text-4xl mt-3"}>{(overview.data?.avg_latency_ms ?? 0).toFixed(2)} ms</p>
+                        <p className={"text-4xl mt-3"}>{(overviewData?.avg_latency_ms ?? 0).toFixed(2)} ms</p>
                     </div>
                     <div className={"col-span-1 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-lg font-semibold"}>Dropped Events</p>
-                        <p className={"text-4xl mt-3"}>{overview.data?.dropped_events ?? 0}</p>
+                        <p className={"text-4xl mt-3"}>{overviewData?.dropped_events ?? 0}</p>
                     </div>
                 </div>
 
                 <div className={"grid grid-cols-1 xl:grid-cols-3 gap-5"}>
                     <div className={"col-span-1 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-xl font-semibold mb-4"}>Status Code Percentages</p>
-                        {overview.loading ? (
+                        {overviewLoading ? (
                             <div className={"flex items-center justify-center py-10"}>
                                 <div className={"w-8 h-8 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
                             </div>
@@ -122,15 +160,15 @@ export default function StatsPage() {
 
                     <div className={"col-span-1 xl:col-span-2 bg-stone-800 rounded-4xl p-5"}>
                         <p className={"text-xl font-semibold mb-4"}>Top Routes</p>
-                        {routeStats.loading ? (
+                        {routeStatsLoading ? (
                             <div className={"flex items-center justify-center py-10"}>
                                 <div className={"w-8 h-8 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
                             </div>
-                        ) : !routeStats.data || routeStats.data.length === 0 ? (
+                        ) : !routeStatsData || routeStatsData.length === 0 ? (
                             <p className={"opacity-75"}>No route metrics yet</p>
                         ) : (
                             <div className={"grid grid-cols-1 gap-3"}>
-                                {routeStats.data.map((route, idx) => (
+                                {routeStatsData.map((route, idx) => (
                                     <motion.div
                                         key={`${route.route_path}-${idx}`}
                                         initial={{ opacity: 0, y: 8 }}
@@ -165,15 +203,15 @@ export default function StatsPage() {
 
                 <div className={"bg-stone-800 rounded-4xl p-5"}>
                     <p className={"text-xl font-semibold mb-4"}>Requests Timeline (1-minute buckets)</p>
-                    {timeseries.loading ? (
+                    {timeseriesLoading ? (
                         <div className={"flex items-center justify-center py-10"}>
                             <div className={"w-8 h-8 border-4 border-t-white border-stone-600 rounded-full animate-spin"}/>
                         </div>
-                    ) : !timeseries.data || timeseries.data.length === 0 ? (
+                    ) : !timeseriesData || timeseriesData.length === 0 ? (
                         <p className={"opacity-75"}>No timeseries data yet</p>
                     ) : (
                         <div className={"grid grid-cols-1 gap-3"}>
-                            {timeseries.data.slice(-20).map((point) => (
+                            {timeseriesData.slice(-20).map((point) => (
                                 <div key={point.bucket_start} className={"grid grid-cols-1 lg:grid-cols-4 gap-3 items-center"}>
                                     <p className={"text-sm opacity-80"}>{new Date(point.bucket_start).toLocaleTimeString()}</p>
                                     <div className={"lg:col-span-2 h-2 bg-stone-700 rounded-full overflow-hidden"}>

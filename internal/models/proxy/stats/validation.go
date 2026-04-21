@@ -18,6 +18,7 @@ package stats
 
 import (
 	validation "github.com/go-ozzo/ozzo-validation/v4"
+	validationutil "github.com/mikhail5545/wasmforge/internal/util/validation"
 )
 
 func (req OverviewRequest) Validate() error {
@@ -27,6 +28,12 @@ func (req OverviewRequest) Validate() error {
 func (req RoutesRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.Limit, validation.NilOrNotEmpty, validation.Min(1), validation.Max(200)),
+	)
+}
+
+func (req RouteSummaryRequest) Validate() error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.Path, validationutil.PathRule(true)...),
 	)
 }
 

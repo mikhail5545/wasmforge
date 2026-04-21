@@ -151,6 +151,35 @@ func (s *Service) Routes(ctx context.Context, req *statsmodel.RoutesRequest) (*s
 	}, nil
 }
 
+func (s *Service) RouteSummary(ctx context.Context, req *statsmodel.RouteSummaryRequest) (*statsmodel.RouteSummary, error) {
+	if err := req.Validate(); err != nil {
+		return nil, inerrors.NewValidationError(err)
+	}
+
+	from, to, err := resolveWindow(req.From, req.To)
+	if err != nil {
+		return nil, inerrors.NewValidationError(err)
+	}
+
+	rows, err := s.repo.ListWindow(ctx, statsmodel.ScopeRoute, &req.Path, from, to)
+	if err != nil {
+		s.logger.Error("failed to list stats rows for route breakdown", zap.Error(err))
+		return nil, fmt.Errorf("failed to retrieve route stats breakdown: %w", err)
+	}
+
+	totalRequests, avgLatencyMs, statusCounts := summarizeRows(rows)
+	summary := &statsmodel.RouteSummary{
+		RoutePath:             req.Path,
+		TotalRequests:         totalRequests,
+		AverageRPS:            averageRPS(totalRequests, from, to),
+		AverageLatencyMs:      avgLatencyMs,
+		StatusCodeCounts:      statusCounts,
+		StatusCodePercentages: buildStatusPercentages(statusCounts, totalRequests),
+	}
+
+	return summary, nil
+}
+
 func (s *Service) Timeseries(ctx context.Context, req *statsmodel.TimeseriesRequest) (*statsmodel.TimeseriesResponse, error) {
 	if err := req.Validate(); err != nil {
 		return nil, inerrors.NewValidationError(err)

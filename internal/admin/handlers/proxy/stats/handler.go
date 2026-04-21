@@ -20,7 +20,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v5"
-	statsmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/stats"
+	"github.com/mikhail5545/wasmforge/internal/admin/handlers/generic"
 	statsservice "github.com/mikhail5545/wasmforge/internal/services/proxy/stats"
 )
 
@@ -35,51 +35,17 @@ func New(service *statsservice.Service) *Handler {
 }
 
 func (h *Handler) Overview(c *echo.Context) error {
-	var req statsmodel.OverviewRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request parameters")
-	}
-
-	res, err := h.service.Overview(c.Request().Context(), &req)
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, map[string]any{"overview": res})
+	return generic.Handle(c, h.service.Overview, http.StatusOK, "overview")
 }
 
 func (h *Handler) Routes(c *echo.Context) error {
-	var req statsmodel.RoutesRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request parameters")
-	}
+	return generic.Handle(c, h.service.Routes, http.StatusOK, "routes")
+}
 
-	res, err := h.service.Routes(c.Request().Context(), &req)
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, map[string]any{
-		"routes": res.Routes,
-		"from":   res.From,
-		"to":     res.To,
-	})
+func (h *Handler) RouteSummary(c *echo.Context) error {
+	return generic.Handle(c, h.service.RouteSummary, http.StatusOK, "summary")
 }
 
 func (h *Handler) Timeseries(c *echo.Context) error {
-	var req statsmodel.TimeseriesRequest
-	if err := c.Bind(&req); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "invalid request parameters")
-	}
-
-	res, err := h.service.Timeseries(c.Request().Context(), &req)
-	if err != nil {
-		return err
-	}
-	return c.JSON(http.StatusOK, map[string]any{
-		"timeseries":     res.Points,
-		"from":           res.From,
-		"to":             res.To,
-		"scope":          res.Scope,
-		"route_path":     res.RoutePath,
-		"bucket_seconds": res.BucketSeconds,
-	})
+	return generic.Handle(c, h.service.Timeseries, http.StatusOK, "timeseries")
 }

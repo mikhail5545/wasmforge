@@ -30,6 +30,12 @@ type RoutesRequest struct {
 	Limit *int   `query:"limit" json:"-"`
 }
 
+type RouteSummaryRequest struct {
+	Path string `query:"path" json:"-"`
+	From string `query:"from" json:"-"`
+	To   string `query:"to" json:"-"`
+}
+
 type TimeseriesRequest struct {
 	From          string  `query:"from" json:"-"`
 	To            string  `query:"to" json:"-"`
@@ -61,6 +67,13 @@ type RouteSummary struct {
 	AverageLatencyMs      float64            `json:"avg_latency_ms"`
 	StatusCodeCounts      map[string]int64   `json:"status_code_counts"`
 	StatusCodePercentages map[string]float64 `json:"status_code_percentages"`
+}
+
+type RouteSummaryResponse struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
+
+	Summary *RouteSummary `json:"summary"`
 }
 
 type RoutesResponse struct {

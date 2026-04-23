@@ -10,6 +10,10 @@
 *.db
 .env
 
+# Binaries
+/bin
+/bin/*.exe
+
 # Wazero runtime cache
 /cache
 

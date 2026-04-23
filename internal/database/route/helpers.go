@@ -25,7 +25,6 @@ import (
 )
 
 func (r *repository) get(ctx context.Context, filter *filter) (*routemodel.Route, error) {
-	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return nil, fmt.Errorf("not enough identifying filters provided")
 	}
@@ -37,7 +36,6 @@ func (r *repository) get(ctx context.Context, filter *filter) (*routemodel.Route
 }
 
 func (r *repository) list(ctx context.Context, filter *filter) ([]*routemodel.Route, string, error) {
-	cleanFilter(filter)
 	db := applyIdentifyingFilters(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
 
@@ -68,7 +66,6 @@ func (r *repository) list(ctx context.Context, filter *filter) ([]*routemodel.Ro
 }
 
 func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*routemodel.Route, error) {
-	cleanFilter(filter)
 	db := applyIdentifyingFilters(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
 
@@ -80,7 +77,6 @@ func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*ro
 }
 
 func (r *repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
-	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return 0, fmt.Errorf("not enough identifying filters provided")
 	}
@@ -91,7 +87,6 @@ func (r *repository) updates(ctx context.Context, filter *filter, updates map[st
 }
 
 func (r *repository) delete(ctx context.Context, filter *filter) (int64, error) {
-	cleanFilter(filter)
 	if !hasIdentifyingFilters(filter) {
 		return 0, fmt.Errorf("not enough identifying filters provided")
 	}

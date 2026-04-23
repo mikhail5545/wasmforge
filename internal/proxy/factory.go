@@ -62,14 +62,16 @@ type (
 		builder           Builder
 		middlewareFactory wasmmiddleware.Factory
 		manager           uploads.Manager
+		observer          RequestObserver
 	}
 )
 
-func NewFactory(builder Builder, mwFactory wasmmiddleware.Factory, uploadsManager uploads.Manager, logger *zap.Logger) Factory {
+func NewFactory(builder Builder, mwFactory wasmmiddleware.Factory, uploadsManager uploads.Manager, observer RequestObserver, logger *zap.Logger) Factory {
 	return &factory{
 		builder:           builder,
 		manager:           uploadsManager,
 		middlewareFactory: mwFactory,
+		observer:          observer,
 		logger:            logger.With(zap.String("component", "proxy-factory")),
 	}
 }
@@ -81,23 +83,18 @@ func NewFactory(builder Builder, mwFactory wasmmiddleware.Factory, uploadsManage
 // Input plugins should be ordered by execution order in descending order, which is the responsibility of the caller to ensure,
 // Factory will just build the middleware chain in the given order.
 func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins []*routepluginmodel.RoutePlugin) error {
+	var middlewares []func(http.Handler) http.Handler
 	if len(plugins) == 0 {
 		f.logger.Debug("no plugins associated with route, building route without middleware", zap.String("route_id", route.ID.String()))
-		return f.builder.BuildRoute(route.TargetURL, route.Path, TransportConfig{
-			Conn: ConsConfig{MaxIdleCons: route.MaxIdleCons, MaxIdleConsPerHost: route.MaxIdleConsPerHost, MaxConsPerHost: route.MaxConsPerHost},
-			Timeout: TimeoutConfig{
-				IdleConnTimeout:       route.IdleConnTimeout,
-				TLSHandshakeTimeout:   route.TLSHandshakeTimeout,
-				ExpectContinueTimeout: route.ExpectContinueTimeout,
-				ResponseHeaderTimeout: route.ResponseHeaderTimeout,
-			},
-		})
+	} else {
+		// 1. Build the middleware chain based on the plugins
+		composed, err := f.composeMiddlewares(ctx, plugins)
+		if err != nil {
+			return err
+		}
+		middlewares = composed
 	}
-	// 1. Build the middleware chain based on the plugins
-	middlewares, err := f.composeMiddlewares(ctx, plugins)
-	if err != nil {
-		return err
-	}
+	middlewares = f.withRouteObserver(route.Path, middlewares)
 	// 2. Build the final handler with the middleware chain
 	if err := f.builder.BuildRoute(route.TargetURL, route.Path, TransportConfig{
 		Conn: ConsConfig{MaxIdleCons: route.MaxIdleCons, MaxIdleConsPerHost: route.MaxIdleConsPerHost, MaxConsPerHost: route.MaxConsPerHost},
@@ -122,18 +119,17 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 // Input plugins should be ordered by execution order in descending order, which is the responsibility of the caller to ensure,
 // Factory will just build the middleware chain in the given order.
 func (f *factory) Reassemble(ctx context.Context, route *routemodel.Route, plugins []*routepluginmodel.RoutePlugin) error {
+	var middlewares []func(http.Handler) http.Handler
 	if len(plugins) == 0 {
 		f.logger.Debug("no plugins provided for reassembly, rebuilding route with bare proxy handler", zap.String("route_id", route.ID.String()))
-		if err := f.builder.RebuildRouteMiddlewares(route.Path); err != nil {
-			f.logger.Error("failed to rebuild route middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
-			return fmt.Errorf("failed to rebuild route middleware chain: %w", err)
+	} else {
+		composed, err := f.composeMiddlewares(ctx, plugins)
+		if err != nil {
+			return err
 		}
-		return nil
+		middlewares = composed
 	}
-	middlewares, err := f.composeMiddlewares(ctx, plugins)
-	if err != nil {
-		return err
-	}
+	middlewares = f.withRouteObserver(route.Path, middlewares)
 	if err := f.builder.RebuildRouteMiddlewares(route.Path, middlewares...); err != nil {
 		f.logger.Error("failed to rebuild route middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
 		return fmt.Errorf("failed to rebuild route middleware chain: %w", err)
@@ -170,4 +166,18 @@ func (f *factory) composeMiddlewares(ctx context.Context, plugins []*routeplugin
 		middlewares = append(middlewares, mw)
 	}
 	return middlewares, nil
+}
+
+func (f *factory) withRouteObserver(path string, middlewares []func(http.Handler) http.Handler) []func(http.Handler) http.Handler {
+	if f.observer == nil {
+		return middlewares
+	}
+	routeObserver := f.observer.RouteMiddleware(path)
+	if routeObserver == nil {
+		return middlewares
+	}
+	out := make([]func(http.Handler) http.Handler, 0, len(middlewares)+1)
+	out = append(out, routeObserver)
+	out = append(out, middlewares...)
+	return out
 }

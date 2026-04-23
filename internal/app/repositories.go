@@ -19,6 +19,7 @@ package app
 import (
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	configrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/config"
+	statsrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/stats"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
 	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 )
@@ -28,6 +29,7 @@ type Repositories struct {
 	RouteRepo       routerepo.Repository
 	RoutePluginRepo routepluginrepo.Repository
 	ProxyConfigRepo configrepo.Repository
+	ProxyStatsRepo  statsrepo.Repository
 }
 
 func (a *App) setupRepositories() {
@@ -36,5 +38,6 @@ func (a *App) setupRepositories() {
 		RouteRepo:       routerepo.New(a.db),
 		RoutePluginRepo: routepluginrepo.New(a.db),
 		ProxyConfigRepo: configrepo.New(a.db),
+		ProxyStatsRepo:  statsrepo.New(a.db),
 	}
 }

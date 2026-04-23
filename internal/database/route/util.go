@@ -17,20 +17,9 @@
 package route
 
 import (
-	"github.com/mikhail5545/wasmforge/internal/database/util"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	"gorm.io/gorm"
 )
-
-func cleanFilter(filter *filter) {
-	if filter == nil {
-		return
-	}
-	filter.IDs = util.CleanUUIDs(filter.IDs)
-	filter.PluginIDs = util.CleanUUIDs(filter.PluginIDs)
-	filter.Paths = util.CleanStrings(filter.Paths)
-	filter.TargetURLs = util.CleanStrings(filter.TargetURLs)
-}
 
 func hasIdentifyingFilters(filter *filter) bool {
 	return len(filter.IDs) > 0 || len(filter.Paths) > 0

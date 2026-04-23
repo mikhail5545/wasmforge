@@ -60,7 +60,7 @@ func setupTest(t *testing.T) (*gomock.Controller, *mockproxy.MockBuilder, *mocku
 	}
 	t.Cleanup(cleanup)
 
-	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, logger)
+	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, nil, logger)
 
 	return ctrl, builder, uploadsManager, mwFactory, factory
 }

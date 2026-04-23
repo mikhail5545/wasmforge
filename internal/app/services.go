@@ -21,6 +21,7 @@ import (
 	certservice "github.com/mikhail5545/wasmforge/internal/services/proxy/cert"
 	configservice "github.com/mikhail5545/wasmforge/internal/services/proxy/config"
 	serverservice "github.com/mikhail5545/wasmforge/internal/services/proxy/server"
+	statsservice "github.com/mikhail5545/wasmforge/internal/services/proxy/stats"
 	routeservice "github.com/mikhail5545/wasmforge/internal/services/route"
 	routepluginservice "github.com/mikhail5545/wasmforge/internal/services/route/plugin"
 )
@@ -32,6 +33,7 @@ type Services struct {
 	ProxyConfigSvc *configservice.Service
 	ProxyServerSvc *serverservice.Service
 	ProxyCertSvc   *certservice.Service
+	ProxyStatsSvc  *statsservice.Service
 }
 
 func (a *App) setupServices() {
@@ -51,6 +53,7 @@ func (a *App) setupServices() {
 		}, a.logger),
 		ProxyConfigSvc: configservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.logger),
 		ProxyCertSvc:   certservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.uploadsManager, a.logger),
+		ProxyStatsSvc:  statsservice.New(a.repos.ProxyStatsRepo, a.statsCollector, a.logger),
 	}
 	a.services.ProxyServerSvc = serverservice.New(a.proxyServer, a.services.ProxyCertSvc, a.repos.ProxyConfigRepo, a.logger)
 }

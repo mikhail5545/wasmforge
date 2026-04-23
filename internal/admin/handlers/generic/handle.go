@@ -23,13 +23,13 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func Handle[Req any, Res any](
+func Handle[A any, B any](
 	c *echo.Context,
-	fn func(context.Context, *Req) (*Res, error),
+	fn func(context.Context, *A) (*B, error),
 	status int,
 	resKey string,
 ) error {
-	req := new(Req)
+	req := new(A)
 	if err := c.Bind(req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}
@@ -40,12 +40,12 @@ func Handle[Req any, Res any](
 	return c.JSON(status, map[string]any{resKey: res})
 }
 
-func HandleNoContent[Req any](
+func HandleNoContent[A any](
 	c *echo.Context,
-	fn func(context.Context, *Req) error,
+	fn func(context.Context, *A) error,
 	status int,
 ) error {
-	req := new(Req)
+	req := new(A)
 	if err := c.Bind(req); err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "invalid request body")
 	}

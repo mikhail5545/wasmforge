@@ -27,6 +27,7 @@ export default function RoutesPage() {
     const links = [
         { label: "Routes", href: "/routes", active: true },
         { label: "Plugins", href: "/plugins", active: false },
+        { label: "Stats", href: "/stats", active: false },
         { label: "Settings", href: "/settings", active: false },
     ];
 

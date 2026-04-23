@@ -40,6 +40,7 @@ type Server struct {
 	director *proxy.Director
 	builder  proxy.Builder
 	factory  proxy.Factory
+	observer proxy.RequestObserver
 	logger   *zap.Logger
 	cleanup  func() error
 	httpSrv  *http.Server
@@ -57,7 +58,7 @@ func (s *Server) Factory() proxy.Factory {
 	return s.factory
 }
 
-func New(ctx context.Context, manager uploads.Manager, logger *zap.Logger) (*Server, error) {
+func New(ctx context.Context, manager uploads.Manager, observer proxy.RequestObserver, logger *zap.Logger) (*Server, error) {
 	runtime, cleanup, err := wasm.NewWasmRuntime(ctx, logger)
 	if err != nil {
 		logger.Error("failed to create new WASM runtime", zap.Error(err))
@@ -65,12 +66,13 @@ func New(ctx context.Context, manager uploads.Manager, logger *zap.Logger) (*Ser
 	}
 	builder := proxy.NewBuilder()
 	mwFactory := middleware.NewFactory(runtime, logger)
-	factory := proxy.NewFactory(builder, mwFactory, manager, logger)
+	factory := proxy.NewFactory(builder, mwFactory, manager, observer, logger)
 	return &Server{
 		rt:       runtime,
 		director: builder.Director(),
 		builder:  builder,
 		factory:  factory,
+		observer: observer,
 		logger:   logger.With(zap.String("component", "proxy_server")),
 		cleanup:  cleanup,
 	}, nil
@@ -98,8 +100,15 @@ func (s *Server) Start(cfg *configmodel.Config, tlsCfg *tls.Config, ready chan<-
 		return
 	}
 
+	handler := http.Handler(s.director)
+	if s.observer != nil {
+		if overall := s.observer.OverallMiddleware(); overall != nil {
+			handler = overall(handler)
+		}
+	}
+
 	s.httpSrv = &http.Server{
-		Handler:           s.director,
+		Handler:           handler,
 		TLSConfig:         tlsCfg, // can be nil for non-TLS
 		ReadHeaderTimeout: time.Duration(cfg.ReadHeaderTimeout) * time.Second,
 	}

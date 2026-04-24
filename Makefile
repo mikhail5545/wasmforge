@@ -1,29 +1,22 @@
-.PHONY: build-ui build-go clean bench-build bench-run
+.PHONY: clean build
 
-# Just builds the UI, creating the output in ui/admin-ui/out (static files)
-build-ui:
-	cd ui/admin-ui && npm install && npm run build
-
-# Places the UI build in the correct location for embedding, then builds the Go binary
-prepare-embed: build-ui
-	# Remove old build if exists
-	rm -rf pkg/ui/out
-	# Copy the fresh build to where Go expects it
-	cp -r ui/admin-ui/out pkg/ui/out
-
-# Builds the Go binary, ensuring the UI is prepared first
-build: prepare-embed
-	go build -o bin/wasmforge cmd/gateway/main.go
+ifeq($(OS),Windows_NT)
+BUILD_SCRIPT := powershell -ExecutionPolicy Bypass -File scripts/build.ps1
+CLEAN_UI := if exist pkg\ui\out rmdir /s /q pkg\ui\out
+CLEAN_UI2 := if exist ui\admin-ui\out rmdir /s /q ui\admin-ui\out
+CLEAN_BIN := if exist bin\wasmforge.exe del /q bin\wasmforge.exe
+else
+BUILD_SCRIPT := bash scripts/build.sh
+CLEAN_UI := rm -rf pkg/ui/out
+CLEAN_UI2 := rm -rf ui/admin-ui/out
+CLEAN_BIN := rm -f bin/wasmforge
+endif
 
 clean:
-	rm -rf pkg/ui/out
-	rm -rf ui/admin-ui/out
-	rm -f wasmforge
+	$(CLEAN_UI)
+	$(CLEAN_UI2)
+	$(CLEAN_BIN)
 
-bench-build:
-	go build -o bin/wasmforge cmd/gateway/main.go
-	go build -o bench/bin/upstream ./bench/cmd/upstream
-	go build -o bench/bin/native-gateway ./bench/cmd/native-gateway
+build: clean
+	$(BUILD_SCRIPT)
 
-bench-run: bench-build
-	./bench/scripts/run_suite.sh

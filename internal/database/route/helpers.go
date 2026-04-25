@@ -22,6 +22,7 @@ import (
 
 	"github.com/mikhail5545/wasmforge/internal/database/pagination"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
+	"github.com/mikhail5545/wasmforge/internal/util/memory"
 )
 
 func (r *repository) get(ctx context.Context, filter *filter) (*routemodel.Route, error) {
@@ -38,12 +39,18 @@ func (r *repository) get(ctx context.Context, filter *filter) (*routemodel.Route
 func (r *repository) list(ctx context.Context, filter *filter) ([]*routemodel.Route, string, error) {
 	db := applyIdentifyingFilters(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
+	db, applied := applyJoinFilters(db, filter)
+	tableName := (*string)(nil)
+	if applied {
+		tableName = memory.Ptr("routes")
+	}
 
 	db, err := pagination.ApplyCursor(db, pagination.ApplyCursorParams{
 		PageSize:   filter.PageSize,
 		PageToken:  filter.PageToken,
 		OrderField: string(filter.OrderField),
 		OrderDir:   filter.OrderDirection,
+		TableName:  tableName,
 	})
 	if err != nil {
 		return nil, "", err

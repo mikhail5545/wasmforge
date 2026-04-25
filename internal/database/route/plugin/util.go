@@ -17,19 +17,9 @@
 package plugin
 
 import (
-	"github.com/mikhail5545/wasmforge/internal/database/util"
 	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"gorm.io/gorm"
 )
-
-func cleanFilter(filter *filter) {
-	if filter == nil {
-		return
-	}
-	filter.IDs = util.CleanUUIDs(filter.IDs)
-	filter.RouteIDs = util.CleanUUIDs(filter.RouteIDs)
-	filter.PluginIDs = util.CleanUUIDs(filter.PluginIDs)
-}
 
 func applyPreloads(db *gorm.DB, filter *filter) *gorm.DB {
 	db = db.Model(&plugins.RoutePlugin{})

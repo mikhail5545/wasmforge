@@ -18,6 +18,7 @@ package plugin
 
 import (
 	"github.com/google/uuid"
+	"github.com/mikhail5545/wasmforge/internal/database/util"
 	"github.com/mikhail5545/wasmforge/internal/models/plugin"
 )
 
@@ -39,25 +40,25 @@ type FilterOption func(*filter)
 
 func WithIDs(ids ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.IDs = ids
+		f.IDs = util.CleanUUIDs(ids)
 	}
 }
 
 func WithNames(names ...string) FilterOption {
 	return func(f *filter) {
-		f.Names = names
+		f.Names = util.CleanStrings(names)
 	}
 }
 
 func WithVersions(versions ...string) FilterOption {
 	return func(f *filter) {
-		f.Versions = versions
+		f.Versions = util.CleanStrings(versions)
 	}
 }
 
 func WithFilenames(filenames ...string) FilterOption {
 	return func(f *filter) {
-		f.Filenames = filenames
+		f.Filenames = util.CleanStrings(filenames)
 	}
 }
 

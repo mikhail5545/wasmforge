@@ -17,21 +17,9 @@
 package plugin
 
 import (
-	"github.com/mikhail5545/wasmforge/internal/database/util"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 	"gorm.io/gorm"
 )
-
-func cleanFilter(filter *filter) {
-	if filter == nil {
-		return
-	}
-
-	filter.IDs = util.CleanUUIDs(filter.IDs)
-	filter.Names = util.CleanStrings(filter.Names)
-	filter.Versions = util.CleanStrings(filter.Versions)
-	filter.Filenames = util.CleanStrings(filter.Filenames)
-}
 
 func applyFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	if len(filter.IDs) > 0 {

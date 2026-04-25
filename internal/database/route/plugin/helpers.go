@@ -24,7 +24,6 @@ import (
 )
 
 func (r *repository) get(ctx context.Context, filter *filter) (*plugins.RoutePlugin, error) {
-	cleanFilter(filter)
 	db := applyPreloads(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
 
@@ -34,7 +33,6 @@ func (r *repository) get(ctx context.Context, filter *filter) (*plugins.RoutePlu
 }
 
 func (r *repository) list(ctx context.Context, filter *filter) ([]*plugins.RoutePlugin, string, error) {
-	cleanFilter(filter)
 	db := applyPreloads(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
 
@@ -65,7 +63,6 @@ func (r *repository) list(ctx context.Context, filter *filter) ([]*plugins.Route
 }
 
 func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*plugins.RoutePlugin, error) {
-	cleanFilter(filter)
 	db := applyPreloads(r.db.WithContext(ctx), filter)
 	db = applyFilters(db, filter)
 
@@ -75,7 +72,6 @@ func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pl
 }
 
 func (r *repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx).Model(&plugins.RoutePlugin{}), filter)
 
 	res := db.Updates(updates)
@@ -83,7 +79,6 @@ func (r *repository) updates(ctx context.Context, filter *filter, updates map[st
 }
 
 func (r *repository) delete(ctx context.Context, filter *filter) (int64, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx).Model(&plugins.RoutePlugin{}), filter)
 
 	res := db.Delete(&plugins.RoutePlugin{})

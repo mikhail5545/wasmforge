@@ -24,7 +24,6 @@ import (
 )
 
 func (r *repository) get(ctx context.Context, filter *filter) (*pluginmodel.Plugin, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
 	var plugin pluginmodel.Plugin
@@ -33,7 +32,6 @@ func (r *repository) get(ctx context.Context, filter *filter) (*pluginmodel.Plug
 }
 
 func (r *repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, string, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
 	db, err := pagination.ApplyCursor(db, pagination.ApplyCursorParams{
@@ -63,7 +61,6 @@ func (r *repository) list(ctx context.Context, filter *filter) ([]*pluginmodel.P
 }
 
 func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pluginmodel.Plugin, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 	if filter.OrderField != "" && filter.OrderDirection != "" {
 		db = db.Order(string(filter.OrderField) + " " + filter.OrderDirection)
@@ -77,7 +74,6 @@ func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*pl
 }
 
 func (r *repository) updates(ctx context.Context, filter *filter, updates map[string]any) (int64, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
 	res := db.Updates(updates)
@@ -85,7 +81,6 @@ func (r *repository) updates(ctx context.Context, filter *filter, updates map[st
 }
 
 func (r *repository) delete(ctx context.Context, filter *filter) (int64, error) {
-	cleanFilter(filter)
 	db := applyFilters(r.db.WithContext(ctx), filter)
 
 	res := db.Delete(&pluginmodel.Plugin{})

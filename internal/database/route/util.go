@@ -17,20 +17,9 @@
 package route
 
 import (
-	"github.com/mikhail5545/wasmforge/internal/database/util"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	"gorm.io/gorm"
 )
-
-func cleanFilter(filter *filter) {
-	if filter == nil {
-		return
-	}
-	filter.IDs = util.CleanUUIDs(filter.IDs)
-	filter.PluginIDs = util.CleanUUIDs(filter.PluginIDs)
-	filter.Paths = util.CleanStrings(filter.Paths)
-	filter.TargetURLs = util.CleanStrings(filter.TargetURLs)
-}
 
 func hasIdentifyingFilters(filter *filter) bool {
 	return len(filter.IDs) > 0 || len(filter.Paths) > 0
@@ -46,11 +35,15 @@ func applyIdentifyingFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	return db
 }
 
-func applyFilters(db *gorm.DB, filter *filter) *gorm.DB {
+func applyJoinFilters(db *gorm.DB, filter *filter) (*gorm.DB, bool) {
 	if len(filter.PluginIDs) > 0 {
-		db = db.Joins("JOIN route_plugins ON route_plugins.route_id = routes.id").
-			Where("route_plugins.plugin_id IN ?", filter.PluginIDs)
+		return db.Joins("JOIN route_plugins ON route_plugins.route_id = routes.id").
+			Where("route_plugins.plugin_id IN ?", filter.PluginIDs), true
 	}
+	return db, false
+}
+
+func applyFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	if len(filter.TargetURLs) > 0 {
 		db = db.Where("target_url IN ?", filter.TargetURLs)
 	}

@@ -60,12 +60,16 @@ func normalizeOrderDirection(dir string) string {
 type ApplyCursorParams struct {
 	PageSize   int
 	PageToken  string
+	TableName  *string
 	OrderField string
 	OrderDir   string
 }
 
 var safeColumnName = regexp.MustCompile(`^[a-zA-Z0-9_]+$`)
 
+// ApplyCursor applies cursor-based pagination to the given GORM DB query based on the provided parameters.
+// TableName should be provided in case of JOIN statement before this function is being called. TableName
+// should specify name of the table on which pagination is being applied.
 func ApplyCursor(db *gorm.DB, params ApplyCursorParams) (*gorm.DB, error) {
 	if params.PageSize < 0 {
 		return nil, errors.New("page_size must be non-negative")
@@ -80,7 +84,16 @@ func ApplyCursor(db *gorm.DB, params ApplyCursorParams) (*gorm.DB, error) {
 		return nil, fmt.Errorf("invalid page token: %w", err)
 	}
 
-	orderExpr := fmt.Sprintf("%s %s, id %s", params.OrderField, params.OrderDir, params.OrderDir)
+	var orderExpr string
+	if params.TableName != nil {
+		// TableName is needed when JOIN were applied before this function call.
+		// If table on which pagination is applied and joined table have the same field that is passed
+		// here as OrderField, query will fail due to ambiguous field.
+		tableAndField := fmt.Sprintf("%s.%s", *params.TableName, params.OrderField)
+		orderExpr = fmt.Sprintf("%s %s, id %s", tableAndField, params.OrderDir, params.OrderDir)
+	} else {
+		orderExpr = fmt.Sprintf("%s %s, id %s", params.OrderField, params.OrderDir, params.OrderDir)
+	}
 	db = db.Order(orderExpr).Limit(params.PageSize + 1) // Fetch one extra to check for next page
 
 	if cursorVal != nil && lastID != uuid.Nil {

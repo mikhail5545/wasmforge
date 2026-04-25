@@ -18,6 +18,7 @@ package route
 
 import (
 	"github.com/google/uuid"
+	"github.com/mikhail5545/wasmforge/internal/database/util"
 	"github.com/mikhail5545/wasmforge/internal/models/route"
 )
 
@@ -40,25 +41,25 @@ type FilterOption func(*filter)
 
 func WithIDs(ids ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.IDs = ids
+		f.IDs = util.CleanUUIDs(ids)
 	}
 }
 
 func WithPluginIDs(pluginIDs ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.PluginIDs = pluginIDs
+		f.PluginIDs = util.CleanUUIDs(pluginIDs)
 	}
 }
 
 func WithPaths(paths ...string) FilterOption {
 	return func(f *filter) {
-		f.Paths = paths
+		f.Paths = util.CleanStrings(paths)
 	}
 }
 
 func WithTargetURLs(targetURLs ...string) FilterOption {
 	return func(f *filter) {
-		f.TargetURLs = targetURLs
+		f.TargetURLs = util.CleanStrings(targetURLs)
 	}
 }
 

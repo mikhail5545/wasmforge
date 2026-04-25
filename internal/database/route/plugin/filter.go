@@ -18,6 +18,7 @@ package plugin
 
 import (
 	"github.com/google/uuid"
+	"github.com/mikhail5545/wasmforge/internal/database/util"
 	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 )
 
@@ -53,19 +54,19 @@ func newFilter(opts ...FilterOption) *filter {
 
 func WithIDs(ids ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.IDs = ids
+		f.IDs = util.CleanUUIDs(ids)
 	}
 }
 
 func WithPluginIDs(pluginIDs ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.PluginIDs = pluginIDs
+		f.PluginIDs = util.CleanUUIDs(pluginIDs)
 	}
 }
 
 func WithRouteIDs(routeIDs ...uuid.UUID) FilterOption {
 	return func(f *filter) {
-		f.RouteIDs = routeIDs
+		f.RouteIDs = util.CleanUUIDs(routeIDs)
 	}
 }
 

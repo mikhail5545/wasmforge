@@ -23,24 +23,19 @@ import React, { useCallback, useState } from "react"
 import { Spinner } from "@workspace/ui/components/spinner"
 import {
   Card,
-  CardDescription,
   CardHeader,
   CardTitle,
   CardContent,
-  CardFooter,
-  CardAction,
 } from "@workspace/ui/components/card"
 import {
   Field,
-  FieldDescription,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
   FieldSet,
 } from "@workspace/ui/components/field"
 import { Input } from "@workspace/ui/components/input"
-import {Button} from "@workspace/ui/components/button"
+import { Button } from "@workspace/ui/components/button"
 import { ArrowLeft, CircleAlert, CircleCheck } from "lucide-react"
 import { useMutation } from "@/hooks/use-mutation"
 import { ErrorResponse } from "@/types/ErrorResponse"
@@ -82,11 +77,11 @@ export default function EditRoutePage() {
     }
   }, [])
 
-  const submit = React.useCallback(async() => {
+  const submit = React.useCallback(async () => {
     if (!editableRoute) {
       return
     }
-    if (!routeData.data?.id){
+    if (!routeData.data) {
       return
     }
     const result = await mutate(
@@ -103,10 +98,10 @@ export default function EditRoutePage() {
       setShowSuccess(true)
     }
 
-    if (result.response){
+    if (result.response) {
       setValidationErrors(null)
     }
-  }, [editableRoute, mutate, path, resolveError])
+  }, [editableRoute, mutate, resolveError, routeData.data])
 
   return (
     <SidebarLayout page_title={"Edit Route"}>

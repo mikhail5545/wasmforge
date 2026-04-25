@@ -13,17 +13,16 @@
  * limitations under the License.
  */
 
-'use client';
+"use client"
 
 import { SidebarLayout } from "@/components/navigation/sidebar-layout"
-import { useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useData } from "@/hooks/use-data"
 import { Route } from "types/route"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { AlertModal } from "@/components/dialog/alert-modal"
-import { buildMockRouteSummaryResponse } from "@/lib/mock-stats"
 import {
-  Card, CardContent,
+  Card,
   CardDescription,
   CardHeader,
   CardTitle,
@@ -36,105 +35,139 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-  DialogClose
+  DialogClose,
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { RouteCard } from "@/components/ui/route-card"
-import React, { useCallback } from "react"
+import React from "react"
 import { format } from "date-fns"
 import { DateTimeInput } from "@/components/date-time-input"
+import { RouteSummaryResponse } from "@/types/ProxyServerStatistics"
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from "@workspace/ui/components/chart"
-import { Bar, BarChart, CartesianGrid, LabelList, XAxis } from "recharts"
-import { NormalizeStatusPercentages } from "@/lib/normalize-stats"
-import {
-  Field,
-  FieldDescription,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldLegend,
-  FieldSet,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
-import { ErrorResponse } from "@/types/ErrorResponse"
+  StatusCountsRadarChart,
+  StatusPercentagesBarChart,
+} from "@/components/status-codes-charts"
+import { useMutation } from "@/hooks/use-mutation"
+
+type DateRangeState = {
+  from: {
+    date: Date
+    time: string
+  }
+  to: {
+    date: Date
+    time: string
+  }
+}
 
 export default function RoutePage() {
   const params = useSearchParams()
-  const path = params.get('path') ?? ""
-  const routeData = useData<Route>(`http://localhost:8080/api/routes/${encodeURIComponent(path)}`, 'route')
+  const path = params.get("path") ?? ""
+  const routeData = useData<Route>(
+    `http://localhost:8080/api/routes/${encodeURIComponent(path)}`,
+    "route"
+  )
+  const router = useRouter()
 
-  const mockRouteStats = buildMockRouteSummaryResponse("/api/users")
+  const [statsConfigDialogOpen, setStatsConfigDialogOpen] =
+    React.useState<boolean>(false)
+  const { loading, error, mutate, reset } = useMutation()
+  const [showSuccess, setShowSuccess] = React.useState(false)
+  const [successMessage, setSuccessMessage] = React.useState("")
+  const [successRedirect, setSuccessRedirect] = React.useState<string | null>(
+    null
+  )
+  const [range, setRange] = React.useState<DateRangeState>(() => {
+    const now = new Date()
+    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000)
+    const fromTime = format(hourAgo, "HH:mm")
+    const toTime = format(now, "HH:mm")
 
-  const [from, setFrom] = React.useState<Date>(() => new Date())
-  const [fromTime, setFromTime] = React.useState<string>("")
-  const [to, setTo] = React.useState<Date>(() => new Date())
-  const [toTime, setToTime] = React.useState<string>("")
-  const [statsConfigDialogOpen, setStatsConfigDialogOpen] = React.useState<boolean>(false)
-  const [editDialogOpen, setEditDialogOpen] = React.useState<boolean>(false)
-  const [editableRouteData, setEditableRouteData] = React.useState<Route | null>(null)
-
-  React.useEffect(() => {
-    const id = setInterval(() => {
-      const now = new Date().getTime()
-      const hourAgo = new Date(now - 60 * 60 * 1000)
-      setFrom(new Date(now))
-      setFromTime(format(now, "HH:mm"))
-      setTo(hourAgo)
-      setToTime(format(hourAgo, "HH:mm"))
-    }, 60 * 60 * 1000) // updates every one hour
-
-    return () => clearInterval(id)
-  }, [])
-
-  const submitStatsTimestamp = React.useCallback(async () => {
-    const [fromHours, fromMinutes] = fromTime.split(":").map(Number)
-    const [toHours, toMinutes] = toTime.split(":").map(Number)
-
-    if (fromHours) {
-      from.setHours(fromHours)
+    return {
+      from: {
+        date: hourAgo,
+        time: fromTime,
+      },
+      to: {
+        date: now,
+        time: toTime,
+      },
     }
-    if (fromMinutes) {
-      to.setMinutes(fromMinutes)
-    }
-    if (toHours) {
-      to.setHours(toHours)
-    }
-    if (toMinutes) {
-      to.setMinutes(toMinutes)
-    }
+  })
 
+  const updateFrom = (date: Date) => {
+    setRange((prev) => ({ ...prev, from: { ...prev.from, date: date } }))
+  }
+  const updateTo = (date: Date) => {
+    setRange((prev) => ({ ...prev, to: { ...prev.to, date: date } }))
+  }
+  const updateFromTime = (time: string) => {
+    setRange((prev) => {
+      const next = new Date(prev.from.date)
+      const [hours, minutes] = time.split(":").map(Number)
 
-  }, [from, fromTime, to, toTime])
+      if (hours != undefined && !Number.isNaN(hours)) next.setHours(hours)
+      if (minutes != undefined && !Number.isNaN(minutes))
+        next.setMinutes(minutes)
 
-  const openEditDialog = (route: Route) => {
-    setEditableRouteData(route)
-    setEditDialogOpen(true)
+      return { ...prev, from: { date: next, time: time } }
+    })
+  }
+  const updateToTime = (time: string) => {
+    setRange((prev) => {
+      const next = new Date(prev.to.date)
+      const [hours, minutes] = time.split(":").map(Number)
+
+      if (hours != undefined && !Number.isNaN(hours)) next.setHours(hours)
+      if (minutes != undefined && !Number.isNaN(minutes))
+        next.setMinutes(minutes)
+
+      return { ...prev, to: { date: next, time: time } }
+    })
   }
 
-  const closeEditDialog = () => {
-    setEditDialogOpen(false)
+  const routeSummaryData = useData<RouteSummaryResponse>(
+    `http://localhost:8080/api/proxy/stats/route?path=${encodeURIComponent(path)}&from=${range.from.date.toISOString()}&to=${range.to.date.toISOString()}`,
+    "route"
+  )
+
+  const toggleEnable = React.useCallback(async () => {
     if (!routeData.data) {
       return
     }
-    setEditableRouteData(routeData.data)
-  }
 
-  const chartConfig = {
-    percentage: {
-      label: "Percentage",
-      color: "var(--chart-4)",
-    },
-    label: {
-      color: "var(--background)"
+    const enabled = routeData.data.enabled
+    const callUrl = `http://localhost:8080/api/routes/${routeData.data.id}/${enabled ? "disable" : "enable"}`
+
+    const response = await mutate(callUrl, "POST")
+
+    if (response.success) {
+      setShowSuccess(true)
+      setSuccessMessage(
+        `Route ${enabled ? "disabled" : "enabled"} successfully`
+      )
+      await routeData.refetch()
     }
-  } satisfies ChartConfig
+  }, [mutate, routeData])
 
-  const chartData = NormalizeStatusPercentages(mockRouteStats.summary.status_code_percentages)
+  const deleteRoute = React.useCallback(async () => {
+    if (!routeData.data) {
+      return
+    }
+
+    const response = await mutate(
+      `http://localhost:8080/api/routes/${routeData.data.id}`,
+      "DELETE"
+    )
+
+    if (response.success) {
+      setShowSuccess(true)
+      setSuccessMessage(
+        "Route deleted successfully. You will be redirected to routes list in 5 seconds."
+      )
+      setSuccessRedirect("/routes")
+    }
+  }, [mutate, routeData.data])
 
   return (
     <SidebarLayout page_title={"Route Details"}>
@@ -142,17 +175,39 @@ export default function RoutePage() {
         variant={"alert"}
         size={"sm"}
         title={"Unexpected error occurred"}
-        visible={!!routeData.error}
+        visible={!!routeData.error || !!error || !!routeSummaryData.error}
         description={
-          routeData?.error?.message ??
+          routeData?.error?.message ||
+          error?.message ||
+          routeSummaryData?.error?.message ||
           "No additional information available. Retrying in 5 seconds."
         }
         onClose={async () => {
-          await routeData.refetch()
+          if (routeData.error) {
+            await routeData.refetch()
+          }
+          if (routeSummaryData.error) {
+            await routeSummaryData.refetch()
+          }
+          if (error) {
+            reset()
+          }
+        }}
+      />
+      <AlertModal
+        variant={"default"}
+        size={"sm"}
+        title={"Success"}
+        visible={showSuccess}
+        description={successMessage}
+        onClose={() => {
+          setShowSuccess(false)
+          if (successRedirect) router.push(successRedirect)
         }}
       />
       <div className={"flex flex-col p-6"}>
-        {routeData.loading && routeData.data == null ? (
+        {(routeData.loading && routeData.data === null) ||
+        routeSummaryData.loading ? (
           <div className={"flex items-center justify-center py-50"}>
             <Spinner className={"size-10"} />
           </div>
@@ -179,18 +234,18 @@ export default function RoutePage() {
                       </DialogDescription>
                       <p>Show stats from</p>
                       <DateTimeInput
-                        date={from}
-                        setDate={setFrom}
-                        time={fromTime}
-                        setTime={setFromTime}
+                        date={range.from.date}
+                        setDate={updateFrom}
+                        time={range.from.time}
+                        setTime={updateFromTime}
                         layout={"row"}
                       />
                       <p className={"mt-4"}>Show stats to</p>
                       <DateTimeInput
-                        date={to}
-                        setDate={setTo}
-                        time={toTime}
-                        setTime={setToTime}
+                        date={range.to.date}
+                        setDate={updateTo}
+                        time={range.to.time}
+                        setTime={updateToTime}
                         layout={"row"}
                       />
                       <DialogFooter>
@@ -199,7 +254,7 @@ export default function RoutePage() {
                         </DialogClose>
                         <Button
                           onClick={async () => {
-                            await submitStatsTimestamp()
+                            await routeSummaryData.refetch()
                             setStatsConfigDialogOpen(false)
                           }}
                         >
@@ -213,84 +268,67 @@ export default function RoutePage() {
                   <div>
                     <RouteCard
                       route={routeData.data!}
+                      onEnableToggle={toggleEnable}
+                      enabling={loading}
+                      onDelete={deleteRoute}
                     />
                   </div>
                   <div className={"flex w-2/3 flex-col gap-5"}>
                     <div className={"flex w-full flex-row gap-5"}>
-                      <Card className={"w-1/4 text-center"}>
+                      <Card className={"w-1/3 text-center"}>
                         <CardHeader>
                           <CardDescription>Average RPS</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {mockRouteStats.summary.avg_rps}
+                            {routeSummaryData.data?.summary.avg_rps ===
+                            undefined
+                              ? "N/A"
+                              : routeSummaryData.data?.summary.avg_rps}
                           </CardTitle>
                         </CardHeader>
                       </Card>
-                      <Card className={"w-1/4 text-center"}>
+                      <Card className={"w-1/3 text-center"}>
                         <CardHeader>
                           <CardDescription>Average Latency ms</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {mockRouteStats.summary.avg_latency_ms}
+                            {routeSummaryData.data?.summary.avg_latency_ms ===
+                            undefined
+                              ? "N/A"
+                              : routeSummaryData.data?.summary.avg_latency_ms}
                           </CardTitle>
                         </CardHeader>
                       </Card>
-                      <Card className={"w-1/4 text-center"}>
-                        <CardHeader>
-                          <CardDescription>Dropped Events</CardDescription>
-                          <CardTitle className={"text-4xl"}>
-                            {mockRouteStats.summary.dropped_events}
-                          </CardTitle>
-                        </CardHeader>
-                      </Card>
-                      <Card className={"w-1/4 text-center"}>
+                      <Card className={"w-1/3 text-center"}>
                         <CardHeader>
                           <CardDescription>Total Requests</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {mockRouteStats.summary.total_requests}
+                            {routeSummaryData.data?.summary.total_requests ===
+                            undefined
+                              ? "N/A"
+                              : routeSummaryData.data?.summary.total_requests}
                           </CardTitle>
                         </CardHeader>
                       </Card>
                     </div>
                     <div className={"flex w-full flex-row gap-5"}>
-                      <Card className={"w-full"}>
-                        <CardHeader>
-                          <CardTitle>Status Codes</CardTitle>
-                          <CardDescription>{`Status codes percentages from ${format(from, "PPP-HH:mm")} to ${format(to, "PPP-HH:mm")}`}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <ChartContainer config={chartConfig}>
-                            <BarChart
-                              accessibilityLayer
-                              data={chartData}
-                              margin={{ top: 20 }}
-                            >
-                              <CartesianGrid vertical={false} />
-                              <XAxis
-                                dataKey={"code"}
-                                tickLine={false}
-                                tickMargin={10}
-                                axisLine={false}
-                                tickFormatter={(value) => value.slice(0, 3)}
-                              />
-                              <ChartTooltip
-                                cursor={false}
-                                content={<ChartTooltipContent hideLabel />}
-                              />
-                              <Bar
-                                dataKey={"percentage"}
-                                fill={"var(--color-percentage)"}
-                                radius={8}
-                              >
-                                <LabelList
-                                  position={"top"}
-                                  offset={12}
-                                  className={"fill-foreground"}
-                                  fontSize={12}
-                                />
-                              </Bar>
-                            </BarChart>
-                          </ChartContainer>
-                        </CardContent>
-                      </Card>
+                      <div className={"w-full"}>
+                        <StatusPercentagesBarChart
+                          percentages={
+                            routeSummaryData.data?.summary
+                              .status_code_percentages || {}
+                          }
+                          title={"Status Code Percentages"}
+                          description={`Showing status code percentages in a period from ${format(range.from.date, "PPP-HH:mm")} to ${format(range.to.date, "PPP-HH:mm")}`}
+                        />
+                      </div>
+
+                      <StatusCountsRadarChart
+                        counts={
+                          routeSummaryData.data?.summary.status_code_counts ||
+                          {}
+                        }
+                        title={"Status Code Counts"}
+                        description={`Showing status code counts in a period from ${format(range.from.date, "PPP-HH:mm")} to ${format(range.to.date, "PPP-HH:mm")}`}
+                      />
                     </div>
                   </div>
                 </div>

@@ -21,3 +21,11 @@ export function NormalizeStatusPercentages(percentages: Record<string, number>) 
   })
   return normalized
 }
+
+export function NormalizeStatusCounts(counts: Record<string, number>) {
+  const normalized: {code: string, count: number}[] = []
+  Object.entries(counts).forEach(([name, count]) => {
+    normalized.push({ code: name, count: count })
+  })
+  return normalized
+}

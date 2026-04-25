@@ -27,11 +27,11 @@ import { Button } from "@workspace/ui/components/button"
 import { ChevronDown, Clock } from "lucide-react"
 
 interface DateTimeInputProps {
-  date: Date,
-  setDate: React.Dispatch<React.SetStateAction<Date>>
+  date: Date
+  setDate: (date: Date) => void
   time: string
-  setTime: React.Dispatch<React.SetStateAction<string>>
-  layout: 'column' | 'row'
+  setTime: (time: string) => void
+  layout: "column" | "row"
 }
 
 export const DateTimeInput = ({ date, setDate, time, setTime, layout }: DateTimeInputProps) => {

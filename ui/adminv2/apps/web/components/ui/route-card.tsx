@@ -26,13 +26,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
 import { Button } from "@workspace/ui/components/button"
 import { ChevronsUpDown, Ellipsis, Pencil, Power, PowerOff, Trash } from "lucide-react"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workspace/ui/components/collapsible"
+import { Spinner } from "@workspace/ui/components/spinner"
 
 interface RouteCardProps {
   route: Route
   className?: string
+  onEnableToggle?: () => void
+  enabling?: boolean
+  onDelete?: () => void
 }
 
-const RouteCard = ({ route, className }: RouteCardProps) => {
+const RouteCard = ({ route, className, onEnableToggle, enabling, onDelete }: RouteCardProps) => {
   return (
     <Card className={className}>
       <CardHeader className={"flex flex-row items-center justify-between"}>
@@ -45,6 +49,7 @@ const RouteCard = ({ route, className }: RouteCardProps) => {
                 : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
             }
           >
+            {enabling && <Spinner />}
             {route.enabled ? "Running" : "Stopped"}
           </Badge>
           <DropdownMenu>
@@ -61,7 +66,7 @@ const RouteCard = ({ route, className }: RouteCardProps) => {
                     <span>Edit</span>
                   </a>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={onEnableToggle}>
                   {route.enabled ? (
                     <>
                       <PowerOff />
@@ -76,7 +81,7 @@ const RouteCard = ({ route, className }: RouteCardProps) => {
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
-              <DropdownMenuItem variant={"destructive"}>
+              <DropdownMenuItem variant={"destructive"} onClick={onDelete}>
                 <Trash />
                 <span>Delete</span>
               </DropdownMenuItem>

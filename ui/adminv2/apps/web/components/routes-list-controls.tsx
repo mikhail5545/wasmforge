@@ -53,8 +53,8 @@ interface RoutesListControlsProps {
   orderDirection: string
   setOrderDirection: React.Dispatch<React.SetStateAction<string>>
   className?: string
-  viewMode?: "grid" | "table"
-  setViewMode?: React.Dispatch<React.SetStateAction<"grid" | "table">>
+  viewMode?: string
+  setViewMode?: React.Dispatch<React.SetStateAction<string>>
   showCreateButton: boolean
   routesData: PaginatedData<Route>
   createUrlOverride?: string
@@ -216,6 +216,24 @@ const RoutesListControls: React.FC<RoutesListControlsProps> = ({
                 </DropdownMenuRadioGroup>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
+            {viewMode && setViewMode && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger inset>View</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuRadioGroup
+                    value={viewMode}
+                    onValueChange={setViewMode}
+                  >
+                    <DropdownMenuRadioItem value={"table"}>
+                      Table
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value={"grid"}>
+                      Grid
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

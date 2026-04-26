@@ -33,12 +33,30 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty"
-import { RouteOff } from "lucide-react"
+import { ChevronDownIcon, ChevronLeft, ChevronRight, HardDriveUpload, MoreVertical, RouteOff, Trash2, Wrench } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { RoutesListControls } from "@/components/routes-list-controls"
 import { useMutation } from "@/hooks/use-mutation"
 import { AlertModal } from "@/components/dialog/alert-modal"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription, DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@workspace/ui/components/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+import { Badge } from "@workspace/ui/components/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
 
 export default function PluginPage() {
   const params = useSearchParams()
@@ -54,12 +72,15 @@ export default function PluginPage() {
   const [pluginId, setPluginId] = React.useState<string>("")
   const [orderDirection, setOrderDirection] = React.useState("asc")
   const [orderField, setOrderField] = React.useState<string>("created_at")
+  const [perPage, setPerPage] = React.useState('10')
   const { loading, error, mutate, reset } = useMutation()
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [successMessage, setSuccessMessage] = React.useState("")
   const [successRedirect, setSuccessRedirect] = React.useState<string | null>(
     null
   )
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = React.useState(false)
+
 
   React.useEffect(() => {
     if (pluginData.data && pluginId === "") {
@@ -70,7 +91,7 @@ export default function PluginPage() {
   const routesData = usePaginatedData<Route>(
     `/api/routes?pids=${pluginId}`,
     "routes",
-    10,
+    Number(perPage),
     orderField,
     orderDirection as "asc" | "desc",
     { preload: true }
@@ -123,6 +144,36 @@ export default function PluginPage() {
           if (successRedirect) router.push(successRedirect)
         }}
       />
+      <Dialog
+        open={showDeleteConfirmation}
+        onOpenChange={setShowDeleteConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            This action cannot be undone. This will permanently delete plugin
+            and remove it&#39;s binary file.
+          </DialogDescription>
+          <DialogFooter>
+            <Button
+              variant={"outline"}
+              onClick={() => setShowDeleteConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={"destructive"}
+              onClick={deletePlugin}
+              disabled={loading || !!error}
+            >
+              {loading && <Spinner />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className={"flex flex-col p-6"}>
         {pluginData.loading && pluginData.data === null ? (
           <div className={"flex items-center justify-center py-50"}>
@@ -146,7 +197,7 @@ export default function PluginPage() {
                     <PluginCard
                       plugin={pluginData.data!}
                       className={"w-full"}
-                      onDelete={deletePlugin}
+                      onDelete={() => setShowDeleteConfirmation(true)}
                     />
                   </div>
                   <div className={"w-full lg:w-2/3"}>
@@ -203,64 +254,137 @@ export default function PluginPage() {
                             </EmptyContent>
                           </Empty>
                         ) : (
-                          <ScrollArea className={"h-96 w-full rounded-xl"}>
-                            <div className={"mr-2 flex flex-col gap-5"}>
-                              {routesData.data.map((route) => (
-                                <a
-                                  key={route.id}
-                                  className={
-                                    "flex w-full flex-row gap-5 rounded-xl p-5 bg-card hover:bg-accent transition-colors duration-200"
-                                  }
-                                  href={`/routes/${route.id}`}
-                                >
-                                  <div className={"flex w-1/4 flex-col gap-2"}>
-                                    <p className={"text-sm opacity-70"}>Path</p>
-                                    <p className={"truncate font-semibold"}>
+                          <div className={"overflow-hidden rounded-lg border"}>
+                            <Table>
+                              <TableHeader
+                                className={"sticky top-0 z-10 bg-muted"}
+                              >
+                                <TableRow>
+                                  <TableHead className={"pl-4"}>Path</TableHead>
+                                  <TableHead>Target URL</TableHead>
+                                  <TableHead>Status</TableHead>
+                                  <TableHead>Created at</TableHead>
+                                  <TableHead>Actions</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {routesData.data.map((route) => (
+                                  <TableRow key={route.id}>
+                                    <TableCell className={"pl-4"}>
                                       {route.path}
-                                    </p>
-                                  </div>
-                                  <div className={"flex w-2/4 flex-col gap-2"}>
-                                    <p className={"text-sm opacity-70"}>
-                                      Target URL
-                                    </p>
-                                    <p className={"truncate font-semibold"}>
-                                      {route.target_url}
-                                    </p>
-                                  </div>
-                                  <div className={"flex w-1/4 flex-col gap-2"}>
-                                    <p className={"text-sm opacity-70"}>
-                                      Status
-                                    </p>
-                                    <p className={"truncate font-semibold"}>
-                                      {route.enabled ? "Enabled" : "Disabled"}
-                                    </p>
-                                  </div>
-                                </a>
-                              ))}
-                              {routesData.nextPageToken && (
-                                <div
-                                  className={
-                                    "flex flex-row items-center justify-center"
-                                  }
-                                >
-                                  <Button
-                                    onClick={() =>
-                                      routesData.nextPage(
-                                        routesData.nextPageToken
-                                      )
-                                    }
-                                    variant={"ghost"}
-                                    size={"sm"}
-                                  >
-                                    Load More
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-                          </ScrollArea>
+                                    </TableCell>
+                                    <TableCell>{route.target_url}</TableCell>
+                                    <TableCell>
+                                      <Badge
+                                        className={
+                                          route.enabled
+                                            ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                            : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                        }
+                                      >
+                                        {route.enabled ? "Active" : "Stopped"}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                      {new Date(
+                                        route.created_at
+                                      ).toLocaleString()}
+                                    </TableCell>
+                                    <TableCell>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant={"ghost"}
+                                            size={"icon"}
+                                          >
+                                            <MoreVertical />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                          <DropdownMenuItem asChild>
+                                            <a href={`/routes/${route.id}`}>
+                                              <Wrench size={10} />
+                                              <span>Details</span>
+                                            </a>
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
                         )}
                       </div>
                     )}
+                    <div className={"mt-5 flex flex-row justify-end gap-5"}>
+                      <div
+                        className={
+                          "flex flex-row items-center justify-center gap-2"
+                        }
+                      >
+                        <p className={"text-sm font-semibold"}>Rows per page</p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant={"outline"}>
+                              {perPage}
+                              <ChevronDownIcon />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuRadioGroup
+                              value={perPage}
+                              onValueChange={setPerPage}
+                            >
+                              <DropdownMenuRadioItem value={"5"}>
+                                5
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"10"}>
+                                10
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"20"}>
+                                20
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"30"}>
+                                30
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"40"}>
+                                40
+                              </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div
+                        className={
+                          "flex flex-row items-center justify-center gap-2"
+                        }
+                      >
+                        <Button
+                          variant={"outline"}
+                          size={"icon"}
+                          disabled={
+                            routesData.loading ||
+                            routesData.previousPageToken === ""
+                          }
+                          onClick={() => routesData.previousPage()}
+                        >
+                          <ChevronLeft />
+                        </Button>
+                        <Button
+                          variant={"outline"}
+                          size={"icon"}
+                          disabled={
+                            routesData.loading ||
+                            routesData.nextPageToken === ""
+                          }
+                          onClick={() => routesData.nextPage()}
+                        >
+                          <ChevronRight />
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>

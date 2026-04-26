@@ -42,12 +42,16 @@ interface FetchPageRequestOptions {
 export interface PaginatedData<T> {
   pageSize: number
   nextPageToken: string
+  previousPageToken: string
   loading: boolean
   error: ErrorResponse | null
   data: T[]
   nextPage: (
     token?: string,
     options?: FetchPageRequestOptions
+  ) => Promise<void>
+  previousPage: (
+    options?: Omit<FetchPageRequestOptions, "append">
   ) => Promise<void>
   refetch: (token?: string) => Promise<void>
   setQueryParams: (queryParams?: QueryParams) => void
@@ -113,12 +117,34 @@ export function usePaginatedData<T>(
 ): PaginatedData<T> {
   const [data, setData] = useState<T[]>([])
   const [nextPageToken, setNextPageToken] = useState<string>("")
+  const [previousPageToken, setPreviousPageToken] = useState<string>("")
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<ErrorResponse | null>(null)
   const isMountedRef = useRef(true)
   const abortControllerRef = useRef<AbortController | null>(null)
   const requestIdRef = useRef(0)
   const activeQueryParamsRef = useRef<Record<string, string>>({})
+  const previousTokenByCurrentTokenRef = useRef<Map<string, string>>(new Map())
+  const orderSignatureRef = useRef<string>(`${orderField}:${orderDirection}`)
+
+  const resetPaginationTokens = useCallback(() => {
+    previousTokenByCurrentTokenRef.current.clear()
+    setNextPageToken("")
+    setPreviousPageToken("")
+  }, [])
+
+  const syncPaginationTokens = useCallback(
+    (currentToken: string, nextToken: string) => {
+      if (nextToken) {
+        previousTokenByCurrentTokenRef.current.set(nextToken, currentToken)
+      }
+
+      setPreviousPageToken(
+        previousTokenByCurrentTokenRef.current.get(currentToken) ?? ""
+      )
+    },
+    []
+  )
 
   useEffect(() => {
     return () => {
@@ -126,6 +152,16 @@ export function usePaginatedData<T>(
       abortControllerRef.current?.abort()
     }
   }, [])
+
+  useEffect(() => {
+    const currentOrderSignature = `${orderField}:${orderDirection}`
+    if (orderSignatureRef.current === currentOrderSignature) {
+      return
+    }
+
+    orderSignatureRef.current = currentOrderSignature
+    resetPaginationTokens()
+  }, [orderField, orderDirection, resetPaginationTokens])
 
   const buildUrl = useCallback(
     (
@@ -179,6 +215,7 @@ export function usePaginatedData<T>(
           const cachedItems = cachedEntry.items as T[]
           setData((prev) => (append ? [...prev, ...cachedItems] : cachedItems))
           setNextPageToken(cachedEntry.nextPageToken)
+          syncPaginationTokens(token, cachedEntry.nextPageToken)
           setLoading(false)
           setError(null)
           return
@@ -240,6 +277,7 @@ export function usePaginatedData<T>(
 
         setData((prev) => (append ? [...prev, ...dataArray] : dataArray))
         setNextPageToken(nextToken)
+        syncPaginationTokens(token, nextToken)
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") {
           return
@@ -262,7 +300,16 @@ export function usePaginatedData<T>(
         }
       }
     },
-    [buildUrl, key, maxAge, orderField, orderDirection]
+    [buildUrl, key, maxAge, orderField, orderDirection, syncPaginationTokens]
+  )
+
+  const previousPage = useCallback(
+    (options: Omit<FetchPageRequestOptions, "append"> = {}) =>
+      fetchPage(previousPageToken, {
+        ...options,
+        append: false,
+      }),
+    [fetchPage, previousPageToken]
   )
 
   const refetch = useCallback(
@@ -276,7 +323,8 @@ export function usePaginatedData<T>(
 
   const setQueryParams = useCallback((queryParams?: QueryParams) => {
     activeQueryParamsRef.current = normalizeQueryParams(queryParams)
-  }, [])
+    resetPaginationTokens()
+  }, [resetPaginationTokens])
 
   useEffect(() => {
     if (!preload) {
@@ -289,10 +337,12 @@ export function usePaginatedData<T>(
   return {
     pageSize,
     nextPageToken,
+    previousPageToken,
     loading,
     error,
     data,
     nextPage: fetchPage,
+    previousPage,
     refetch,
     setQueryParams,
   }

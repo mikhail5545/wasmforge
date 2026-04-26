@@ -41,8 +41,8 @@ interface PluginsListControlsProps {
   orderDirection: string
   setOrderDirection: React.Dispatch<React.SetStateAction<string>>
   className?: string
-  viewMode?: 'grid' | 'table'
-  setViewMode?: React.Dispatch<React.SetStateAction<'grid' | 'table'>>
+  viewMode?: string
+  setViewMode?: React.Dispatch<React.SetStateAction<string>>
   showCreateButton: boolean
   pluginsData: PaginatedData<Plugin>
 }

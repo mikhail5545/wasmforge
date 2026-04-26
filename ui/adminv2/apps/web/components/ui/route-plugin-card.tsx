@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026. Mikhail Kulik.
+ * Copyright (c) 2026. Mikhail Kulik. 
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -28,18 +28,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import { Plugin } from "types/Plugin"
-import { Button } from "@workspace/ui/components/button"
+import { RoutePlugin } from "@/types/RoutePlugin"
 import React from "react"
-import { Copy, Ellipsis, Paperclip, Trash } from "lucide-react"
+import { Button } from "@workspace/ui/components/button"
+import { Ellipsis, Paperclip, Pencil, Trash } from "lucide-react"
 
-interface PluginCardProps {
-  plugin: Plugin
+interface RoutePluginCardProps {
+  plugin: RoutePlugin
   className?: string
   onDelete?: () => void
 }
 
-const PluginCard: React.FC<PluginCardProps> = ({
+const RoutePluginCard: React.FC<RoutePluginCardProps> = ({
   plugin,
   className,
   onDelete,
@@ -47,9 +47,9 @@ const PluginCard: React.FC<PluginCardProps> = ({
   return (
     <Card className={className}>
       <CardHeader className={"flex flex-row items-center justify-between"}>
-        <CardTitle className={"text-2xl"}>{plugin.name}</CardTitle>
+        <CardTitle className={"text-2xl"}>{plugin.plugin?.name}</CardTitle>
         <div className={"flex flex-row items-center justify-center gap-2"}>
-          <Badge>{`v${plugin.version}`}</Badge>
+          <Badge>{`v${plugin.plugin?.version}`}</Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant={"ghost"} size={"icon"}>
@@ -59,9 +59,9 @@ const PluginCard: React.FC<PluginCardProps> = ({
             <DropdownMenuContent>
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
-                  <a href={`/routes/plugins/new?pluginId=${plugin.id}`}>
-                    <Paperclip/>
-                    Attach
+                  <a href={`/routes/plugins/edit?pluginId=${plugin.id}`}>
+                    <Pencil />
+                    Edit
                   </a>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
@@ -75,29 +75,26 @@ const PluginCard: React.FC<PluginCardProps> = ({
         </div>
       </CardHeader>
       <CardContent className={"mt-5"}>
-        <div className={"flex w-full flex-row items-center"}>
-          <div className={"flex w-1/3 flex-col gap-4 text-muted-foreground"}>
-            <span>Filename</span>
-            <span>Version</span>
-            <span>File Checksum</span>
-            <span>Created at</span>
+        <div className={"flex w-full flex-col gap-4"}>
+          <div className={"flex flex-row items-center"}>
+            <p className={"w-1/3 text-muted-foreground"}>Filename</p>
+            <p className={"w-2/3 truncate"}>{plugin.plugin?.filename}</p>
           </div>
-          <div className={"flex w-2/3 flex-col gap-4 truncate"}>
-            <span>{plugin.filename}</span>
-            <span>{`v${plugin.version}`}</span>
-            <div className={"flex flex-row items-center justify-center"}>
-              <p className={"truncate"}>{plugin.checksum}</p>
-              <Button
-                variant={"ghost"}
-                size={"icon"}
-                onClick={() => {
-                  void navigator.clipboard.writeText(plugin.checksum)
-                }}
-              >
-                <Copy />
-              </Button>
-            </div>
-            <span>{new Date(plugin.created_at).toLocaleString()}</span>
+          <div className={"flex flex-row items-center"}>
+            <p className={"w-1/3 text-muted-foreground"}>Version</p>
+            <p className={"w-2/3 truncate"}>{plugin.plugin?.version}</p>
+          </div>
+          <div className={"flex flex-row items-center"}>
+            <p className={"w-1/3 text-muted-foreground"}>Resolved Version</p>
+            <p className={"w-2/3 truncate"}>{plugin.resolved_plugin_version}</p>
+          </div>
+          <div className={"flex flex-row items-center"}>
+            <p className={"w-1/3 text-muted-foreground"}>Version Constraint</p>
+            <p className={"w-2/3 truncate"}>{plugin.version_constraint}</p>
+          </div>
+          <div className={"flex flex-row items-center"}>
+            <p className={"w-1/3 text-muted-foreground"}>Execution Order</p>
+            <p className={"w-2/3 truncate"}>{plugin.execution_order}</p>
           </div>
         </div>
       </CardContent>
@@ -105,4 +102,4 @@ const PluginCard: React.FC<PluginCardProps> = ({
   )
 }
 
-export { PluginCard }
+export { RoutePluginCard }

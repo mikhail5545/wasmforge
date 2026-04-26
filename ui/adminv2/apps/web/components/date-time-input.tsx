@@ -24,7 +24,7 @@ import {
   PopoverTrigger,
 } from "@workspace/ui/components/popover"
 import { Button } from "@workspace/ui/components/button"
-import { ChevronDown, Clock } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 interface DateTimeInputProps {
   date: Date

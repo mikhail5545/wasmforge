@@ -32,25 +32,10 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
+  DropdownMenuItem, DropdownMenuRadioGroup, DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
 } from "@workspace/ui/components/dropdown-menu"
-import {
-  ChevronDown,
-  Ellipsis,
-  Grid2X2,
-  Pencil,
-  Plus,
-  Search,
-  Sheet,
-  Wrench,
-} from "lucide-react"
+import { ChevronDownIcon, ChevronLeft, ChevronRight, MoreHorizontal, MoreVertical, ToyBrick, Wrench } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
 import {
   Card,
@@ -59,50 +44,33 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
-import { Field, FieldGroup } from "@workspace/ui/components/field"
 import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupInput,
-} from "@workspace/ui/components/input-group"
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty"
 import { Badge } from "@workspace/ui/components/badge"
 import { AlertModal } from "@/components/dialog/alert-modal"
+import { PluginsListControls } from "@/components/plugins-list-controls"
 
 
 export default function PluginsPage() {
   const [orderField, setOrderField] = React.useState("created_at")
   const [orderDirection, setOrderDirection] = React.useState("asc")
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [searchBy, setSearchBy] = React.useState("name")
   const [viewMode, setViewMode] = React.useState("table")
+  const [perPage, setPerPage] = React.useState('10')
 
   const pluginsData = usePaginatedData<Plugin>(
     "/api/plugins",
     "plugins",
-    10,
+    Number(perPage),
     orderField,
     orderDirection as "asc" | "desc",
     { preload: true }
   )
-
-  const refetchWithQuery = React.useCallback(async () => {
-    const trimmedQuery = searchQuery.trim()
-
-    if (trimmedQuery === "") {
-      pluginsData.setQueryParams({})
-      await pluginsData.refetch()
-      return
-    }
-
-    pluginsData.setQueryParams(
-      searchBy === 'name' ? { n: trimmedQuery }
-        : searchBy === 'filename' ? { fn: trimmedQuery }
-          : { v: trimmedQuery }
-    )
-
-    await pluginsData.refetch()
-  }, [pluginsData, searchBy, searchQuery])
 
   return (
     <SidebarLayout page_title={"Plugins"}>
@@ -119,142 +87,18 @@ export default function PluginsPage() {
           void pluginsData.refetch()
         }}
       />
-      <div className={"flex flex-col p-6 pb-40"}>
-        <div className={"flex flex-row justify-between gap-2"}>
-          <FieldGroup className={"flex max-w-sm flex-row"}>
-            <Field>
-              <InputGroup>
-                <InputGroupInput
-                  aria-label={"search plugins"}
-                  type={"text"}
-                  value={searchQuery}
-                  placeholder={
-                    searchBy === "name"
-                      ? "my_plugin"
-                      : searchBy === "filename"
-                        ? "my_plugin.wasm"
-                        : "0.0.3"
-                  }
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      void refetchWithQuery()
-                    }
-                  }}
-                />
-                <InputGroupAddon className={"block-start"}>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <InputGroupButton>
-                        <span>Search by</span>
-                        <ChevronDown className={"mt-1 inline-block"} />
-                      </InputGroupButton>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      <DropdownMenuRadioGroup
-                        value={searchBy}
-                        onValueChange={setSearchBy}
-                      >
-                        <DropdownMenuRadioItem value={"name"}>
-                          Name
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"filename"}>
-                          Filename
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"version"}>
-                          Version
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </InputGroupAddon>
-              </InputGroup>
-            </Field>
-            <Button
-              variant={"outline"}
-              size={"icon"}
-              onClick={() => { void refetchWithQuery() }}
-              disabled={pluginsData.loading || !!pluginsData.error}
-            >
-              <Search />
-            </Button>
-          </FieldGroup>
-          <div className={"flex flex-row gap-2"}>
-            <Button variant={"outline"} asChild>
-              <a href={"/plugins/new"}>
-                <Plus />
-                New
-              </a>
-            </Button>
-            <Button
-              variant={"outline"}
-              size={"icon"}
-              onClick={() =>
-                setViewMode(viewMode === "table" ? "grid" : "table")
-              }
-            >
-              {viewMode === "table" ? <Grid2X2 /> : <Sheet />}
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant={"outline"} size={"icon"}>
-                  <Ellipsis />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem asChild>
-                  <a href={"/plugins/new"}>
-                    <Plus />
-                    New
-                  </a>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger inset>
-                    Order by
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup
-                      value={orderField}
-                      onValueChange={setOrderField}
-                    >
-                      <DropdownMenuRadioItem value={"name"}>
-                        Name
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value={"filename"}>
-                        Filename
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value={"version"}>
-                        Version
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value={"created_at"}>
-                        Created at
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger inset>
-                    Direction
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuSubContent>
-                    <DropdownMenuRadioGroup
-                      value={orderDirection}
-                      onValueChange={setOrderDirection}
-                    >
-                      <DropdownMenuRadioItem value={"asc"}>
-                        Ascending
-                      </DropdownMenuRadioItem>
-                      <DropdownMenuRadioItem value={"desc"}>
-                        Descending
-                      </DropdownMenuRadioItem>
-                    </DropdownMenuRadioGroup>
-                  </DropdownMenuSubContent>
-                </DropdownMenuSub>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        </div>
+      <div className={"flex flex-col p-6 gap-5"}>
+        <PluginsListControls
+          orderField={orderField}
+          setOrderField={setOrderField}
+          orderDirection={orderDirection}
+          setOrderDirection={setOrderDirection}
+          showCreateButton={true}
+          pluginsData={pluginsData}
+          className={"justify-between"}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+        />
         {pluginsData.loading ? (
           <div className={"flex items-center justify-center py-20"}>
             <Spinner className={"h-10 w-10"} />
@@ -262,92 +106,92 @@ export default function PluginsPage() {
         ) : (
           <div>
             {pluginsData.data.length === 0 ? (
-              <div className={"flex items-center justify-center py-20"}>
-                <div className={"flex flex-col items-center justify-center"}>
-                  <p className={"text-xl font-semibold"}>
-                    There is no plugins to show you
-                  </p>
-                  <p className={"text-md"}>
-                    Maybe you want to{" "}
-                    <a className={"underline"} href={"/plugins/new"}>
-                      create one?
-                    </a>
-                  </p>
-                </div>
-              </div>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant={"icon"}>
+                    <ToyBrick />
+                  </EmptyMedia>
+                  <EmptyTitle>No Plugins</EmptyTitle>
+                  <EmptyDescription>
+                    You haven&#39;t created any plugins yet. Please create a
+                    plugin to get started.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent className={"flex-row justify-center gap-4"}>
+                  <Button size={"sm"} asChild>
+                    <a href={"/plugins/new"}>Create Plugin</a>
+                  </Button>
+                </EmptyContent>
+              </Empty>
             ) : (
               <div
                 className={
-                  "flex w-full flex-col items-center justify-center py-10"
+                  "flex w-full flex-col"
                 }
               >
                 <AnimatePresence mode={"wait"}>
                   {viewMode === "table" && (
                     <motion.div
-                      initial={{ opacity: 0, x: 100 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -100 }}
-                      transition={{ duration: 0.5, ease: "easeIn" }}
-                      className={"flex w-full flex-col gap-2"}
-                    >
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Filename</TableHead>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Version</TableHead>
-                            <TableHead>Created at</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {pluginsData.data.map((plugin) => (
-                            <TableRow key={plugin.id}>
-                              <TableCell>{plugin.filename}</TableCell>
-                              <TableCell>{plugin.name}</TableCell>
-                              <TableCell>{plugin.version}</TableCell>
-                              <TableCell>
-                                {new Date(plugin.created_at).toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className={"p-3"}>
-                                      <Ellipsis size={12} />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    <DropdownMenuItem asChild>
-                                      <a
-                                        href={`/plugins/plugin?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
-                                      >
-                                        <Wrench size={10} />
-                                        <span>Details</span>
-                                      </a>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                      <a
-                                        href={`/plugins/plugin/edit?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
-                                      >
-                                        <Pencil />
-                                        <span>Edit</span>
-                                      </a>
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </motion.div>
-                  )}
-                  {viewMode === "grid" && (
-                    <motion.div
+                      key={"table"}
                       initial={{ opacity: 0, y: 100 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -100 }}
                       transition={{ duration: 0.5, ease: "easeIn" }}
+                      className={"flex w-full flex-col gap-2"}
+                    >
+                      <div className={"overflow-hidden rounded-lg border"}>
+                        <Table>
+                          <TableHeader className={"sticky top-0 z-10 bg-muted"}>
+                            <TableRow>
+                              <TableHead className={"pr-4"}>Filename</TableHead>
+                              <TableHead>Name</TableHead>
+                              <TableHead>Version</TableHead>
+                              <TableHead>Created at</TableHead>
+                              <TableHead>Actions</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {pluginsData.data.map((plugin) => (
+                              <TableRow key={plugin.id}>
+                                <TableCell className={"pr-4"}>
+                                  {plugin.filename}
+                                </TableCell>
+                                <TableCell>{plugin.name}</TableCell>
+                                <TableCell>
+                                  <Badge>{`v${plugin.version}`}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(plugin.created_at).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant={"ghost"} size={"icon"}>
+                                        <MoreVertical />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      <DropdownMenuItem asChild>
+                                        <a
+                                          href={`/plugins/plugin?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
+                                        >
+                                          <Wrench size={10} />
+                                          <span>Details</span>
+                                        </a>
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </motion.div>
+                  )}
+                  {viewMode === "grid" && (
+                    <motion.div
+                      key={"grid"}
                       className={
                         "grid w-full grid-cols-1 gap-2 md:grid-cols-3 lg:grid-cols-4"
                       }
@@ -376,7 +220,7 @@ export default function PluginsPage() {
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <Button variant={"ghost"} size={"icon"}>
-                                      <Ellipsis />
+                                      <MoreHorizontal />
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent>
@@ -386,14 +230,6 @@ export default function PluginsPage() {
                                       >
                                         <Wrench size={10} />
                                         <span>Details</span>
-                                      </a>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem asChild>
-                                      <a
-                                        href={`/plugins/plugin/edit?name=${encodeURIComponent(plugin.name)}&version=${encodeURIComponent(plugin.version)}`}
-                                      >
-                                        <Pencil />
-                                        <span>Edit</span>
                                       </a>
                                     </DropdownMenuItem>
                                   </DropdownMenuContent>
@@ -437,19 +273,72 @@ export default function PluginsPage() {
                     </motion.div>
                   )}
                 </AnimatePresence>
-                {pluginsData.nextPageToken && (
-                  <div className={"flex items-center justify-center py-5"}>
+                <div className={"mt-5 flex flex-row justify-end gap-5"}>
+                  <div
+                    className={
+                      "flex flex-row items-center justify-center gap-2"
+                    }
+                  >
+                    <p className={"text-sm font-semibold"}>Entries per page</p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant={"outline"}>
+                          {perPage}
+                          <ChevronDownIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup
+                          value={perPage}
+                          onValueChange={setPerPage}
+                        >
+                          <DropdownMenuRadioItem value={"5"}>
+                            5
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"10"}>
+                            10
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"20"}>
+                            20
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"30"}>
+                            30
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"40"}>
+                            40
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div
+                    className={
+                      "flex flex-row items-center justify-center gap-2"
+                    }
+                  >
                     <Button
-                      size={"sm"}
-                      variant={"ghost"}
-                      onClick={() =>
-                        pluginsData.nextPage(pluginsData.nextPageToken)
+                      variant={"outline"}
+                      size={"icon"}
+                      disabled={
+                        pluginsData.loading ||
+                        pluginsData.previousPageToken === ""
                       }
+                      onClick={() => pluginsData.previousPage()}
                     >
-                      Load more
+                      <ChevronLeft />
+                    </Button>
+                    <Button
+                      variant={"outline"}
+                      size={"icon"}
+                      disabled={
+                        pluginsData.loading || pluginsData.nextPageToken === ""
+                      }
+                      onClick={() => pluginsData.nextPage()}
+                    >
+                      <ChevronRight />
                     </Button>
                   </div>
-                )}
+                </div>
               </div>
             )}
           </div>

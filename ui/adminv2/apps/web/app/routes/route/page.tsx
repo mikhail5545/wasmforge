@@ -48,6 +48,36 @@ import {
   StatusPercentagesBarChart,
 } from "@/components/status-codes-charts"
 import { useMutation } from "@/hooks/use-mutation"
+import { usePaginatedData } from "@/hooks/use-paginated-data"
+import { RoutePlugin } from "@/types/RoutePlugin"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import {
+  ArrowLeft,
+  ChevronDownIcon, ChevronLeft, ChevronRight,
+  MoreHorizontalIcon,
+  MoreVertical,
+  PencilIcon,
+  RouteOff,
+  TrashIcon,
+  WrenchIcon,
+} from "lucide-react"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuGroup, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+} from "@workspace/ui/components/dropdown-menu"
+import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu"
+import { RoutePluginsListControls } from "@/components/route-plugins-list-controls"
 
 type DateRangeState = {
   from: {
@@ -131,6 +161,20 @@ export default function RoutePage() {
     "route"
   )
 
+  const [orderDirection, setOrderDirection] = React.useState<string>('asc')
+  const [orderField, setOrderField] = React.useState<string>('created_at')
+  const [perPage, setPerPage] = React.useState<string>('10')
+  const [showDeleteConfirmation, setShowDeleteConfirmation] = React.useState(false)
+
+  const routePluginsData = usePaginatedData<RoutePlugin>(
+    `/api/route-plugins?r_ids=${routeData.data?.id ?? ''}`,
+    'route_plugins',
+    Number(perPage),
+    orderField,
+    orderDirection as 'asc' | 'desc',
+    { preload: true },
+  )
+
   const toggleEnable = React.useCallback(async () => {
     if (!routeData.data) {
       return
@@ -205,6 +249,36 @@ export default function RoutePage() {
           if (successRedirect) router.push(successRedirect)
         }}
       />
+      <Dialog
+        open={showDeleteConfirmation}
+        onOpenChange={setShowDeleteConfirmation}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Are you sure?</DialogTitle>
+          </DialogHeader>
+          <DialogDescription>
+            This action cannot be undone. This will permanently delete route
+            and remove all associated route plugins.
+          </DialogDescription>
+          <DialogFooter>
+            <Button
+              variant={"outline"}
+              onClick={() => setShowDeleteConfirmation(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant={"destructive"}
+              onClick={deleteRoute}
+              disabled={loading || !!error}
+            >
+              {loading && <Spinner />}
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className={"flex flex-col p-6"}>
         {(routeData.loading && routeData.data === null) ||
         routeSummaryData.loading ? (
@@ -217,7 +291,16 @@ export default function RoutePage() {
               <div></div>
             ) : (
               <>
-                <div className={"flex flex-row items-center justify-end pb-5"}>
+                <div
+                  className={"flex flex-row items-center justify-between pb-5"}
+                >
+                  <Button
+                    variant={"ghost"}
+                    size={"icon"}
+                    onClick={() => router.back()}
+                  >
+                    <ArrowLeft />
+                  </Button>
                   <Dialog
                     open={statsConfigDialogOpen}
                     onOpenChange={setStatsConfigDialogOpen}
@@ -270,7 +353,7 @@ export default function RoutePage() {
                       route={routeData.data!}
                       onEnableToggle={toggleEnable}
                       enabling={loading}
-                      onDelete={deleteRoute}
+                      onDelete={() => setShowDeleteConfirmation(true)}
                     />
                   </div>
                   <div className={"flex w-2/3 flex-col gap-5"}>
@@ -328,6 +411,195 @@ export default function RoutePage() {
                         }
                         title={"Status Code Counts"}
                         description={`Showing status code counts in a period from ${format(range.from.date, "PPP-HH:mm")} to ${format(range.to.date, "PPP-HH:mm")}`}
+                      />
+                    </div>
+                    {routePluginsData.loading ? (
+                      <div className={"flex items-center justify-center py-20"}>
+                        <Spinner className={"h-8 w-8"} />
+                      </div>
+                    ) : (
+                      <div className={"flex w-full flex-col gap-5"}>
+                        <div className={"flex w-full flex-col gap-1"}>
+                          <p className={"text-xl"}>Associated Plugins</p>
+                          <p className={"text-muted-foreground"}>
+                            This plugins are working on this route as middleware
+                            in WASM runtime.
+                          </p>
+                        </div>
+                        {routePluginsData.data.length === 0 ? (
+                          <Empty>
+                            <EmptyHeader>
+                              <EmptyMedia variant={"icon"}>
+                                <RouteOff />
+                              </EmptyMedia>
+                              <EmptyTitle>No Associated Plugins</EmptyTitle>
+                              <EmptyDescription>
+                                You haven&#39;t attached any plugins to this
+                                route yet. Please create a new plugin and attach
+                                it to this route, or attach an existing one.
+                              </EmptyDescription>
+                            </EmptyHeader>
+                            <EmptyContent
+                              className={"flex-row justify-center gap-4"}
+                            >
+                              <Button size={"sm"} variant={"outline"} asChild>
+                                <a href={"/plugins/new"}>Create Plugin</a>
+                              </Button>
+                              <Button size={"sm"} asChild>
+                                <a
+                                  href={`/routes/plugins/new?routeId=${routeData.data?.id}`}
+                                >
+                                  Attach Plugin
+                                </a>
+                              </Button>
+                            </EmptyContent>
+                          </Empty>
+                        ) : (
+                          <div className={"overflow-hidden rounded-lg border"}>
+                            <Table>
+                              <TableHeader
+                                className={"sticky top-0 z-10 bg-muted"}
+                              >
+                                <TableRow>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead>Version Constraint</TableHead>
+                                  <TableHead>Execution Order</TableHead>
+                                  <TableHead>Resolved Plugin Version</TableHead>
+                                  <TableHead></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {routePluginsData.data.map((plugin) => (
+                                  <TableRow key={plugin.id}>
+                                    <TableCell>{plugin.plugin?.name}</TableCell>
+                                    <TableCell>
+                                      {plugin.version_constraint}
+                                    </TableCell>
+                                    <TableCell>
+                                      {plugin.execution_order}
+                                    </TableCell>
+                                    <TableCell>
+                                      {plugin.resolved_plugin_version}
+                                    </TableCell>
+                                    <TableCell>
+                                      <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                          <Button
+                                            variant={"ghost"}
+                                            size={"icon"}
+                                          >
+                                            <MoreVertical />
+                                          </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent>
+                                          <DropdownMenuGroup>
+                                            <DropdownMenuItem asChild>
+                                              <a
+                                                href={`/routes/plugins/plugin?pluginId=${plugin.id}`}
+                                              >
+                                                <WrenchIcon />
+                                                Details
+                                              </a>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem asChild>
+                                              <a
+                                                href={`/routes/plugins/edit?pluginId=${plugin.id}`}
+                                              >
+                                                <PencilIcon />
+                                                Edit
+                                              </a>
+                                            </DropdownMenuItem>
+                                          </DropdownMenuGroup>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem
+                                            variant={"destructive"}
+                                          >
+                                            <TrashIcon />
+                                            Delete
+                                          </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                      </DropdownMenu>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className={"flex flex-row justify-end gap-5"}>
+                      <div
+                        className={
+                          "flex flex-row items-center justify-center gap-2"
+                        }
+                      >
+                        <p className={"text-sm font-semibold"}>Rows per page</p>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant={"outline"}>
+                              {perPage}
+                              <ChevronDownIcon />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent>
+                            <DropdownMenuRadioGroup
+                              value={perPage}
+                              onValueChange={setPerPage}
+                            >
+                              <DropdownMenuRadioItem value={"5"}>
+                                5
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"10"}>
+                                10
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"20"}>
+                                20
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"30"}>
+                                30
+                              </DropdownMenuRadioItem>
+                              <DropdownMenuRadioItem value={"40"}>
+                                40
+                              </DropdownMenuRadioItem>
+                            </DropdownMenuRadioGroup>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                      <div
+                        className={
+                          "flex flex-row items-center justify-center gap-2"
+                        }
+                      >
+                        <Button
+                          variant={"outline"}
+                          size={"icon"}
+                          disabled={
+                            routePluginsData.loading ||
+                            routePluginsData.previousPageToken === ""
+                          }
+                          onClick={() => routePluginsData.previousPage()}
+                        >
+                          <ChevronLeft />
+                        </Button>
+                        <Button
+                          variant={"outline"}
+                          size={"icon"}
+                          disabled={
+                            routePluginsData.loading ||
+                            routePluginsData.nextPageToken === ""
+                          }
+                          onClick={() => routePluginsData.nextPage()}
+                        >
+                          <ChevronRight />
+                        </Button>
+                      </div>
+                      <RoutePluginsListControls
+                        orderDirection={orderDirection}
+                        setOrderDirection={setOrderDirection}
+                        orderField={orderField}
+                        setOrderField={setOrderField}
+                        showCreateButton={false}
                       />
                     </div>
                   </div>

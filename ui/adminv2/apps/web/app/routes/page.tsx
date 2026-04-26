@@ -16,30 +16,21 @@
 "use client"
 
 import {
-  Ban,
-  ChevronDownIcon,
-  Grid2X2,
+  ChevronDownIcon, ChevronLeft, ChevronRight,
   HardDriveUpload,
-  Plus,
-  Search,
-  Settings2,
-  Sheet,
-  TextAlignJustify,
+  MoreHorizontal,
+  MoreVertical,
+  RouteOff,
   Trash2,
   Wrench,
 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuPortal,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
@@ -51,216 +42,54 @@ import {
   TableRow,
 } from "@workspace/ui/components/table"
 import { AnimatePresence, motion } from "motion/react"
-import { useState } from "react"
+import React, { useState } from "react"
 import { usePaginatedData } from "@/hooks/use-paginated-data"
 import {Route} from "@/types/route"
-import { Input } from "@workspace/ui/components/input"
 import { SidebarLayout } from "@/components/navigation/sidebar-layout"
 import { useRouter } from "next/navigation"
+import { RoutesListControls } from "@/components/routes-list-controls"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import { Button } from "@workspace/ui/components/button"
+import { Badge } from "@workspace/ui/components/badge"
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@workspace/ui/components/card"
 
 export default function RoutesPage() {
   const router = useRouter()
 
   const [orderField, setOrderField] = useState("created_at");
   const [orderDirection, setOrderDirection] = useState("asc");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchBy, setSearchBy] = useState("path");
   const [viewMode, setViewMode] = useState('table');
+  const [perPage, setPerPage] = useState('10')
 
   const routeData = usePaginatedData<Route>(
     '/api/routes',
     'routes',
-    10,
+    Number(perPage),
     orderField,
     orderDirection as 'asc' | 'desc',
     { preload: true },
   );
 
-  const refetchWithQuery = async () => {
-    const trimmedQuery = searchQuery.trim()
-
-    if (trimmedQuery === "") {
-      routeData.setQueryParams({})
-      await routeData.refetch()
-      return
-    }
-
-    routeData.setQueryParams(
-      searchBy === "path" ? { paths: trimmedQuery } : { turls: trimmedQuery }
-    )
-    await routeData.refetch()
-  }
-
   return (
     <SidebarLayout page_title={"Routes"}>
-      <div className={"flex flex-col p-6 pb-40"}>
-        <div className={"flex flex-row gap-2"}>
-          <div className={"flex min-w-100 rounded-lg border"}>
-            <div className={"relative inline-flex min-w-30"}>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <motion.button
-                    className={
-                      "flex-row items-center justify-between rounded-lg px-3 py-2 text-sm"
-                    }
-                  >
-                    Search by
-                    <ChevronDownIcon
-                      size={10}
-                      className={"ml-3 inline-block"}
-                    />
-                  </motion.button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent>
-                  <DropdownMenuRadioGroup
-                    value={searchBy}
-                    onValueChange={setSearchBy}
-                  >
-                    <DropdownMenuRadioItem value={"path"}>
-                      Path
-                    </DropdownMenuRadioItem>
-                    <DropdownMenuRadioItem value={"target_url"}>
-                      Target URL
-                    </DropdownMenuRadioItem>
-                  </DropdownMenuRadioGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <Input
-              aria-label={"search a route"}
-              aria-labelledby={"routes-search-input"}
-              className={"h-full rounded-l-none"}
-              placeholder={
-                searchBy === "path"
-                  ? "/api/resource"
-                  : "https://example.com/api/resource"
-              }
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  void refetchWithQuery()
-                }
-              }}
-            />
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={
-                "flex-row items-center justify-between rounded-lg p-3 text-sm"
-              }
-              onClick={() => void refetchWithQuery()}
-            >
-              <Search size={15} />
-            </motion.button>
-          </div>
-          <motion.a
-            whileTap={{ scale: 0.95 }}
-            className={
-              "flex flex-row items-center justify-center gap-2 rounded-lg border border-background bg-secondary px-3 py-1 text-sm text-foreground transition-colors duration-200 hover:bg-accent"
-            }
-            href={"/routes/new"}
-          >
-            <Plus size={15} />
-            New
-          </motion.a>
-          <motion.button
-            whileTap={{ scale: 0.95 }}
-            className={
-              "rounded-lg border border-background bg-secondary px-3 py-3 text-foreground transition-colors duration-200 hover:bg-accent"
-            }
-            onClick={() => setViewMode(viewMode === "table" ? "grid" : "table")}
-          >
-            <AnimatePresence mode={"wait"}>
-              {viewMode === "grid" && <Grid2X2 size={15} />}
-              {viewMode === "table" && <Sheet size={15} />}
-            </AnimatePresence>
-          </motion.button>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                className={
-                  "rounded-lg border border-background bg-secondary px-3 py-3 text-foreground transition-colors duration-200 hover:bg-accent"
-                }
-              >
-                <TextAlignJustify size={15} />
-              </motion.button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem>
-                <Plus size={10} />
-                <span>New</span>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger inset>
-                    Order by
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={orderField}
-                        onValueChange={setOrderField}
-                      >
-                        <DropdownMenuRadioItem value={"created_at"}>
-                          Created Date
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"updated_at"}>
-                          Updated Date
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"route"}>
-                          Route
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger inset>
-                    Direction
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={orderDirection}
-                        onValueChange={setOrderDirection}
-                      >
-                        <DropdownMenuRadioItem value={"asc"}>
-                          Ascending
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"desc"}>
-                          Descending
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-                <DropdownMenuSub>
-                  <DropdownMenuSubTrigger inset>
-                    View mode
-                  </DropdownMenuSubTrigger>
-                  <DropdownMenuPortal>
-                    <DropdownMenuSubContent>
-                      <DropdownMenuRadioGroup
-                        value={viewMode}
-                        onValueChange={setViewMode}
-                      >
-                        <DropdownMenuRadioItem value={"table"}>
-                          Table
-                        </DropdownMenuRadioItem>
-                        <DropdownMenuRadioItem value={"grid"}>
-                          Grid
-                        </DropdownMenuRadioItem>
-                      </DropdownMenuRadioGroup>
-                    </DropdownMenuSubContent>
-                  </DropdownMenuPortal>
-                </DropdownMenuSub>
-              </DropdownMenuGroup>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+      <div className={"flex flex-col p-6 gap-5"}>
+        <RoutesListControls
+          orderField={orderField}
+          setOrderField={setOrderField}
+          orderDirection={orderDirection}
+          setOrderDirection={setOrderDirection}
+          showCreateButton={true}
+          routesData={routeData}
+          viewMode={viewMode}
+          setViewMode={setViewMode}
+          className={"justify-between"}
+        />
         {routeData.loading ? (
           <div className={"flex items-center justify-center py-20"}>
             <div
@@ -272,112 +101,113 @@ export default function RoutesPage() {
         ) : (
           <div>
             {routeData.data.length === 0 ? (
-              <div className={"flex items-center justify-center py-20"}>
-                <div className={"flex flex-col items-center justify-center"}>
-                  <p className={"text-xl font-semibold"}>
-                    There is no routes to show you
-                  </p>
-                  <p className={"text-md"}>
-                    Maybe you want to{" "}
-                    <a className={"underline"} href={"/routes/new"}>
-                      create one?
-                    </a>
-                  </p>
-                </div>
-              </div>
+              <Empty>
+                <EmptyHeader>
+                  <EmptyMedia variant={"icon"}>
+                    <RouteOff />
+                  </EmptyMedia>
+                  <EmptyTitle>No Routes</EmptyTitle>
+                  <EmptyDescription>
+                    You haven&#39;t created any routes yet. Please create a
+                    route to get started.
+                  </EmptyDescription>
+                </EmptyHeader>
+                <EmptyContent className={"flex-row justify-center gap-4"}>
+                  <Button size={"sm"} asChild>
+                    <a href={"/routes/new"}>Create Route</a>
+                  </Button>
+                </EmptyContent>
+              </Empty>
             ) : (
               <div
                 className={
-                  "flex w-full flex-col items-center justify-center py-10"
+                  "flex w-full flex-col"
                 }
               >
                 <AnimatePresence mode={"wait"}>
                   {viewMode == "table" && (
                     <motion.div
+                      key={"table"}
                       initial={{ opacity: 0, y: 100 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -100 }}
                       transition={{ duration: 0.5, ease: "easeIn" }}
                       className={"flex w-full flex-col gap-2"}
                     >
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Path</TableHead>
-                            <TableHead>Target URL</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Created at</TableHead>
-                            <TableHead>Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {routeData.data.map((route) => (
-                            <TableRow key={route.id}>
-                              <TableCell>{route.path}</TableCell>
-                              <TableCell>{route.target_url}</TableCell>
-                              <TableCell>
-                                {route.enabled ? "enabled" : "disabled"}
-                              </TableCell>
-                              <TableCell>
-                                {new Date(route.created_at).toLocaleString()}
-                              </TableCell>
-                              <TableCell>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className={"p-3"}>
-                                      <Settings2 size={12} />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        router.push(
-                                          `/routes/route?path=${route.path}`
-                                        )
-                                      }
-                                    >
-                                      <Wrench size={10} />
-                                      <span>Details</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      <HardDriveUpload size={10} />
-                                      Enable
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className={"text-destructive"}
-                                    >
-                                      <Trash2 size={10} />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </TableCell>
+                      <div className={"overflow-hidden rounded-lg border"}>
+                        <Table>
+                          <TableHeader className={"sticky top-0 z-10 bg-muted"}>
+                            <TableRow>
+                              <TableHead className={"pl-4"}>Path</TableHead>
+                              <TableHead>Target URL</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Created at</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                      {routeData.nextPageToken && (
-                        <div
-                          className={"flex items-center justify-center py-5"}
-                        >
-                          <motion.button
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={"px-4 py-2 text-xs underline"}
-                          >
-                            Load More
-                          </motion.button>
-                        </div>
-                      )}
+                          </TableHeader>
+                          <TableBody>
+                            {routeData.data.map((route) => (
+                              <TableRow key={route.id}>
+                                <TableCell className={"pl-4"}>
+                                  {route.path}
+                                </TableCell>
+                                <TableCell>{route.target_url}</TableCell>
+                                <TableCell>
+                                  <Badge
+                                    className={
+                                      route.enabled
+                                        ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                        : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                    }
+                                  >
+                                    {route.enabled ? "Active" : "Stopped"}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {new Date(route.created_at).toLocaleString()}
+                                </TableCell>
+                                <TableCell>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button variant={"ghost"} size={"icon"}>
+                                        <MoreVertical />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent>
+                                      <DropdownMenuItem
+                                        onClick={() =>
+                                          router.push(
+                                            `/routes/route?path=${route.path}`
+                                          )
+                                        }
+                                      >
+                                        <Wrench size={10} />
+                                        <span>Details</span>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem>
+                                        <HardDriveUpload size={10} />
+                                        Enable
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem
+                                        className={"text-destructive"}
+                                      >
+                                        <Trash2 size={10} />
+                                        Delete
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </motion.div>
                   )}
                   {viewMode == "grid" && (
                     <motion.div
-                      initial={{ opacity: 0, y: 100 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -100 }}
-                      transition={{ duration: 0.5, ease: "easeIn" }}
+                      key={"grid"}
                       className={
                         "grid w-full grid-cols-1 gap-2 md:grid-cols-3 lg:grid-cols-4"
                       }
@@ -389,114 +219,139 @@ export default function RoutesPage() {
                           animate={{ opacity: 1, y: 0 }}
                           exit={{ opacity: 0, y: -50 }}
                           transition={{ duration: 0.3, delay: idx * 0.1 }}
-                          className={
-                            "col-span-1 rounded-lg border border-border bg-card p-5"
-                          }
                         >
-                          <div className={"flex flex-col gap-5"}>
-                            <div
+                          <Card>
+                            <CardHeader
                               className={
                                 "flex flex-row items-center justify-between"
                               }
                             >
-                              <div className={"flex flex-col gap-1"}>
-                                <p
-                                  className={
-                                    "text-xs text-secondary-foreground"
-                                  }
-                                >
-                                  Path
-                                </p>
-                                <p className={"text-md truncate font-semibold"}>
-                                  {route.path}
-                                </p>
-                              </div>
+                              <CardTitle className={"truncate"}>
+                                {route.path}
+                              </CardTitle>
                               <div
-                                className={"flex items-center justify-center"}
-                              >
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <button className={"p-3"}>
-                                      <Settings2 size={12} />
-                                    </button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent>
-                                    <DropdownMenuItem
-                                      onClick={() =>
-                                        router.push(
-                                          `/routes/route?path=${route.path}`
-                                        )
-                                      }
-                                    >
-                                      <Wrench size={10} />
-                                      <span>Details</span>
-                                    </DropdownMenuItem>
-                                    {route.enabled ? (
-                                      <DropdownMenuItem>
-                                        <Ban size={10} />
-                                        Disable
-                                      </DropdownMenuItem>
-                                    ) : (
-                                      <DropdownMenuItem>
-                                        <HardDriveUpload size={10} />
-                                        Enable
-                                      </DropdownMenuItem>
-                                    )}
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className={"text-destructive"}
-                                    >
-                                      <Trash2 size={10} />
-                                      Delete
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                            <div className={"flex flex-col gap-1"}>
-                              <p
-                                className={"text-sm text-secondary-foreground"}
-                              >
-                                Target URL
-                              </p>
-                              <p className={"text-md truncate font-semibold"}>
-                                {route.target_url}
-                              </p>
-                            </div>
-                            <div className={"flex flex-col gap-1"}>
-                              <p
-                                className={"text-sm text-secondary-foreground"}
-                              >
-                                Status
-                              </p>
-                              <p className={"text-md truncate font-semibold"}>
-                                {route.enabled
-                                  ? "Active route"
-                                  : "Inactive route"}
-                              </p>
-                            </div>
-                            <div
-                              className={
-                                "flex flex-row items-center justify-end"
-                              }
-                            >
-                              <motion.a
-                                whileHover={{ scale: 1.05 }}
-                                whileTap={{ scale: 0.95 }}
-                                href={`/routes/route?path=${route.path}`}
                                 className={
-                                  "flex flex-row items-center justify-center rounded-xl bg-primary px-4 py-2 text-center text-sm text-primary-foreground transition-opacity duration-200 hover:opacity-850"
+                                  "flex flex-row items-center justify-center gap-2"
                                 }
                               >
-                                View Details
-                              </motion.a>
-                            </div>
-                          </div>
+                                <Badge
+                                  className={
+                                    route.enabled
+                                      ? "bg-green-50 text-green-700 dark:bg-green-950 dark:text-green-300"
+                                      : "bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300"
+                                  }
+                                >
+                                  {route.enabled ? "Active" : "Stopped"}
+                                </Badge>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant={"ghost"} size={"icon"}>
+                                      <MoreHorizontal />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                </DropdownMenu>
+                              </div>
+                            </CardHeader>
+                            <CardContent>
+                              <div className={"flex flex-col gap-4"}>
+                                <div className={"flex flex-col gap-1"}>
+                                  <p className={"text-muted-foreground"}>
+                                    Target URL
+                                  </p>
+                                  <p className={"truncate"}>
+                                    {route.target_url}
+                                  </p>
+                                </div>
+                                <div className={"flex flex-col gap-1"}>
+                                  <p className={"text-muted-foreground"}>
+                                    Created at
+                                  </p>
+                                  <p className={"truncate"}>
+                                    {new Date(
+                                      route.created_at
+                                    ).toLocaleString()}
+                                  </p>
+                                </div>
+                              </div>
+                            </CardContent>
+                            <CardFooter>
+                              <Button asChild>
+                                <a href={`/routes/route?path=${route.path}`}>
+                                  Vew Details
+                                </a>
+                              </Button>
+                            </CardFooter>
+                          </Card>
                         </motion.div>
                       ))}
                     </motion.div>
                   )}
                 </AnimatePresence>
+                <div className={"mt-5 flex flex-row justify-end gap-5"}>
+                  <div
+                    className={
+                      "flex flex-row items-center justify-center gap-2"
+                    }
+                  >
+                    <p className={"text-sm font-semibold"}>Entries per page</p>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant={"outline"}>
+                          {perPage}
+                          <ChevronDownIcon />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuRadioGroup
+                          value={perPage}
+                          onValueChange={setPerPage}
+                        >
+                          <DropdownMenuRadioItem value={"5"}>
+                            5
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"10"}>
+                            10
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"20"}>
+                            20
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"30"}>
+                            30
+                          </DropdownMenuRadioItem>
+                          <DropdownMenuRadioItem value={"40"}>
+                            40
+                          </DropdownMenuRadioItem>
+                        </DropdownMenuRadioGroup>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div
+                    className={
+                      "flex flex-row items-center justify-center gap-2"
+                    }
+                  >
+                    <Button
+                      variant={"outline"}
+                      size={"icon"}
+                      disabled={
+                        routeData.loading || routeData.previousPageToken === ""
+                      }
+                      onClick={() => routeData.previousPage()}
+                    >
+                      <ChevronLeft />
+                    </Button>
+                    <Button
+                      variant={"outline"}
+                      size={"icon"}
+                      disabled={
+                        routeData.loading || routeData.nextPageToken === ""
+                      }
+                      onClick={() => routeData.nextPage()}
+                    >
+                      <ChevronRight />
+                    </Button>
+                  </div>
+                </div>
               </div>
             )}
           </div>

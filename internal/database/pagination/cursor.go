@@ -90,7 +90,7 @@ func ApplyCursor(db *gorm.DB, params ApplyCursorParams) (*gorm.DB, error) {
 		// If table on which pagination is applied and joined table have the same field that is passed
 		// here as OrderField, query will fail due to ambiguous field.
 		tableAndField := fmt.Sprintf("%s.%s", *params.TableName, params.OrderField)
-		orderExpr = fmt.Sprintf("%s %s, id %s", tableAndField, params.OrderDir, params.OrderDir)
+		orderExpr = fmt.Sprintf("%s %s, %s.id %s", tableAndField, params.OrderDir, *params.TableName, params.OrderDir)
 	} else {
 		orderExpr = fmt.Sprintf("%s %s, id %s", params.OrderField, params.OrderDir, params.OrderDir)
 	}

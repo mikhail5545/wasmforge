@@ -31,26 +31,24 @@ import {
 import { Plugin } from "types/Plugin"
 import { Button } from "@workspace/ui/components/button"
 import React from "react"
-import { Copy, Ellipsis, Pencil, Trash } from "lucide-react"
+import { Copy, Ellipsis, Paperclip, Pencil, Trash } from "lucide-react"
 
 interface PluginCardProps {
   plugin: Plugin
   className?: string
   onDelete?: () => void
-  onAddRoute?: () => void
 }
 
 const PluginCard: React.FC<PluginCardProps> = ({
   plugin,
   className,
   onDelete,
-  onAddRoute,
 }) => {
   return (
     <Card className={className}>
       <CardHeader className={"flex flex-row items-center justify-between"}>
         <CardTitle className={"text-2xl"}>{plugin.name}</CardTitle>
-        <div className={"flex flex-row gap-2 items-center justify-center"}>
+        <div className={"flex flex-row items-center justify-center gap-2"}>
           <Badge>{`v${plugin.version}`}</Badge>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -68,8 +66,11 @@ const PluginCard: React.FC<PluginCardProps> = ({
                     <span>Edit</span>
                   </a>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={onAddRoute}>
-                  Attach
+                <DropdownMenuItem asChild>
+                  <a href={`/routes/plugins/new?pluginId=${plugin.id}`}>
+                    <Paperclip/>
+                    Attach
+                  </a>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />
@@ -101,7 +102,7 @@ const PluginCard: React.FC<PluginCardProps> = ({
                   void navigator.clipboard.writeText(plugin.checksum)
                 }}
               >
-                <Copy/>
+                <Copy />
               </Button>
             </div>
             <span>{new Date(plugin.created_at).toLocaleString()}</span>

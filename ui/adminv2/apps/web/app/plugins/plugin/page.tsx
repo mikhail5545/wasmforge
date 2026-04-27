@@ -33,9 +33,8 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@workspace/ui/components/empty"
-import { ChevronDownIcon, ChevronLeft, ChevronRight, HardDriveUpload, MoreVertical, RouteOff, Trash2, Wrench } from "lucide-react"
+import { ChevronDownIcon, ChevronLeft, ChevronRight, MoreVertical, RouteOff, Wrench } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { ScrollArea } from "@workspace/ui/components/scroll-area"
 import { RoutesListControls } from "@/components/routes-list-controls"
 import { useMutation } from "@/hooks/use-mutation"
 import { AlertModal } from "@/components/dialog/alert-modal"
@@ -91,7 +90,7 @@ export default function PluginPage() {
   const routesData = usePaginatedData<Route>(
     `/api/routes?pids=${pluginId}`,
     "routes",
-    Number(perPage),
+    parseInt(perPage),
     orderField,
     orderDirection as "asc" | "desc",
     { preload: true }

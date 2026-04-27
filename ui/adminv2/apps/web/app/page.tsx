@@ -48,13 +48,11 @@ import {
   Database,
   MoreHorizontal,
   Power,
-  PowerOff,
-  RouteOff,
+  PowerOff, RotateCcw,
   Settings,
   TriangleAlert,
 } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { buildMockProxyStats } from "@/lib/mock-stats"
 import { StatusCountsRadarChart, StatusPercentagesBarChart } from "@/components/status-codes-charts"
 import { format } from "date-fns"
 import { TimeSeriesAreaChart, TimeSeriesStatusCodeLineChart } from "@/components/time-series-charts"
@@ -71,7 +69,6 @@ import {
 } from "@workspace/ui/components/popover"
 import {
   Empty,
-  EmptyContent,
   EmptyDescription,
   EmptyHeader,
   EmptyMedia,
@@ -82,6 +79,8 @@ import {
   OverviewResponse,
   TimeseriesResponse,
 } from "@/types/ProxyServerStatistics"
+import { useMutation } from "@/hooks/use-mutation"
+import { AlertModal } from "@/components/dialog/alert-modal"
 
 export default function Page() {
 
@@ -90,8 +89,9 @@ export default function Page() {
     "status"
   );
 
-  const mockStats = buildMockProxyStats()
-  const normalizedStatusCodesTimeSeries = NormalizeTimeSeriesPointsStatusCodes(mockStats.timeseries.points)
+  const { loading, error, mutate, reset } = useMutation()
+  const [showSuccess, setShowSuccess] = React.useState(false)
+  const [successMessage, setSuccessMessage] = React.useState("")
 
   const overviewRange = useRange()
   const timeSeriesRange = useRange()
@@ -105,9 +105,77 @@ export default function Page() {
     "timeseries"
   )
 
+  const toggleRun = React.useCallback(async() => {
+    if (!proxyServerStatus.data) return
+
+    const callUrl = `http://localhost:8080/api/proxy/server/${proxyServerStatus.data.running ? "stop" : "start"}`
+
+    const response = await mutate(
+      callUrl,
+      'POST'
+    )
+
+    if (response.success){
+      setShowSuccess(true)
+      setSuccessMessage(proxyServerStatus.data.running ? "Proxy server stopped successfully" : "Proxy server started successfully")
+      await proxyServerStatus.refetch()
+    }
+
+  }, [mutate, proxyServerStatus])
+
+  const restart = React.useCallback(async () => {
+    if (!proxyServerStatus.data) return
+
+    const response = await mutate(
+      'http://localhost:8080/api/proxy/server/restart',
+      'POST'
+    )
+
+    if (response.success) {
+      setShowSuccess(true)
+      setSuccessMessage("Proxy server restarted successfully")
+    }
+    await proxyServerStatus.refetch()
+  }, [mutate, proxyServerStatus])
+
+  const normalizedTimeSeriesData = NormalizeTimeSeriesPointsStatusCodes(timeSeriesData.data?.points)
 
   return (
     <SidebarLayout page_title={"Dashboard"}>
+      <AlertModal
+        variant={"alert"}
+        size={"sm"}
+        title={"Unexpected error occurred"}
+        visible={
+          !!proxyServerStatus.error ||
+          !!error ||
+          !!overViewData.error ||
+          !!timeSeriesData.error
+        }
+        description={
+          proxyServerStatus?.error?.message ||
+          error?.message ||
+          overViewData?.error?.message ||
+          timeSeriesData?.error?.message ||
+          "No additional information available. Retrying in 5 seconds."
+        }
+        onClose={() => {
+          if (proxyServerStatus.error) void proxyServerStatus.refetch()
+          if (overViewData.error) void overViewData.refetch()
+          if (timeSeriesData.error) void timeSeriesData.refetch()
+          if (error) reset()
+        }}
+      />
+      <AlertModal
+        variant={"default"}
+        size={"sm"}
+        title={"Success"}
+        visible={showSuccess}
+        description={successMessage}
+        onClose={() => {
+          setShowSuccess(false)
+        }}
+      />
       <div className={"flex flex-col p-6"}>
         {proxyServerStatus.loading ? (
           <div className={"flex items-center justify-center py-50"}>
@@ -148,7 +216,10 @@ export default function Page() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent>
-                          <DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={toggleRun}
+                            disabled={loading || !!error}
+                          >
                             {proxyServerStatus.data?.running ? (
                               <>
                                 <PowerOff />
@@ -167,6 +238,15 @@ export default function Page() {
                               Settings
                             </a>
                           </DropdownMenuItem>
+                          {proxyServerStatus.data?.running && (
+                            <DropdownMenuItem
+                              onClick={restart}
+                              disabled={loading || !!error}
+                            >
+                              <RotateCcw />
+                              Restart
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -294,13 +374,6 @@ export default function Page() {
                           layout={"row"}
                         />
                       </div>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-end gap-4"
-                        }
-                      >
-                        <Button>Confirm</Button>
-                      </div>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -368,13 +441,6 @@ export default function Page() {
                           layout={"row"}
                         />
                       </div>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-end gap-4"
-                        }
-                      >
-                        <Button>Confirm</Button>
-                      </div>
                     </div>
                   </PopoverContent>
                 </Popover>
@@ -385,7 +451,8 @@ export default function Page() {
                 </div>
               ) : (
                 <>
-                  {timeSeriesData.data?.points.length === 0 ? (
+                  {timeSeriesData.data?.points.length === 0 ||
+                  !timeSeriesData.data ? (
                     <Empty>
                       <EmptyHeader>
                         <EmptyMedia variant={"icon"}>
@@ -393,7 +460,8 @@ export default function Page() {
                         </EmptyMedia>
                         <EmptyTitle>Not Enough Data</EmptyTitle>
                         <EmptyDescription>
-                          Not enough data to show time series. Try expanding the time range or check back later
+                          Not enough data to show time series. Try expanding the
+                          time range or check back later
                         </EmptyDescription>
                       </EmptyHeader>
                     </Empty>
@@ -402,9 +470,9 @@ export default function Page() {
                       <TimeSeriesAreaChart
                         title={"Total Requests Over Time"}
                         description={`Showing how many requests were sent in a period from ${format(timeSeriesRange.range.from.date, "PPP-HH:mm")} to ${format(timeSeriesRange.range.to.date, "PPP-HH:mm")}`}
-                        timeSeries={mockStats.timeseries.points}
+                        timeSeries={timeSeriesData.data.points}
                       />
-                      {normalizedStatusCodesTimeSeries.map((series) => (
+                      {normalizedTimeSeriesData.map((series) => (
                         <TimeSeriesStatusCodeLineChart
                           color={`var(--chart-1)`}
                           key={series.code}

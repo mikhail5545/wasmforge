@@ -66,7 +66,7 @@ export default function PluginsPage() {
   const pluginsData = usePaginatedData<Plugin>(
     "/api/plugins",
     "plugins",
-    Number(perPage),
+    parseInt(perPage),
     orderField,
     orderDirection as "asc" | "desc",
     { preload: true }

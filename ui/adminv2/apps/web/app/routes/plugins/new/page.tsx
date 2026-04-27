@@ -23,47 +23,17 @@ import { Route } from "types/route"
 import { RoutePlugin } from "@/types/RoutePlugin"
 import React, { useCallback } from "react"
 import { ErrorResponse } from "@/types/ErrorResponse"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@workspace/ui/components/card"
-import { AnimatePresence, motion } from "motion/react"
 import { usePaginatedData } from "@/hooks/use-paginated-data"
 import { Spinner } from "@workspace/ui/components/spinner"
-import {
-  ArrowLeft,
-  ArrowRight,
-  FileBraces,
-  RotateCcw,
-  CircleAlert,
-  CircleCheck,
-} from "lucide-react"
+import { CircleAlert, CircleCheck } from "lucide-react"
 import { Button } from "@workspace/ui/components/button"
-import { Progress } from "@workspace/ui/components/progress"
-import {
-  Field,
-  FieldError,
-  FieldGroup,
-  FieldLabel,
-  FieldSet,
-} from "@workspace/ui/components/field"
-import { Input } from "@workspace/ui/components/input"
 import { useMutation } from "@/hooks/use-mutation"
-import {
-  RoutePluginStep1,
-  RoutePluginStep2,
-} from "@/components/new-route-plugin-steps"
-import {
-  InputGroup,
-  InputGroupAddon,
-  InputGroupButton,
-  InputGroupText,
-  InputGroupTextarea,
-} from "@workspace/ui/components/input-group"
 import { AlertModal } from "@/components/dialog/alert-modal"
+import {
+  NewRoutePluginSectionPluginForm,
+  NewRoutePluginSectionSelectPlugin,
+  NewRoutePluginSectionSelectRoute,
+} from "@/components/new-route-plugin-sections"
 
 const initialFormState: Omit<RoutePlugin, "id" | "created_at" | "plugin"> = {
   route_id: "",
@@ -92,11 +62,12 @@ export default function NewRoutePluginPage() {
 
   const [routesOrderField, setRoutesOrderField] = React.useState("created_at")
   const [routesOrderDirection, setRoutesOrderDirection] = React.useState("asc")
+  const [routesPerPage, setRoutesPerPage] = React.useState("10")
 
   const routesData = usePaginatedData<Route>(
     "/api/routes",
     "routes",
-    10,
+    parseInt(routesPerPage),
     routesOrderField,
     routesOrderDirection as "asc" | "desc",
     { preload: true }
@@ -105,11 +76,12 @@ export default function NewRoutePluginPage() {
   const [pluginsOrderField, setPluginsOrderField] = React.useState("created_at")
   const [pluginsOrderDirection, setPluginsOrderDirection] =
     React.useState("asc")
+  const [pluginsPerPage, setPluginsPerPage] = React.useState("10")
 
   const pluginsData = usePaginatedData<Plugin>(
     "/api/plugins",
     "plugins",
-    10,
+    parseInt(pluginsPerPage),
     pluginsOrderField,
     pluginsOrderDirection as "asc" | "desc",
     { preload: true }
@@ -121,7 +93,6 @@ export default function NewRoutePluginPage() {
   )
   const [formState, setFormState] =
     React.useState<typeof initialFormState>(initialFormState)
-  const [currentStep, setCurrentStep] = React.useState<number>(1)
   const { loading, error, mutate, reset } = useMutation()
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [showErrorAlert, setShowErrorAlert] = React.useState(false)
@@ -255,263 +226,68 @@ export default function NewRoutePluginPage() {
           router.push("/routes")
         }}
       />
-      <div className={"flex flex-col items-center justify-center p-6"}>
-        <div
-          className={"flex w-full flex-col items-center justify-center gap-3"}
+      <NewRoutePluginSectionSelectRoute
+        selectedRoute={selectedRoute}
+        setSelectedRoute={setSelectedRoute}
+        orderField={routesOrderField}
+        setOrderField={setRoutesOrderField}
+        orderDirection={routesOrderDirection}
+        setOrderDirection={setRoutesOrderDirection}
+        routesData={routesData}
+        setFormState={setFormState}
+        perPage={routesPerPage}
+        setPerPage={setRoutesPerPage}
+      />
+      <NewRoutePluginSectionSelectPlugin
+        selectedPlugin={selectedPlugin}
+        pluginsData={pluginsData}
+        orderField={pluginsOrderField}
+        orderDirection={pluginsOrderDirection}
+        perPage={pluginsPerPage}
+        setOrderField={setPluginsPerPage}
+        setOrderDirection={setPluginsOrderDirection}
+        setFormState={setFormState}
+        setSelectedPlugin={setSelectedPlugin}
+        setPerPage={setPluginsPerPage}
+      />
+      <NewRoutePluginSectionPluginForm
+        formState={formState}
+        setFormState={setFormState}
+        validationErrors={validationErrors}
+        jsonConfigString={jsonConfigString}
+        setJsonConfigString={setJSONConfigString}
+        validateJsonConfig={validateConfig}
+        jsonConfigValid={jsonConfigValid}
+        setJsonConfigValid={setJSONConfigValid}
+        exampleJsonConfig={exampleConfigJSON}
+      />
+      <div className={"flex flex-row items-center justify-end gap-5 p-6"}>
+        <Button
+          variant={"outline"}
+          disabled={loading}
+          onClick={() => {
+            setSelectedRoute(null)
+            setSelectedPlugin(null)
+            setFormState(initialFormState)
+            setJSONConfigString(exampleConfigJSON)
+          }}
         >
-          <p className={"text-3xl"}>Creating a new Route Plugin</p>
-          <Progress
-            value={(currentStep * 100) / 3}
-            className={"w-full lg:w-1/3"}
-          />
-        </div>
-        <AnimatePresence mode={"wait"}>
-          {currentStep === 1 && (
-            <RoutePluginStep1
-              selectedRoute={selectedRoute}
-              setSelectedRoute={setSelectedRoute}
-              routesData={routesData}
-              orderField={routesOrderField}
-              setOrderField={setRoutesOrderField}
-              orderDirection={routesOrderDirection}
-              setOrderDirection={setRoutesOrderDirection}
-            />
-          )}
-          {currentStep === 2 && (
-            <RoutePluginStep2
-              selectedPlugin={selectedPlugin}
-              setSelectedPlugin={setSelectedPlugin}
-              pluginsData={pluginsData}
-              orderField={pluginsOrderField}
-              setOrderField={setPluginsOrderField}
-              orderDirection={pluginsOrderDirection}
-              setOrderDirection={setPluginsOrderDirection}
-            />
-          )}
-          {currentStep === 3 && (
-            <motion.div
-              key={"route-select"}
-              initial={{ opacity: 0, x: -100 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 100 }}
-              transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className={"flex w-full flex-col gap-5"}
-            >
-              <p className={"text-xl"}>Fill Information</p>
-              <div className={"flex flex-col gap-5 lg:flex-row"}>
-                <div className={"w-full lg:w-1/3"}>
-                  <Card className={"w-full"}>
-                    <CardHeader>
-                      <CardTitle>Route Plugin Information</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <FieldSet>
-                        <FieldGroup>
-                          <Field>
-                            <FieldLabel>Route ID</FieldLabel>
-                            <Input
-                              disabled
-                              aria-label={"route id"}
-                              type={"text"}
-                              value={formState.route_id}
-                            />
-                          </Field>
-                          <Field>
-                            <FieldLabel>Plugin ID</FieldLabel>
-                            <Input
-                              disabled
-                              aria-label={"route id"}
-                              type={"text"}
-                              value={formState.plugin_id}
-                            />
-                          </Field>
-                        </FieldGroup>
-                        <FieldGroup>
-                          <Field>
-                            <FieldLabel>
-                              Execution Order
-                              <span className={"text-destructive"}>*</span>
-                            </FieldLabel>
-                            <Input
-                              aria-invalid={
-                                validationErrors != null &&
-                                validationErrors["execution_order"] != ""
-                              }
-                              aria-label={"execution order"}
-                              type={"number"}
-                              value={formState.execution_order}
-                              onChange={(e) =>
-                                setFormState((prev) => ({
-                                  ...prev,
-                                  execution_order:
-                                    parseInt(e.target.value) || 1,
-                                }))
-                              }
-                            />
-                            <FieldError>
-                              {validationErrors != null &&
-                                validationErrors["execution_order"] != "" && (
-                                  <p className={"text-sm"}>
-                                    {validationErrors["execution_order"]}
-                                  </p>
-                                )}
-                            </FieldError>
-                          </Field>
-                          <Field>
-                            <FieldLabel>
-                              Version Constraint
-                              <span className={"text-destructive"}>*</span>
-                            </FieldLabel>
-                            <Input
-                              aria-invalid={
-                                validationErrors != null &&
-                                validationErrors["version_constraint"] != ""
-                              }
-                              aria-label={"version constraint"}
-                              type={"text"}
-                              value={formState.version_constraint}
-                              onChange={(e) =>
-                                setFormState((prev) => ({
-                                  ...prev,
-                                  version_constraint: e.target.value,
-                                }))
-                              }
-                            />
-                            <FieldError>
-                              {validationErrors != null &&
-                                validationErrors["version_constraint"] !=
-                                  "" && (
-                                  <p className={"text-sm"}>
-                                    {validationErrors["version_constraint"]}
-                                  </p>
-                                )}
-                            </FieldError>
-                          </Field>
-                        </FieldGroup>
-                      </FieldSet>
-                    </CardContent>
-                  </Card>
-                </div>
-                <div className={"w-full lg:w-2/3"}>
-                  <Card className={"w-full"}>
-                    <CardHeader>
-                      <CardTitle>JSON Configuration</CardTitle>
-                      <CardDescription>
-                        This JSON Configuration is optional. It will be
-                        available for your plugin via host function. You can
-                        fill it and use this information inside of your WASM
-                        plugin.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <Field>
-                        <FieldLabel>Config</FieldLabel>
-                        <InputGroup>
-                          <InputGroupTextarea
-                            aria-invalid={
-                              !jsonConfigValid ||
-                              (validationErrors != null &&
-                                validationErrors["config"] != "")
-                            }
-                            aria-label={"plugin config"}
-                            placeholder={exampleConfigJSON}
-                            className={"font-mono text-sm"}
-                            value={jsonConfigString}
-                            onChange={(e) => {
-                              setJSONConfigString(e.target.value)
-                              validateConfig(e.target.value)
-                            }}
-                          />
-                          <InputGroupAddon align={"block-start"}>
-                            <FileBraces className={"text-muted-foreground"} />
-                            <InputGroupText className={"font-mono"}>
-                              config.json
-                            </InputGroupText>
-                            <InputGroupButton
-                              className={"ml-auto"}
-                              size={"icon-sm"}
-                              onClick={() => {
-                                setJSONConfigString(exampleConfigJSON)
-                                setJSONConfigValid(true)
-                              }}
-                            >
-                              <RotateCcw />
-                            </InputGroupButton>
-                          </InputGroupAddon>
-                        </InputGroup>
-                        <FieldError>
-                          {validationErrors != null &&
-                            validationErrors["config"] != "" && (
-                              <p className={"text-sm"}>
-                                {validationErrors["config"]}
-                              </p>
-                            )}
-                        </FieldError>
-                      </Field>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-        <div
-          className={
-            "mt-10 flex w-full flex-row items-center justify-end gap-5"
+          Reset all
+        </Button>
+        <Button
+          disabled={
+            loading ||
+            !!error ||
+            !!pluginsData.error ||
+            !!routesData.error ||
+            !selectedPlugin ||
+            !selectedRoute
           }
+          onClick={submit}
         >
-          <Button
-            variant={"outline"}
-            onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 1))}
-            disabled={currentStep === 1}
-          >
-            <ArrowLeft />
-            Back
-          </Button>
-          {currentStep <= 2 && (
-            <Button
-              disabled={
-                (currentStep === 1 && !selectedRoute) ||
-                (currentStep === 2 && !selectedPlugin)
-              }
-              onClick={() => {
-                setCurrentStep((prev) => prev + 1)
-                if (currentStep === 1) {
-                  setFormState((prev) => ({
-                    ...prev,
-                    route_id: selectedRoute!.id,
-                  }))
-                }
-                if (currentStep === 2) {
-                  setFormState((prev) => ({
-                    ...prev,
-                    plugin_id: selectedPlugin!.id,
-                  }))
-                }
-              }}
-            >
-              Next
-              <ArrowRight />
-            </Button>
-          )}
-          {currentStep === 3 && (
-            <Button
-              variant={"outline"}
-              onClick={() => setFormState(initialFormState)}
-            >
-              Clear
-            </Button>
-          )}
-          {currentStep === 3 && (
-            <Button
-              disabled={loading || !jsonConfigValid || showErrorAlert}
-              onClick={submit}
-            >
-              {loading && <Spinner />}
-              Create
-            </Button>
-          )}
-        </div>
+          {loading && <Spinner />}
+          Create
+        </Button>
       </div>
     </SidebarLayout>
   )

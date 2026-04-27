@@ -71,7 +71,7 @@ export default function RoutesPage() {
   const routeData = usePaginatedData<Route>(
     '/api/routes',
     'routes',
-    Number(perPage),
+    parseInt(perPage),
     orderField,
     orderDirection as 'asc' | 'desc',
     { preload: true },

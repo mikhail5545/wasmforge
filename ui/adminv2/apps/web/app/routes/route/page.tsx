@@ -34,15 +34,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogClose,
 } from "@workspace/ui/components/dialog"
 import { Button } from "@workspace/ui/components/button"
 import { RouteCard } from "@/components/ui/route-card"
 import React from "react"
 import { format } from "date-fns"
 import { DateTimeInput } from "@/components/date-time-input"
-import { RouteSummaryResponse } from "@/types/ProxyServerStatistics"
+import {
+  RouteSummaryResponse,
+  TimeseriesResponse,
+} from "@/types/ProxyServerStatistics"
 import {
   StatusCountsRadarChart,
   StatusPercentagesBarChart,
@@ -59,11 +60,9 @@ import {
   EmptyTitle,
 } from "@workspace/ui/components/empty"
 import {
-  ArrowLeft,
   ChevronDownIcon,
   ChevronLeft,
-  ChevronRight,
-  MoreHorizontalIcon,
+  ChevronRight, Database,
   MoreVertical,
   PencilIcon,
   RouteOff,
@@ -89,17 +88,18 @@ import {
 } from "@workspace/ui/components/dropdown-menu"
 import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu"
 import { RoutePluginsListControls } from "@/components/route-plugins-list-controls"
-
-type DateRangeState = {
-  from: {
-    date: Date
-    time: string
-  }
-  to: {
-    date: Date
-    time: string
-  }
-}
+import { Separator } from "@workspace/ui/components/separator"
+import { useRange } from "@/hooks/use-range"
+import {
+  Popover,
+  PopoverContent,
+  PopoverDescription,
+  PopoverHeader,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@workspace/ui/components/popover"
+import { NormalizeTimeSeriesPointsStatusCodes } from "@/lib/normalize-stats"
+import { TimeSeriesAreaChart, TimeSeriesStatusCodeLineChart } from "@/components/time-series-charts"
 
 export default function RoutePage() {
   const params = useSearchParams()
@@ -110,66 +110,24 @@ export default function RoutePage() {
   )
   const router = useRouter()
 
-  const [statsConfigDialogOpen, setStatsConfigDialogOpen] =
-    React.useState<boolean>(false)
   const { loading, error, mutate, reset } = useMutation()
   const [showSuccess, setShowSuccess] = React.useState(false)
   const [successMessage, setSuccessMessage] = React.useState("")
   const [successRedirect, setSuccessRedirect] = React.useState<string | null>(
     null
   )
-  const [range, setRange] = React.useState<DateRangeState>(() => {
-    const now = new Date()
-    const hourAgo = new Date(now.getTime() - 60 * 60 * 1000)
-    const fromTime = format(hourAgo, "HH:mm")
-    const toTime = format(now, "HH:mm")
 
-    return {
-      from: {
-        date: hourAgo,
-        time: fromTime,
-      },
-      to: {
-        date: now,
-        time: toTime,
-      },
-    }
-  })
+  const overviewRange = useRange()
+  const timeSeriesRange = useRange()
 
-  const updateFrom = (date: Date) => {
-    setRange((prev) => ({ ...prev, from: { ...prev.from, date: date } }))
-  }
-  const updateTo = (date: Date) => {
-    setRange((prev) => ({ ...prev, to: { ...prev.to, date: date } }))
-  }
-  const updateFromTime = (time: string) => {
-    setRange((prev) => {
-      const next = new Date(prev.from.date)
-      const [hours, minutes] = time.split(":").map(Number)
-
-      if (hours != undefined && !Number.isNaN(hours)) next.setHours(hours)
-      if (minutes != undefined && !Number.isNaN(minutes))
-        next.setMinutes(minutes)
-
-      return { ...prev, from: { date: next, time: time } }
-    })
-  }
-  const updateToTime = (time: string) => {
-    setRange((prev) => {
-      const next = new Date(prev.to.date)
-      const [hours, minutes] = time.split(":").map(Number)
-
-      if (hours != undefined && !Number.isNaN(hours)) next.setHours(hours)
-      if (minutes != undefined && !Number.isNaN(minutes))
-        next.setMinutes(minutes)
-
-      return { ...prev, to: { date: next, time: time } }
-    })
-  }
-
-  const routeSummaryData = useData<RouteSummaryResponse>(
-    `http://localhost:8080/api/proxy/stats/route?path=${encodeURIComponent(path)}&from=${range.from.date.toISOString()}&to=${range.to.date.toISOString()}`,
+  const overViewData = useData<RouteSummaryResponse>(
+    `http://localhost:8080/api/proxy/stats/route?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
     "route"
+  )
+
+  const timeSeriesData = useData<TimeseriesResponse>(
+    `http://localhost:8080/api/proxy/stats/timeseries?route=${encodeURIComponent(path)}&from=${timeSeriesRange.range.from.date.toISOString()}&to=${timeSeriesRange.range.to.date.toISOString()}`,
+    "timeseries"
   )
 
   const [orderDirection, setOrderDirection] = React.useState<string>("asc")
@@ -181,7 +139,7 @@ export default function RoutePage() {
   const routePluginsData = usePaginatedData<RoutePlugin>(
     `/api/route-plugins?r_ids=${routeData.data?.id ?? ""}`,
     "route_plugins",
-    Number(perPage),
+    parseInt(perPage),
     orderField,
     orderDirection as "asc" | "desc",
     { preload: true }
@@ -225,25 +183,27 @@ export default function RoutePage() {
     }
   }, [mutate, routeData.data])
 
+  const normalizedTimeSeriesPoints = NormalizeTimeSeriesPointsStatusCodes(timeSeriesData.data?.points)
+
   return (
     <SidebarLayout page_title={"Route Details"}>
       <AlertModal
         variant={"alert"}
         size={"sm"}
         title={"Unexpected error occurred"}
-        visible={!!routeData.error || !!error || !!routeSummaryData.error}
+        visible={!!routeData.error || !!error || !!overViewData.error}
         description={
           routeData?.error?.message ||
           error?.message ||
-          routeSummaryData?.error?.message ||
+          overViewData?.error?.message ||
           "No additional information available. Retrying in 5 seconds."
         }
         onClose={async () => {
           if (routeData.error) {
             await routeData.refetch()
           }
-          if (routeSummaryData.error) {
-            await routeSummaryData.refetch()
+          if (overViewData.error) {
+            await overViewData.refetch()
           }
           if (error) {
             reset()
@@ -293,7 +253,7 @@ export default function RoutePage() {
       </Dialog>
       <div className={"flex flex-col p-6"}>
         {(routeData.loading && routeData.data === null) ||
-        routeSummaryData.loading ? (
+        overViewData.loading ? (
           <div className={"flex items-center justify-center py-50"}>
             <Spinner className={"size-10"} />
           </div>
@@ -302,63 +262,7 @@ export default function RoutePage() {
             {routeData.error ? (
               <div></div>
             ) : (
-              <>
-                <div
-                  className={"flex flex-row items-center justify-between pb-5"}
-                >
-                  <Button
-                    variant={"ghost"}
-                    size={"icon"}
-                    onClick={() => router.back()}
-                  >
-                    <ArrowLeft />
-                  </Button>
-                  <Dialog
-                    open={statsConfigDialogOpen}
-                    onOpenChange={setStatsConfigDialogOpen}
-                  >
-                    <DialogTrigger asChild>
-                      <Button variant={"ghost"}>Configure stats</Button>
-                    </DialogTrigger>
-                    <DialogContent>
-                      <DialogHeader>
-                        <DialogTitle>Pick timestamp</DialogTitle>
-                      </DialogHeader>
-                      <DialogDescription>
-                        Stats will be showed according to this timestamp.
-                      </DialogDescription>
-                      <p>Show stats from</p>
-                      <DateTimeInput
-                        date={range.from.date}
-                        setDate={updateFrom}
-                        time={range.from.time}
-                        setTime={updateFromTime}
-                        layout={"row"}
-                      />
-                      <p className={"mt-4"}>Show stats to</p>
-                      <DateTimeInput
-                        date={range.to.date}
-                        setDate={updateTo}
-                        time={range.to.time}
-                        setTime={updateToTime}
-                        layout={"row"}
-                      />
-                      <DialogFooter>
-                        <DialogClose asChild>
-                          <Button variant={"secondary"}>Close</Button>
-                        </DialogClose>
-                        <Button
-                          onClick={async () => {
-                            await routeSummaryData.refetch()
-                            setStatsConfigDialogOpen(false)
-                          }}
-                        >
-                          Submit
-                        </Button>
-                      </DialogFooter>
-                    </DialogContent>
-                  </Dialog>
-                </div>
+              <div className={"flex flex-col gap-5"}>
                 <div className={"flex flex-col gap-5 lg:flex-row"}>
                   <div>
                     <RouteCard
@@ -374,10 +278,9 @@ export default function RoutePage() {
                         <CardHeader>
                           <CardDescription>Average RPS</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {routeSummaryData.data?.summary.avg_rps ===
-                            undefined
+                            {overViewData.data?.summary.avg_rps === undefined
                               ? "N/A"
-                              : routeSummaryData.data?.summary.avg_rps}
+                              : overViewData.data?.summary.avg_rps}
                           </CardTitle>
                         </CardHeader>
                       </Card>
@@ -385,10 +288,10 @@ export default function RoutePage() {
                         <CardHeader>
                           <CardDescription>Average Latency ms</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {routeSummaryData.data?.summary.avg_latency_ms ===
+                            {overViewData.data?.summary.avg_latency_ms ===
                             undefined
                               ? "N/A"
-                              : routeSummaryData.data?.summary.avg_latency_ms}
+                              : overViewData.data?.summary.avg_latency_ms}
                           </CardTitle>
                         </CardHeader>
                       </Card>
@@ -396,34 +299,13 @@ export default function RoutePage() {
                         <CardHeader>
                           <CardDescription>Total Requests</CardDescription>
                           <CardTitle className={"text-4xl"}>
-                            {routeSummaryData.data?.summary.total_requests ===
+                            {overViewData.data?.summary.total_requests ===
                             undefined
                               ? "N/A"
-                              : routeSummaryData.data?.summary.total_requests}
+                              : overViewData.data?.summary.total_requests}
                           </CardTitle>
                         </CardHeader>
                       </Card>
-                    </div>
-                    <div className={"flex w-full flex-row gap-5"}>
-                      <div className={"w-full"}>
-                        <StatusPercentagesBarChart
-                          percentages={
-                            routeSummaryData.data?.summary
-                              .status_code_percentages || {}
-                          }
-                          title={"Status Code Percentages"}
-                          description={`Showing status code percentages in a period from ${format(range.from.date, "PPP-HH:mm")} to ${format(range.to.date, "PPP-HH:mm")}`}
-                        />
-                      </div>
-
-                      <StatusCountsRadarChart
-                        counts={
-                          routeSummaryData.data?.summary.status_code_counts ||
-                          {}
-                        }
-                        title={"Status Code Counts"}
-                        description={`Showing status code counts in a period from ${format(range.from.date, "PPP-HH:mm")} to ${format(range.to.date, "PPP-HH:mm")}`}
-                      />
                     </div>
                     {routePluginsData.loading ? (
                       <div className={"flex items-center justify-center py-20"}>
@@ -616,7 +498,160 @@ export default function RoutePage() {
                     </div>
                   </div>
                 </div>
-              </>
+                <Separator />
+                <div className={"flex flex-col gap-5"}>
+                  <div className={"flex flex-row items-center gap-5"}>
+                    <p className={"text-2xl"}>Status Codes Statistics</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant={"outline"}>Set Time Range</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className={"w-80"}>
+                        <PopoverHeader>
+                          <PopoverTitle>Select a time range</PopoverTitle>
+                          <PopoverDescription>
+                            Overview will be shown accordingly
+                          </PopoverDescription>
+                        </PopoverHeader>
+                        <div className={"flex flex-col gap-4"}>
+                          <Separator />
+                          <div className={"flex flex-col gap-1"}>
+                            <p className={"text-lg font-semibold"}>Show from</p>
+                            <DateTimeInput
+                              date={overviewRange.range.from.date}
+                              setDate={overviewRange.updateFrom}
+                              time={overviewRange.range.from.time}
+                              setTime={overviewRange.updateFromTime}
+                              layout={"row"}
+                            />
+                          </div>
+                          <Separator />
+                          <div className={"flex flex-col gap-1"}>
+                            <p className={"text-lg font-semibold"}>Show To</p>
+                            <DateTimeInput
+                              date={overviewRange.range.to.date}
+                              setDate={overviewRange.updateTo}
+                              time={overviewRange.range.to.time}
+                              setTime={overviewRange.updateToTime}
+                              layout={"row"}
+                            />
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {overViewData.loading ? (
+                    <div className={"flex items-center justify-center py-20"}>
+                      <Spinner className={"size-8"} />
+                    </div>
+                  ) : (
+                    <div className={"flex flex-col gap-5 lg:flex-row"}>
+                      <div className={"w-full lg:w-1/2"}>
+                        <StatusPercentagesBarChart
+                          percentages={
+                            overViewData.data?.summary
+                              .status_code_percentages || {}
+                          }
+                          title={"Status Code Percentages"}
+                          description={`Showing status code percentages in a period from ${format(overviewRange.range.from.date, "PPP-HH:mm")} to ${format(overviewRange.range.to.date, "PPP-HH:mm")}`}
+                        />
+                      </div>
+                      <div className={"w-full lg:w-1/2"}>
+                        <StatusCountsRadarChart
+                          counts={
+                            overViewData.data?.summary.status_code_counts || {}
+                          }
+                          title={"Status Code Counts"}
+                          description={`Showing status code counts in a period from ${format(overviewRange.range.from.date, "PPP-HH:mm")} to ${format(overviewRange.range.to.date, "PPP-HH:mm")}`}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Separator />
+                <div className={"flex flex-col gap-5"}>
+                  <div className={"flex flex-row items-center gap-5"}>
+                    <p className={"text-2xl"}>Time Series</p>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant={"outline"}>Set Time Range</Button>
+                      </PopoverTrigger>
+                      <PopoverContent className={"w-80"}>
+                        <PopoverHeader>
+                          <PopoverTitle>Select a time range</PopoverTitle>
+                          <PopoverDescription>
+                            Time Series will be shown accordingly
+                          </PopoverDescription>
+                        </PopoverHeader>
+                        <div className={"flex flex-col gap-4"}>
+                          <Separator />
+                          <div className={"flex flex-col gap-1"}>
+                            <p className={"text-lg font-semibold"}>Show from</p>
+                            <DateTimeInput
+                              date={timeSeriesRange.range.from.date}
+                              setDate={timeSeriesRange.updateFrom}
+                              time={timeSeriesRange.range.from.time}
+                              setTime={timeSeriesRange.updateFromTime}
+                              layout={"row"}
+                            />
+                          </div>
+                          <Separator />
+                          <div className={"flex flex-col gap-1"}>
+                            <p className={"text-lg font-semibold"}>Show To</p>
+                            <DateTimeInput
+                              date={timeSeriesRange.range.to.date}
+                              setDate={timeSeriesRange.updateTo}
+                              time={timeSeriesRange.range.to.time}
+                              setTime={timeSeriesRange.updateToTime}
+                              layout={"row"}
+                            />
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  {timeSeriesData.loading ? (
+                    <div className={"flex items-center justify-center py-20"}>
+                      <Spinner className={"size-8"} />
+                    </div>
+                  ) : (
+                    <>
+                      {timeSeriesData.data?.points.length === 0 ||
+                      !timeSeriesData.data ? (
+                        <Empty>
+                          <EmptyHeader>
+                            <EmptyMedia variant={"icon"}>
+                              <Database />
+                            </EmptyMedia>
+                            <EmptyTitle>Not Enough Data</EmptyTitle>
+                            <EmptyDescription>
+                              Not enough data to show time series. Try expanding
+                              the time range or check back later
+                            </EmptyDescription>
+                          </EmptyHeader>
+                        </Empty>
+                      ) : (
+                        <>
+                          <TimeSeriesAreaChart
+                            title={"Total Requests Over Time"}
+                            description={`Showing how many requests were sent in a period from ${format(timeSeriesRange.range.from.date, "PPP-HH:mm")} to ${format(timeSeriesRange.range.to.date, "PPP-HH:mm")}`}
+                            timeSeries={timeSeriesData.data.points}
+                          />
+                          {normalizedTimeSeriesPoints.map((series) => (
+                            <TimeSeriesStatusCodeLineChart
+                              color={`var(--chart-1)`}
+                              key={series.code}
+                              buckets={series}
+                              title={`Status code ${series.code} over time`}
+                              description={`Showing how many responses with status code ${series.code} were sent in a period from ${format(timeSeriesRange.range.from.date, "PPP-HH:mm")} to ${format(timeSeriesRange.range.to.date, "PPP-HH:mm")}`}
+                            />
+                          ))}
+                        </>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
             )}
           </div>
         )}

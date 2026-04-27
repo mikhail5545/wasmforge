@@ -42,8 +42,6 @@ import {
   InputGroupText,
   InputGroupTextarea,
 } from "@workspace/ui/components/input-group"
-import { Progress } from "@workspace/ui/components/progress"
-import { AnimatePresence, motion } from "motion/react"
 import {
   Table,
   TableBody,
@@ -76,6 +74,7 @@ import { PluginsListControls } from "@/components/plugins-list-controls"
 import { useMutation } from "@/hooks/use-mutation"
 import { ErrorResponse } from "@/types/ErrorResponse"
 import { AlertModal } from "@/components/dialog/alert-modal"
+import { Badge } from "@workspace/ui/components/badge"
 
 export default function EditRoutePluginPage() {
   const params = useSearchParams()
@@ -219,7 +218,9 @@ export default function EditRoutePluginPage() {
         icon={<CircleCheck size={15} />}
         onClose={() => {
           setShowSuccess(false)
-          router.push(`/routes/plugins/plugin?pluginId=${routePluginData.data?.id}`)
+          router.push(
+            `/routes/plugins/plugin?pluginId=${routePluginData.data?.id}`
+          )
         }}
       />
       <div className={"flex flex-col gap-5 p-6"}>
@@ -346,7 +347,9 @@ export default function EditRoutePluginPage() {
                             </TableCell>
                             <TableCell>{plugin.name}</TableCell>
                             <TableCell>{plugin.filename}</TableCell>
-                            <TableCell>{plugin.version}</TableCell>
+                            <TableCell>
+                              <Badge>{`v${plugin.version}`}</Badge>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -362,7 +365,7 @@ export default function EditRoutePluginPage() {
                 <p className={"text-sm font-semibold"}>Rows per page</p>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant={"outline"}>
+                    <Button variant={"outline"} disabled={pluginsData.loading}>
                       {perPage}
                       <ChevronDownIcon />
                     </Button>

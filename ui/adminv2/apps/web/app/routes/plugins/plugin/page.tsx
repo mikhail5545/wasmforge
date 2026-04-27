@@ -22,7 +22,7 @@ import { RoutePlugin } from "@/types/RoutePlugin"
 import { Spinner } from "@workspace/ui/components/spinner"
 import React from "react"
 import { Button } from "@workspace/ui/components/button"
-import { ArrowLeft, Copy, FileBraces, MoreHorizontalIcon } from "lucide-react"
+import { ArrowLeft, FileBraces } from "lucide-react"
 import {
   Card,
   CardContent,
@@ -30,21 +30,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
-import { Badge } from "@workspace/ui/components/badge"
-import { DropdownMenu, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
 import {
   InputGroup,
   InputGroupAddon,
-  InputGroupButton,
   InputGroupText,
   InputGroupTextarea,
 } from "@workspace/ui/components/input-group"
 import {
   Field,
-  FieldError,
-  FieldGroup,
   FieldLabel,
-  FieldSet,
 } from "@workspace/ui/components/field"
 import { RoutePluginCard} from "@/components/ui/route-plugin-card"
 import { useMutation } from "@/hooks/use-mutation"

@@ -56,7 +56,16 @@ export function NormalizeTimeSeriesPointsStatusCodeCounts(points: TimeseriesPoin
   return normalized
 }
 
-export function NormalizeTimeSeriesPointsStatusCodes(points: TimeseriesPoint[]) {
+export function NormalizeTimeSeriesPointsStatusCodes(points: TimeseriesPoint[] | undefined) {
+  const normalized: {
+    code: string
+    buckets: { bucket_start: string; count: number }[]
+  }[] = []
+
+  if (points === undefined) {
+    return normalized
+  }
+
   const byCode = new Map<string, { bucket_start: string, count: number }[]>()
 
   points.forEach((point) => {
@@ -71,10 +80,7 @@ export function NormalizeTimeSeriesPointsStatusCodes(points: TimeseriesPoint[]) 
       })
     })
   })
-  const normalized: {
-    code: string
-    buckets: { bucket_start: string; count: number }[]
-  }[] = []
+
   byCode.forEach((buckets, code) => {
     normalized.push({ code, buckets })
   })

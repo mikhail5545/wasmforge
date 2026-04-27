@@ -25,7 +25,7 @@ import { useMutation } from "@/hooks/use-mutation"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { useRouter } from "next/navigation"
 import { AlertModal } from "@/components/dialog/alert-modal"
-import { SidebarLayout } from "@/components/navigation/sidebar"
+import { SidebarLayout } from "@/components/navigation/sidebar-layout"
 import {
   Field,
   FieldDescription,
@@ -92,7 +92,7 @@ export default function NewRoutePage() {
   }, [formState, mutate, resolveError])
 
   return (
-    <SidebarLayout pageTitle={"Create a new route"}>
+    <SidebarLayout page_title={"Create a new route"}>
       <div className={"flex flex-col p-6"}>
         <AlertModal
           variant={"alert"}

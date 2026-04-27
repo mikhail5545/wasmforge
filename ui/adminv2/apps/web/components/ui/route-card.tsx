@@ -21,11 +21,28 @@ import {
   CardTitle,
 } from "@workspace/ui/components/card"
 import { Badge } from "@workspace/ui/components/badge"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem,
-  DropdownMenuSeparator, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@workspace/ui/components/dropdown-menu"
 import { Button } from "@workspace/ui/components/button"
-import { ChevronsUpDown, Ellipsis, Pencil, Power, PowerOff, Trash } from "lucide-react"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@workspace/ui/components/collapsible"
+import {
+  ChevronsUpDown,
+  Ellipsis,
+  Pencil,
+  Power,
+  PowerOff,
+  Trash,
+} from "lucide-react"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@workspace/ui/components/collapsible"
 import { Spinner } from "@workspace/ui/components/spinner"
 
 interface RouteCardProps {
@@ -36,7 +53,13 @@ interface RouteCardProps {
   onDelete?: () => void
 }
 
-const RouteCard = ({ route, className, onEnableToggle, enabling, onDelete }: RouteCardProps) => {
+const RouteCard = ({
+  route,
+  className,
+  onEnableToggle,
+  enabling,
+  onDelete,
+}: RouteCardProps) => {
   return (
     <Card className={className}>
       <CardHeader className={"flex flex-row items-center justify-between"}>

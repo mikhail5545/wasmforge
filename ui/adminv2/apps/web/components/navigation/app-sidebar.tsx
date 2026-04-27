@@ -25,21 +25,17 @@ import {NavSecondary} from "@/components/navigation/nav-secondary"
 import {
   Sidebar,
   SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarRail,
 } from "@workspace/ui/components/sidebar"
 
 const data = {
   navMain: [
     {
       title: "Dashboard",
-      link: "/dashboard",
+      link: "/",
       icon: LayoutDashboard,
       isActive: false,
     },

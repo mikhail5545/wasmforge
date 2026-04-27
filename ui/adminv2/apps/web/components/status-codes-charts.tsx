@@ -33,26 +33,34 @@ import {
 import { Bar, BarChart, CartesianGrid, LabelList, PolarAngleAxis, PolarGrid, Radar, RadarChart, XAxis } from "recharts"
 import React from "react"
 import { cn } from "@workspace/ui/lib/utils"
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import { Database } from "lucide-react"
 
 interface StatusPercentagesBarChartProps {
   percentages: Record<string, number>
   title?: string
   description?: string
   className?: string
+  width?: number | `${number}%`
+  height?: number | `${number}%`
 }
 
 interface StatusCountsRadarChartProps {
   counts: Record<string, number>
-  title?: string,
-  description?: string,
+  title?: string
+  description?: string
   className?: string
+  width?: number | `${number}%`
+  height?: number | `${number}%`
 }
 
 const StatusPercentagesBarChart = ({
   percentages,
   title,
   description,
-  className
+  className,
+  width,
+  height
 }: StatusPercentagesBarChartProps) => {
   const normalizedData = NormalizeStatusPercentages(percentages)
   const config = {
@@ -71,45 +79,56 @@ const StatusPercentagesBarChart = ({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className={"px-2 pt-4 sm:px-6 sm:pt-6"}>
         {normalizedData.length === 0 ? (
-          <div className={"py-10 text-center text-xl text-muted-foreground"}>
-            <p>Not enough data</p>
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant={"icon"}>
+                <Database />
+              </EmptyMedia>
+              <EmptyTitle>Not Enough Data</EmptyTitle>
+              <EmptyDescription>
+                Not enough data to show status counts. Try expanding the time
+                range or check back later
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-        <ChartContainer config={config}>
-          <BarChart
-            accessibilityLayer
-            data={normalizedData}
-            margin={{ top: 20 }}
-          >
-            <CartesianGrid vertical={false} />
-            <XAxis
-              dataKey={"code"}
-              tickLine={false}
-              tickMargin={10}
-              axisLine={false}
-              tickFormatter={(value) => value.slice(0, 3)}
-            />
-            <ChartTooltip
-              cursor={false}
-              content={<ChartTooltipContent hideLabel />}
-            />
-            <Bar
-              dataKey={"percentage"}
-              fill={"var(--color-percentage)"}
-              radius={8}
+          <ChartContainer config={config} className={"aspect-auto h-[250px]"}>
+            <BarChart
+              width={width}
+              height={height}
+              accessibilityLayer
+              data={normalizedData}
+              margin={{ top: 20 }}
             >
-              <LabelList
-                position={"top"}
-                offset={12}
-                className={"fill-foreground"}
-                fontSize={12}
+              <CartesianGrid vertical={false} />
+              <XAxis
+                dataKey={"code"}
+                tickLine={false}
+                tickMargin={10}
+                axisLine={false}
+                tickFormatter={(value) => value.slice(0, 3)}
               />
-            </Bar>
-          </BarChart>
-        </ChartContainer>
-          )}
+              <ChartTooltip
+                cursor={false}
+                content={<ChartTooltipContent hideLabel />}
+              />
+              <Bar
+                dataKey={"percentage"}
+                fill={"var(--color-percentage)"}
+                radius={8}
+              >
+                <LabelList
+                  position={"top"}
+                  offset={12}
+                  className={"fill-foreground"}
+                  fontSize={12}
+                />
+              </Bar>
+            </BarChart>
+          </ChartContainer>
+        )}
       </CardContent>
     </Card>
   )
@@ -120,6 +139,8 @@ const StatusCountsRadarChart = ({
   title,
   description,
   className,
+  width,
+  height
 }: StatusCountsRadarChartProps) => {
   const normalizedData = NormalizeStatusCounts(counts)
   const config = {
@@ -138,14 +159,26 @@ const StatusCountsRadarChart = ({
         <CardTitle>{title}</CardTitle>
         <CardDescription>{description}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className={"px-2 pt-4 sm:px-6 sm:pt-6"}>
         {normalizedData.length === 0 ? (
-          <div className={"py-10 text-center text-xl text-muted-foreground"}>
-            <p>Not enough data</p>
-          </div>
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant={"icon"}>
+                <Database />
+              </EmptyMedia>
+              <EmptyTitle>Not Enough Data</EmptyTitle>
+              <EmptyDescription>
+                Not enough data to show status counts. Try expanding the time
+                range or check back later
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         ) : (
-          <ChartContainer config={config} className={"ms-auto aspect-square"}>
-            <RadarChart data={normalizedData}>
+          <ChartContainer
+            config={config}
+            className={"m-0 aspect-auto h-[400px] p-0"}
+          >
+            <RadarChart width={width} height={height} data={normalizedData}>
               <ChartTooltip cursor={false} content={<ChartTooltipContent />} />
               <PolarAngleAxis dataKey={"code"} />
               <PolarGrid />

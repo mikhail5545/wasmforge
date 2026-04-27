@@ -77,10 +77,10 @@ export default function PluginsPage() {
       <AlertModal
         variant={"alert"}
         size={"sm"}
-        title={"Unexpected error occurred"}
+        title={pluginsData.error?.message ?? "Unexpected error occurred"}
         visible={!!pluginsData.error}
         description={
-          pluginsData.error?.message ||
+          pluginsData.error?.details ||
           "No additional information available. Retrying in 5 seconds."
         }
         onClose={() => {

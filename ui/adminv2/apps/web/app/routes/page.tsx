@@ -16,7 +16,7 @@
 "use client"
 
 import {
-  ChevronDownIcon, ChevronLeft, ChevronRight,
+  ChevronDownIcon, ChevronLeft, ChevronRight, CircleAlert,
   HardDriveUpload,
   MoreHorizontal,
   MoreVertical,
@@ -58,6 +58,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@workspace/ui/components/card"
+import { AlertModal } from "@/components/dialog/alert-modal"
 
 export default function RoutesPage() {
   const router = useRouter()
@@ -78,7 +79,21 @@ export default function RoutesPage() {
 
   return (
     <SidebarLayout page_title={"Routes"}>
-      <div className={"flex flex-col p-6 gap-5"}>
+      <AlertModal
+        variant={"alert"}
+        size={"sm"}
+        visible={!!routeData.error}
+        title={routeData.error?.message ?? "Unexpected error occurred"}
+        description={
+          routeData.error?.details ??
+          "No additional details available. Page will be automatically reloaded in 5 seconds."
+        }
+        icon={<CircleAlert size={15} />}
+        onClose={() => {
+          void routeData.refetch()
+        }}
+      />
+      <div className={"flex flex-col gap-5 p-6"}>
         <RoutesListControls
           orderField={orderField}
           setOrderField={setOrderField}
@@ -119,11 +134,7 @@ export default function RoutesPage() {
                 </EmptyContent>
               </Empty>
             ) : (
-              <div
-                className={
-                  "flex w-full flex-col"
-                }
-              >
+              <div className={"flex w-full flex-col"}>
                 <AnimatePresence mode={"wait"}>
                   {viewMode == "table" && (
                     <motion.div

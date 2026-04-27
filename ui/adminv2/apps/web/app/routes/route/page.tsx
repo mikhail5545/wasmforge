@@ -50,10 +50,19 @@ import {
 import { useMutation } from "@/hooks/use-mutation"
 import { usePaginatedData } from "@/hooks/use-paginated-data"
 import { RoutePlugin } from "@/types/RoutePlugin"
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import {
+  Empty,
+  EmptyContent,
+  EmptyDescription,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+} from "@workspace/ui/components/empty"
 import {
   ArrowLeft,
-  ChevronDownIcon, ChevronLeft, ChevronRight,
+  ChevronDownIcon,
+  ChevronLeft,
+  ChevronRight,
   MoreHorizontalIcon,
   MoreVertical,
   PencilIcon,
@@ -74,7 +83,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuGroup, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuGroup,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
 } from "@workspace/ui/components/dropdown-menu"
 import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu"
 import { RoutePluginsListControls } from "@/components/route-plugins-list-controls"
@@ -161,18 +172,19 @@ export default function RoutePage() {
     "route"
   )
 
-  const [orderDirection, setOrderDirection] = React.useState<string>('asc')
-  const [orderField, setOrderField] = React.useState<string>('created_at')
-  const [perPage, setPerPage] = React.useState<string>('10')
-  const [showDeleteConfirmation, setShowDeleteConfirmation] = React.useState(false)
+  const [orderDirection, setOrderDirection] = React.useState<string>("asc")
+  const [orderField, setOrderField] = React.useState<string>("created_at")
+  const [perPage, setPerPage] = React.useState<string>("10")
+  const [showDeleteConfirmation, setShowDeleteConfirmation] =
+    React.useState(false)
 
   const routePluginsData = usePaginatedData<RoutePlugin>(
-    `/api/route-plugins?r_ids=${routeData.data?.id ?? ''}`,
-    'route_plugins',
+    `/api/route-plugins?r_ids=${routeData.data?.id ?? ""}`,
+    "route_plugins",
     Number(perPage),
     orderField,
-    orderDirection as 'asc' | 'desc',
-    { preload: true },
+    orderDirection as "asc" | "desc",
+    { preload: true }
   )
 
   const toggleEnable = React.useCallback(async () => {
@@ -258,8 +270,8 @@ export default function RoutePage() {
             <DialogTitle>Are you sure?</DialogTitle>
           </DialogHeader>
           <DialogDescription>
-            This action cannot be undone. This will permanently delete route
-            and remove all associated route plugins.
+            This action cannot be undone. This will permanently delete route and
+            remove all associated route plugins.
           </DialogDescription>
           <DialogFooter>
             <Button

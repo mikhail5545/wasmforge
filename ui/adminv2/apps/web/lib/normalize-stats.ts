@@ -14,6 +14,8 @@
  */
 
 
+import { TimeseriesPoint } from "@/types/ProxyServerStatistics"
+
 export function NormalizeStatusPercentages(percentages: Record<string, number>) {
   const normalized: {code: string, percentage: number}[] = []
   Object.entries(percentages).forEach(([name, percentage]) => {
@@ -27,5 +29,55 @@ export function NormalizeStatusCounts(counts: Record<string, number>) {
   Object.entries(counts).forEach(([name, count]) => {
     normalized.push({ code: name, count: count })
   })
+  return normalized
+}
+
+export function NormalizeTimeSeriesPointsLatencyAndRequests(points: TimeseriesPoint[]) {
+  const normalized: { bucket_start: string; total_requests: number; avg_latency_ms: number }[] = []
+  points.map((point: TimeseriesPoint) => {
+    normalized.push({
+      bucket_start: point.bucket_start,
+      total_requests: point.total_requests,
+      avg_latency_ms: point.avg_latency_ms
+    })
+  })
+  return normalized
+}
+
+export function NormalizeTimeSeriesPointsStatusCodeCounts(points: TimeseriesPoint[]) {
+  const normalized: { bucket_start: string, codes: {code: string, count: number}[] }[] = []
+  points.map((point: TimeseriesPoint) => {
+    const codes: {code: string, count: number}[] = []
+    Object.entries(point.status_code_counts).forEach(([name, count]) => {
+      codes.push({ code: name, count: count })
+    })
+    normalized.push({ bucket_start: point.bucket_start, codes: codes })
+  })
+  return normalized
+}
+
+export function NormalizeTimeSeriesPointsStatusCodes(points: TimeseriesPoint[]) {
+  const byCode = new Map<string, { bucket_start: string, count: number }[]>()
+
+  points.forEach((point) => {
+    Object.entries(point.status_code_counts).forEach(([code, count]) => {
+      if (!byCode.has(code)) {
+        byCode.set(code, [])
+      }
+
+      byCode.get(code)!.push({
+        bucket_start: point.bucket_start,
+        count,
+      })
+    })
+  })
+  const normalized: {
+    code: string
+    buckets: { bucket_start: string; count: number }[]
+  }[] = []
+  byCode.forEach((buckets, code) => {
+    normalized.push({ code, buckets })
+  })
+
   return normalized
 }

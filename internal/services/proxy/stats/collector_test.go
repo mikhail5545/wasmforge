@@ -18,6 +18,8 @@ package stats
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"sync"
 	"testing"
 	"time"
@@ -63,6 +65,43 @@ func TestCollectorFlushesAggregatedRows(t *testing.T) {
 	require.Equal(t, "/api", rows[0].RoutePath)
 	require.Equal(t, 200, rows[0].StatusCode)
 	require.Equal(t, int64(3), rows[0].RequestCount)
+}
+
+func TestCollectorPluginMiddlewareReturnsNilForEmptyPluginID(t *testing.T) {
+	collector := NewCollector(&collectingRepo{}, DefaultCollectorConfig(), zap.NewNop())
+	require.Nil(t, collector.PluginMiddleware("/api", ""))
+}
+
+func TestCollectorPluginMiddlewareRecordsPluginScopedStats(t *testing.T) {
+	repo := &collectingRepo{}
+	cfg := DefaultCollectorConfig()
+	cfg.FlushInterval = 20 * time.Millisecond
+	cfg.PruneInterval = time.Hour
+
+	collector := NewCollector(repo, cfg, zap.NewNop())
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	collector.Start(ctx)
+
+	mw := collector.PluginMiddleware("/api", "rp-1")
+	require.NotNil(t, mw)
+
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusCreated)
+	}))
+	handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/api", nil))
+
+	require.Eventually(t, func() bool {
+		return len(repo.snapshot()) > 0
+	}, time.Second, 20*time.Millisecond)
+	require.NoError(t, collector.Shutdown(context.Background()))
+
+	rows := repo.snapshot()
+	require.Len(t, rows, 1)
+	require.Equal(t, statsmodel.PluginScope("rp-1"), rows[0].Scope)
+	require.Equal(t, "/api", rows[0].RoutePath)
+	require.Equal(t, http.StatusCreated, rows[0].StatusCode)
+	require.Equal(t, int64(1), rows[0].RequestCount)
 }
 
 type collectingRepo struct {

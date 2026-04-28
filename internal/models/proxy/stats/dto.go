@@ -76,6 +76,34 @@ type RouteSummaryResponse struct {
 	Summary *RouteSummary `json:"summary"`
 }
 
+type RoutePluginsRequest struct {
+	Path string `query:"path" json:"-"`
+	From string `query:"from" json:"-"`
+	To   string `query:"to" json:"-"`
+}
+
+type RoutePluginSummary struct {
+	RoutePluginID string `json:"route_plugin_id"`
+	PluginID      string `json:"plugin_id"`
+	PluginName    string `json:"plugin_name"`
+
+	ExecutionOrder int `json:"execution_order"`
+
+	TotalRequests         int64              `json:"total_requests"`
+	AverageRPS            float64            `json:"avg_rps"`
+	AverageLatencyMs      float64            `json:"avg_latency_ms"`
+	StatusCodeCounts      map[string]int64   `json:"status_code_counts"`
+	StatusCodePercentages map[string]float64 `json:"status_code_percentages"`
+}
+
+type RoutePluginsResponse struct {
+	From time.Time `json:"from"`
+	To   time.Time `json:"to"`
+
+	RoutePath string                `json:"route_path"`
+	Plugins   []*RoutePluginSummary `json:"plugins"`
+}
+
 type RoutesResponse struct {
 	From time.Time `json:"from"`
 	To   time.Time `json:"to"`

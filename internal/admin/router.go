@@ -95,6 +95,7 @@ func (r *router) registerProxy(e *echo.Group) {
 	statsGroup.GET("/routes", statsHandler.Routes)
 	statsGroup.GET("/timeseries", statsHandler.Timeseries)
 	statsGroup.GET("/route", statsHandler.RouteSummary)
+	statsGroup.GET("/route/plugins", statsHandler.RoutePlugins)
 }
 
 func (r *router) registerRouteRoutes(e *echo.Group) {

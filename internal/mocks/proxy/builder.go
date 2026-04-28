@@ -42,9 +42,9 @@ func (m *MockBuilder) EXPECT() *MockBuilderMockRecorder {
 }
 
 // BuildRoute mocks base method.
-func (m *MockBuilder) BuildRoute(targetURL, path string, transportCfg proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
+func (m *MockBuilder) BuildRoute(targetURL, path string, allowedMethods []string, transportCfg proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 	m.ctrl.T.Helper()
-	varargs := []any{targetURL, path, transportCfg}
+	varargs := []any{targetURL, path, allowedMethods, transportCfg}
 	for _, a := range middlewares {
 		varargs = append(varargs, a)
 	}
@@ -54,9 +54,9 @@ func (m *MockBuilder) BuildRoute(targetURL, path string, transportCfg proxy.Tran
 }
 
 // BuildRoute indicates an expected call of BuildRoute.
-func (mr *MockBuilderMockRecorder) BuildRoute(targetURL, path, transportCfg any, middlewares ...any) *gomock.Call {
+func (mr *MockBuilderMockRecorder) BuildRoute(targetURL, path, allowedMethods, transportCfg any, middlewares ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	varargs := append([]any{targetURL, path, transportCfg}, middlewares...)
+	varargs := append([]any{targetURL, path, allowedMethods, transportCfg}, middlewares...)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildRoute", reflect.TypeOf((*MockBuilder)(nil).BuildRoute), varargs...)
 }
 

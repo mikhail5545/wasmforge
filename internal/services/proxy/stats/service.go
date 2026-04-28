@@ -18,16 +18,21 @@ package stats
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
 	"time"
 
 	statsrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/stats"
+	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
+	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 	inerrors "github.com/mikhail5545/wasmforge/internal/errors"
 	statsmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/stats"
+	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	validationutil "github.com/mikhail5545/wasmforge/internal/util/validation"
 	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 const (
@@ -38,16 +43,20 @@ const (
 )
 
 type Service struct {
-	repo      statsrepo.Repository
-	collector *Collector
-	logger    *zap.Logger
+	repo            statsrepo.Repository
+	routeRepo       routerepo.Repository
+	routePluginRepo routepluginrepo.Repository
+	collector       *Collector
+	logger          *zap.Logger
 }
 
-func New(repo statsrepo.Repository, collector *Collector, logger *zap.Logger) *Service {
+func New(repo statsrepo.Repository, routeRepo routerepo.Repository, routePluginRepo routepluginrepo.Repository, collector *Collector, logger *zap.Logger) *Service {
 	return &Service{
-		repo:      repo,
-		collector: collector,
-		logger:    logger.With(zap.String("component", "proxy_stats_service")),
+		repo:            repo,
+		routeRepo:       routeRepo,
+		routePluginRepo: routePluginRepo,
+		collector:       collector,
+		logger:          logger.With(zap.String("component", "proxy_stats_service")),
 	}
 }
 
@@ -178,6 +187,67 @@ func (s *Service) RouteSummary(ctx context.Context, req *statsmodel.RouteSummary
 	}
 
 	return summary, nil
+}
+
+func (s *Service) RoutePlugins(ctx context.Context, req *statsmodel.RoutePluginsRequest) (*statsmodel.RoutePluginsResponse, error) {
+	if err := req.Validate(); err != nil {
+		return nil, inerrors.NewValidationError(err)
+	}
+
+	from, to, err := resolveWindow(req.From, req.To)
+	if err != nil {
+		return nil, inerrors.NewValidationError(err)
+	}
+
+	route, err := s.routeRepo.Get(ctx, routerepo.WithPaths(req.Path))
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, inerrors.NewNotFoundError("route not found")
+		}
+		s.logger.Error("failed to load route for route plugin stats", zap.String("path", req.Path), zap.Error(err))
+		return nil, fmt.Errorf("failed to load route for route plugin stats: %w", err)
+	}
+
+	routePlugins, err := s.routePluginRepo.UnpaginatedList(
+		ctx,
+		routepluginrepo.WithRouteIDs(route.ID),
+		routepluginrepo.WithPreloads(routepluginrepo.PreloadPlugin),
+		routepluginrepo.WithOrder(routepluginmodel.OrderFieldExecutionOrder, "desc"),
+	)
+	if err != nil {
+		s.logger.Error("failed to load route plugins for route plugin stats", zap.String("path", req.Path), zap.Error(err))
+		return nil, fmt.Errorf("failed to load route plugins for route plugin stats: %w", err)
+	}
+
+	summaries := make([]*statsmodel.RoutePluginSummary, 0, len(routePlugins))
+	for _, routePlugin := range routePlugins {
+		rows, listErr := s.repo.ListWindow(ctx, statsmodel.PluginScope(routePlugin.ID.String()), &req.Path, from, to)
+		if listErr != nil {
+			s.logger.Error("failed to load plugin stats rows", zap.String("route_plugin_id", routePlugin.ID.String()), zap.Error(listErr))
+			return nil, fmt.Errorf("failed to load plugin stats rows: %w", listErr)
+		}
+		totalRequests, avgLatencyMs, statusCounts := summarizeRows(rows)
+
+		summary := &statsmodel.RoutePluginSummary{
+			RoutePluginID:         routePlugin.ID.String(),
+			PluginID:              routePlugin.PluginID.String(),
+			PluginName:            routePlugin.Plugin.Name,
+			ExecutionOrder:        routePlugin.ExecutionOrder,
+			TotalRequests:         totalRequests,
+			AverageRPS:            averageRPS(totalRequests, from, to),
+			AverageLatencyMs:      avgLatencyMs,
+			StatusCodeCounts:      statusCounts,
+			StatusCodePercentages: buildStatusPercentages(statusCounts, totalRequests),
+		}
+		summaries = append(summaries, summary)
+	}
+
+	return &statsmodel.RoutePluginsResponse{
+		From:      from,
+		To:        to,
+		RoutePath: req.Path,
+		Plugins:   summaries,
+	}, nil
 }
 
 func (s *Service) Timeseries(ctx context.Context, req *statsmodel.TimeseriesRequest) (*statsmodel.TimeseriesResponse, error) {

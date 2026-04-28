@@ -16,14 +16,33 @@
 
 package stats
 
-import "time"
+import (
+	"strings"
+	"time"
+)
 
 type Scope string
 
 const (
 	ScopeOverall Scope = "overall"
 	ScopeRoute   Scope = "route"
+	ScopePlugin  Scope = "plugin"
 )
+
+const pluginScopePrefix = "plugin:"
+
+func PluginScope(routePluginID string) Scope {
+	return Scope(pluginScopePrefix + routePluginID)
+}
+
+func ParsePluginScope(scope Scope) (routePluginID string, ok bool) {
+	raw := string(scope)
+	if !strings.HasPrefix(raw, pluginScopePrefix) {
+		return "", false
+	}
+	routePluginID = strings.TrimPrefix(raw, pluginScopePrefix)
+	return routePluginID, routePluginID != ""
+}
 
 type RequestStat struct {
 	Scope Scope `gorm:"type:varchar(16);primaryKey;not null;index:idx_proxy_request_stats_scope_route_bucket,priority:1;index:idx_proxy_request_stats_scope_status_bucket,priority:1" json:"scope"`

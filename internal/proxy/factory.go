@@ -88,7 +88,7 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 		f.logger.Debug("no plugins associated with route, building route without middleware", zap.String("route_id", route.ID.String()))
 	} else {
 		// 1. Build the middleware chain based on the plugins
-		composed, err := f.composeMiddlewares(ctx, plugins)
+		composed, err := f.composeMiddlewares(ctx, route.Path, plugins)
 		if err != nil {
 			return err
 		}
@@ -96,7 +96,7 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 	}
 	middlewares = f.withRouteObserver(route.Path, middlewares)
 	// 2. Build the final handler with the middleware chain
-	if err := f.builder.BuildRoute(route.TargetURL, route.Path, TransportConfig{
+	if err := f.builder.BuildRoute(route.TargetURL, route.Path, route.AllowedMethods, TransportConfig{
 		Conn: ConsConfig{MaxIdleCons: route.MaxIdleCons, MaxIdleConsPerHost: route.MaxIdleConsPerHost, MaxConsPerHost: route.MaxConsPerHost},
 		Timeout: TimeoutConfig{
 			IdleConnTimeout:       route.IdleConnTimeout,
@@ -123,7 +123,7 @@ func (f *factory) Reassemble(ctx context.Context, route *routemodel.Route, plugi
 	if len(plugins) == 0 {
 		f.logger.Debug("no plugins provided for reassembly, rebuilding route with bare proxy handler", zap.String("route_id", route.ID.String()))
 	} else {
-		composed, err := f.composeMiddlewares(ctx, plugins)
+		composed, err := f.composeMiddlewares(ctx, route.Path, plugins)
 		if err != nil {
 			return err
 		}
@@ -146,8 +146,9 @@ func (f *factory) Disassemble(path string) error {
 // composeMiddlewares is a helper function to create a slice of middleware functions based on the provided plugins.
 // It reads the WASM bytes for each plugin, creates a new WASM middleware instance, and appends it to the slice.
 // If any step fails, it logs the error and returns it.
-func (f *factory) composeMiddlewares(ctx context.Context, plugins []*routepluginmodel.RoutePlugin) ([]func(http.Handler) http.Handler, error) {
+func (f *factory) composeMiddlewares(ctx context.Context, routePath string, plugins []*routepluginmodel.RoutePlugin) ([]func(http.Handler) http.Handler, error) {
 	middlewares := make([]func(http.Handler) http.Handler, 0, len(plugins))
+	pluginObserver, hasPluginObserver := f.observer.(PluginRequestObserver)
 	for _, rtPlugin := range plugins {
 		// Read raw bytes from the file
 		wasmBytes, err := f.manager.Read(rtPlugin.Plugin.Filename, uploads.PluginUpload)
@@ -163,6 +164,14 @@ func (f *factory) composeMiddlewares(ctx context.Context, plugins []*routeplugin
 			return nil, fmt.Errorf("failed to create WASM middleware for plugin %s: %w", rtPlugin.Plugin.Filename, err)
 		}
 		f.logger.Debug("successfully created WASM middleware for plugin", zap.String("filename", rtPlugin.Plugin.Filename))
+		if hasPluginObserver {
+			if pluginMw := pluginObserver.PluginMiddleware(routePath, rtPlugin.ID.String()); pluginMw != nil {
+				inner := mw
+				mw = func(next http.Handler) http.Handler {
+					return pluginMw(inner(next))
+				}
+			}
+		}
 		middlewares = append(middlewares, mw)
 	}
 	return middlewares, nil

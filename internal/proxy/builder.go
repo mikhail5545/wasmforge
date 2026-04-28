@@ -24,6 +24,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/mikhail5545/wasmforge/internal/proxy/middleware"
 )
 
 //go:generate mockgen -destination=../mocks/proxy/builder.go -package=proxy . Builder
@@ -31,7 +33,7 @@ import (
 type (
 	Builder interface {
 		Director() *Director
-		BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error
+		BuildRoute(targetURL, path string, allowedMethods []string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error
 		RebuildRouteMiddlewares(path string, middlewares ...func(http.Handler) http.Handler) error
 		RemoveRoute(path string) error
 	}
@@ -79,7 +81,7 @@ func (b *builder) Director() *Director {
 	return b.director
 }
 
-func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
+func (b *builder) BuildRoute(targetURL, path string, allowedMethods []string, transportCfg TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 	target, err := url.Parse(targetURL)
 	if err != nil {
 		return fmt.Errorf("invalid target URL: %v", err)
@@ -105,6 +107,11 @@ func (b *builder) BuildRoute(targetURL, path string, transportCfg TransportConfi
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		final = middlewares[i](final)
 	}
+
+	// Add unsupported method rejection logic on top of all middlewares, to prevent unnecessary processing of requests with unsupported methods
+	// to reduce rejection latency
+	methodRejectMiddleware := middleware.NewRejectMethodMiddleware(allowedMethods...)
+	final = methodRejectMiddleware(final)
 
 	b.mu.Lock()
 	defer b.mu.Unlock()

@@ -48,7 +48,7 @@ func TestBuilder_BuildRoute(t *testing.T) {
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
 
-	err := b.BuildRoute(upstream.URL, "/api", cfg, mw)
+	err := b.BuildRoute(upstream.URL, "/api", []string{}, cfg, mw)
 	assert.NoError(t, err)
 
 	b.mu.RLock()
@@ -79,7 +79,7 @@ func TestBuilder_RebuildRouteMiddleware(t *testing.T) {
 		Conn:    ConsConfig{},
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
-	_ = b.BuildRoute(upstream.URL, "/api", cfg)
+	_ = b.BuildRoute(upstream.URL, "/api", []string{}, cfg)
 
 	mw := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -96,4 +96,29 @@ func TestBuilder_RebuildRouteMiddleware(t *testing.T) {
 	b.Director().ServeHTTP(w, req)
 
 	assert.Equal(t, http.StatusForbidden, w.Code)
+}
+
+func TestBuilder_AllowedMethods(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Hello from upstream"))
+	}))
+	defer upstream.Close()
+
+	b := NewBuilder().(*builder)
+	cfg := TransportConfig{
+		Conn:    ConsConfig{},
+		Timeout: TimeoutConfig{IdleConnTimeout: 10},
+	}
+	_ = b.BuildRoute(upstream.URL, "/api", []string{"GET", "OPTIONS"}, cfg)
+
+	req := httptest.NewRequest(http.MethodGet, "/api", nil)
+	w := httptest.NewRecorder()
+	b.Director().ServeHTTP(w, req)
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	req = httptest.NewRequest(http.MethodPost, "/api", nil)
+	w = httptest.NewRecorder()
+	b.Director().ServeHTTP(w, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }

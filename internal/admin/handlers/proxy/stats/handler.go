@@ -46,6 +46,10 @@ func (h *Handler) RouteSummary(c *echo.Context) error {
 	return generic.Handle(c, h.service.RouteSummary, http.StatusOK, "summary")
 }
 
+func (h *Handler) RoutePlugins(c *echo.Context) error {
+	return generic.Handle(c, h.service.RoutePlugins, http.StatusOK, "route_plugins")
+}
+
 func (h *Handler) Timeseries(c *echo.Context) error {
 	return generic.Handle(c, h.service.Timeseries, http.StatusOK, "timeseries")
 }

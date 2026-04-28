@@ -54,13 +54,16 @@ func (req CreateRequest) Validate() error {
 		validation.Field(&req.MaxIdleConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
 		validation.Field(&req.MaxConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
 		validation.Field(&req.ResponseHeaderTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.AllowedMethods, validation.Each(validation.In(
+			"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE",
+		))),
 	)
 }
 
 func (req UpdateRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.ID, validationutil.UUIDRule(true)...),
-		validation.Field(&req.Path, validationutil.PathRule(false)...),
+		validation.Field(&req.Path, validation.When(req.Path != nil, validationutil.PathRule(false)...)),
 		validation.Field(&req.TargetURL, validation.NilOrNotEmpty, is.URL),
 		validation.Field(&req.IdleConnTimeout, validation.NilOrNotEmpty, validation.Min(0)),
 		validation.Field(&req.TLSHandshakeTimeout, validation.NilOrNotEmpty, validation.Min(0)),
@@ -69,6 +72,9 @@ func (req UpdateRequest) Validate() error {
 		validation.Field(&req.MaxIdleConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
 		validation.Field(&req.MaxConsPerHost, validation.NilOrNotEmpty, validation.Min(0)),
 		validation.Field(&req.ResponseHeaderTimeout, validation.NilOrNotEmpty, validation.Min(0)),
+		validation.Field(&req.AllowedMethods, validation.Each(validation.In(
+			"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS", "CONNECT", "TRACE",
+		))),
 	)
 }
 

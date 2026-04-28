@@ -35,10 +35,11 @@ type CreateRequest struct {
 	TLSHandshakeTimeout   int `json:"tls_handshake_timeout"`
 	ExpectContinueTimeout int `json:"expect_continue_timeout"`
 
-	MaxIdleCons           *int `json:"max_idle_conns,omitempty"`
-	MaxIdleConsPerHost    *int `json:"max_idle_conns_per_host,omitempty"`
-	MaxConsPerHost        *int `json:"max_conns_per_host,omitempty"`
-	ResponseHeaderTimeout *int `json:"response_header_timeout"`
+	MaxIdleCons           *int     `json:"max_idle_conns,omitempty"`
+	MaxIdleConsPerHost    *int     `json:"max_idle_conns_per_host,omitempty"`
+	MaxConsPerHost        *int     `json:"max_conns_per_host,omitempty"`
+	ResponseHeaderTimeout *int     `json:"response_header_timeout"`
+	AllowedMethods        []string `json:"allowed_methods,omitempty"`
 }
 
 type UpdateRequest struct {
@@ -50,10 +51,11 @@ type UpdateRequest struct {
 	TLSHandshakeTimeout   *int `json:"tls_handshake_timeout,omitempty"`
 	ExpectContinueTimeout *int `json:"expect_continue_timeout,omitempty"`
 
-	MaxIdleCons           *int `json:"max_idle_conns,omitempty"`
-	MaxIdleConsPerHost    *int `json:"max_idle_conns_per_host,omitempty"`
-	MaxConsPerHost        *int `json:"max_conns_per_host,omitempty"`
-	ResponseHeaderTimeout *int `json:"response_header_timeout"`
+	MaxIdleCons           *int     `json:"max_idle_conns,omitempty"`
+	MaxIdleConsPerHost    *int     `json:"max_idle_conns_per_host,omitempty"`
+	MaxConsPerHost        *int     `json:"max_conns_per_host,omitempty"`
+	ResponseHeaderTimeout *int     `json:"response_header_timeout"`
+	AllowedMethods        []string `json:"allowed_methods,omitempty"`
 }
 
 type IDRequest struct {

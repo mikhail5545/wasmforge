@@ -22,3 +22,7 @@ type RequestObserver interface {
 	RouteMiddleware(routePath string) func(http.Handler) http.Handler
 	OverallMiddleware() func(http.Handler) http.Handler
 }
+
+type PluginRequestObserver interface {
+	PluginMiddleware(routePath string, routePluginID string) func(http.Handler) http.Handler
+}

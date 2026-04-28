@@ -332,8 +332,110 @@ func TestService_Create(t *testing.T) {
 				mockSetup(gorm.ErrDuplicatedKey)
 			},
 			wantErr:   true,
-			targetErr: inerrors.ErrConflict,
+			targetErr: inerrors.ErrAlreadyExists,
 			checkErr:  nil,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockSetup()
+
+			got, err := service.Create(context.Background(), tt.req)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.targetErr != nil {
+					assert.ErrorIs(t, err, tt.targetErr)
+				}
+				if tt.checkErr != nil {
+					assert.True(t, tt.checkErr(err), "error did not satisfy custom check")
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.checkRes != nil {
+					tt.checkRes(t, got)
+				}
+			}
+		})
+	}
+}
+
+func TestService_Create_AllowedMethods(t *testing.T) {
+	ctrl, db, routeRepoMock, _, _, service := setupTest(t)
+	defer ctrl.Finish()
+
+	baseReq := &routemodel.CreateRequest{
+		Path:                  "/test/path",
+		TargetURL:             "http://localhost:8082/testing",
+		IdleConnTimeout:       5,
+		TLSHandshakeTimeout:   10,
+		ExpectContinueTimeout: 7,
+		AllowedMethods:        []string{"GET", "POST", "PUT"},
+	}
+
+	mockSetup := func(returnErr error) {
+		txRouteRepoMock := mockrouterepo.NewMockRepository(ctrl)
+
+		routeRepoMock.EXPECT().DB().Return(db).Times(1)
+		routeRepoMock.EXPECT().WithTx(gomock.Any()).Return(txRouteRepoMock).Times(1)
+
+		txRouteRepoMock.EXPECT().Create(gomock.Any(), gomock.Any()).Return(returnErr).Times(1)
+	}
+
+	for _, tt := range []struct {
+		name      string
+		req       *routemodel.CreateRequest
+		mockSetup func()
+		wantErr   bool
+		targetErr error
+		checkErr  func(error) bool
+		checkRes  func(*testing.T, *routemodel.Route)
+	}{
+		{
+			name: "success",
+			req:  baseReq,
+			mockSetup: func() {
+				mockSetup(nil)
+			},
+			wantErr: false,
+			checkRes: func(t *testing.T, res *routemodel.Route) {
+				assert.NotNil(t, res)
+				assert.Equal(t, baseReq.AllowedMethods, res.AllowedMethods)
+			},
+		},
+		{
+			name: "empty allowed methods",
+			req: &routemodel.CreateRequest{
+				Path:                  baseReq.Path,
+				TargetURL:             baseReq.TargetURL,
+				IdleConnTimeout:       baseReq.IdleConnTimeout,
+				TLSHandshakeTimeout:   baseReq.TLSHandshakeTimeout,
+				ExpectContinueTimeout: baseReq.ExpectContinueTimeout,
+				AllowedMethods:        []string{},
+			},
+			mockSetup: func() {
+				mockSetup(nil)
+			},
+			wantErr: false,
+			checkRes: func(t *testing.T, res *routemodel.Route) {
+				assert.NotNil(t, res)
+				assert.Empty(t, res.AllowedMethods)
+			},
+		},
+		{
+			name: "invalid allowed methods",
+			req: &routemodel.CreateRequest{
+				Path:                  baseReq.Path,
+				TargetURL:             baseReq.TargetURL,
+				IdleConnTimeout:       baseReq.IdleConnTimeout,
+				TLSHandshakeTimeout:   baseReq.TLSHandshakeTimeout,
+				ExpectContinueTimeout: baseReq.ExpectContinueTimeout,
+				AllowedMethods:        []string{"GET", "POST", "Invalid"},
+			},
+			mockSetup: func() {
+
+			},
+			wantErr:   true,
+			targetErr: inerrors.ErrValidationFailed,
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -468,6 +570,97 @@ func TestService_Update(t *testing.T) {
 			tt.mockSetup()
 
 			got, err := service.Update(context.Background(), tt.req)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				if tt.targetErr != nil {
+					assert.ErrorIs(t, err, tt.targetErr)
+				}
+				if tt.checkErr != nil {
+					assert.True(t, tt.checkErr(err), "error did not satisfy custom check")
+				}
+			} else {
+				assert.NoError(t, err)
+				if tt.checkRes != nil {
+					tt.checkRes(t, got)
+				}
+			}
+		})
+	}
+}
+
+func TestService_Update_AllowedMethods(t *testing.T) {
+	ctrl, db, routeRepoMock, _, _, service := setupTest(t)
+	defer ctrl.Finish()
+
+	routeID, _ := uuid.NewV7()
+	mockRoute := &routemodel.Route{
+		ID:        routeID,
+		Path:      "/test",
+		TargetURL: "http://example.com",
+		Enabled:   false,
+	}
+
+	baseReq := &routemodel.UpdateRequest{
+		ID:              routeID.String(),
+		TargetURL:       memory.Ptr("http://localhost:8000"),
+		IdleConnTimeout: memory.Ptr(10),
+		AllowedMethods:  []string{"GET", "POST"},
+	}
+
+	mockSetup := func(getReturn *routemodel.Route, getErr error, createAffected int64, createErr error) {
+		txRouteRepoMock := mockrouterepo.NewMockRepository(ctrl)
+
+		routeRepoMock.EXPECT().DB().Return(db).Times(1)
+		routeRepoMock.EXPECT().WithTx(gomock.Any()).Return(txRouteRepoMock).Times(1)
+
+		txRouteRepoMock.EXPECT().Get(gomock.Any(), gomock.Any()).Return(getReturn, getErr).Times(1)
+
+		if getErr == nil && getReturn != nil && !getReturn.Enabled {
+			txRouteRepoMock.EXPECT().Updates(gomock.Any(), gomock.Any(), gomock.Any()).Return(createAffected, createErr).Times(1)
+		}
+	}
+
+	for _, tt := range []struct {
+		name      string
+		reqSetup  func() *routemodel.UpdateRequest
+		mockSetup func()
+		wantErr   bool
+		targetErr error
+		checkErr  func(error) bool
+		checkRes  func(*testing.T, map[string]any)
+	}{
+		{
+			name: "success",
+			reqSetup: func() *routemodel.UpdateRequest {
+				return baseReq
+			},
+			mockSetup: func() {
+				mockSetup(mockRoute, nil, 1, nil)
+			},
+			wantErr: false,
+			checkRes: func(t *testing.T, res map[string]any) {
+				assert.Equal(t, "http://localhost:8000", res["target_url"])
+				assert.Equal(t, 10, res["idle_conn_timeout"])
+				assert.Equal(t, baseReq.AllowedMethods, res["allowed_methods"])
+			},
+		},
+		{
+			name: "invalid allowed methods",
+			reqSetup: func() *routemodel.UpdateRequest {
+				base := baseReq
+				base.AllowedMethods = []string{"GET", "Invalid"}
+				return base
+			},
+			mockSetup: func() {},
+			wantErr:   true,
+			targetErr: inerrors.ErrValidationFailed,
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.mockSetup()
+
+			got, err := service.Update(context.Background(), tt.reqSetup())
 
 			if tt.wantErr {
 				assert.Error(t, err)

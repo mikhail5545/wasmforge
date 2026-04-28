@@ -10,7 +10,7 @@ func TestCreateRequestValidateVersion(t *testing.T) {
 	req := CreateRequest{
 		Name:     "plugin_alpha",
 		Version:  "1.2.3-beta.1+build.5",
-		Filename: "plugin_alpha\\.wasm",
+		Filename: "plugin_alpha.wasm",
 	}
 	require.NoError(t, req.Validate())
 

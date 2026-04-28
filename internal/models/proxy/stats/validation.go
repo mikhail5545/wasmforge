@@ -37,6 +37,12 @@ func (req RouteSummaryRequest) Validate() error {
 	)
 }
 
+func (req RoutePluginsRequest) Validate() error {
+	return validation.ValidateStruct(&req,
+		validation.Field(&req.Path, validationutil.PathRule(true)...),
+	)
+}
+
 func (req TimeseriesRequest) Validate() error {
 	return validation.ValidateStruct(&req,
 		validation.Field(&req.BucketSeconds, validation.NilOrNotEmpty, validation.Min(1), validation.Max(3600)),

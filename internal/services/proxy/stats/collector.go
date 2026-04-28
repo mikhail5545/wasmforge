@@ -167,6 +167,13 @@ func (c *Collector) OverallMiddleware() func(http.Handler) http.Handler {
 	return c.middleware(statsmodel.ScopeOverall, "")
 }
 
+func (c *Collector) PluginMiddleware(routePath string, routePluginID string) func(http.Handler) http.Handler {
+	if routePluginID == "" {
+		return nil
+	}
+	return c.middleware(statsmodel.PluginScope(routePluginID), routePath)
+}
+
 func (c *Collector) middleware(scope statsmodel.Scope, routePath string) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

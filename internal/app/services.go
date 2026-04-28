@@ -53,7 +53,7 @@ func (a *App) setupServices() {
 		}, a.logger),
 		ProxyConfigSvc: configservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.logger),
 		ProxyCertSvc:   certservice.New(a.proxyServer, a.repos.ProxyConfigRepo, a.uploadsManager, a.logger),
-		ProxyStatsSvc:  statsservice.New(a.repos.ProxyStatsRepo, a.statsCollector, a.logger),
+		ProxyStatsSvc:  statsservice.New(a.repos.ProxyStatsRepo, a.repos.RouteRepo, a.repos.RoutePluginRepo, a.statsCollector, a.logger),
 	}
 	a.services.ProxyServerSvc = serverservice.New(a.proxyServer, a.services.ProxyCertSvc, a.repos.ProxyConfigRepo, a.logger)
 }

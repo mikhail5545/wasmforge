@@ -58,7 +58,7 @@ func TestServiceCreateAutoSwitchesMatchingRoutePluginsAndReassemblesEnabledRoute
 	basePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txPluginRepo).Times(1)
 	baseRouteRepo.EXPECT().WithTx(gomock.Any()).Return(txRouteRepo).Times(1)
 	baseRoutePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txRoutePluginRepo).Times(1)
-	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0\\.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
+	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
 
 	gomock.InOrder(
 		txPluginRepo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, plugin *pluginmodel.Plugin) error {
@@ -112,7 +112,7 @@ func TestServiceCreateAutoSwitchesMatchingRoutePluginsAndReassemblesEnabledRoute
 	created, err := svc.Create(context.Background(), &multipart.FileHeader{}, &pluginmodel.CreateRequest{
 		Name:     "auth_filter",
 		Version:  "1.2.0",
-		Filename: "auth_filter_1_2_0\\.wasm",
+		Filename: "auth_filter_1_2_0.wasm",
 	})
 	require.NoError(t, err)
 	require.Equal(t, publishedPluginID, created.ID)
@@ -151,7 +151,7 @@ func TestServiceCreateSkipsAutoSwitchWhenNoMatchingConstraints(t *testing.T) {
 	basePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txPluginRepo).Times(1)
 	baseRouteRepo.EXPECT().WithTx(gomock.Any()).Return(txRouteRepo).Times(1)
 	baseRoutePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txRoutePluginRepo).Times(1)
-	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0\\.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
+	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
 
 	gomock.InOrder(
 		txPluginRepo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, plugin *pluginmodel.Plugin) error {
@@ -180,7 +180,7 @@ func TestServiceCreateSkipsAutoSwitchWhenNoMatchingConstraints(t *testing.T) {
 	_, err = svc.Create(context.Background(), &multipart.FileHeader{}, &pluginmodel.CreateRequest{
 		Name:     "auth_filter",
 		Version:  "1.2.0",
-		Filename: "auth_filter_1_2_0\\.wasm",
+		Filename: "auth_filter_1_2_0.wasm",
 	})
 	require.NoError(t, err)
 }
@@ -218,7 +218,7 @@ func TestServiceCreateReturnsErrorWhenRouteReassemblyFails(t *testing.T) {
 	basePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txPluginRepo).Times(1)
 	baseRouteRepo.EXPECT().WithTx(gomock.Any()).Return(txRouteRepo).Times(1)
 	baseRoutePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txRoutePluginRepo).Times(1)
-	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0\\.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
+	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
 
 	gomock.InOrder(
 		txPluginRepo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, plugin *pluginmodel.Plugin) error {
@@ -258,7 +258,7 @@ func TestServiceCreateReturnsErrorWhenRouteReassemblyFails(t *testing.T) {
 	_, err = svc.Create(context.Background(), &multipart.FileHeader{}, &pluginmodel.CreateRequest{
 		Name:     "auth_filter",
 		Version:  "1.2.0",
-		Filename: "auth_filter_1_2_0\\.wasm",
+		Filename: "auth_filter_1_2_0.wasm",
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to reassemble enabled route after auto-switching")
@@ -297,7 +297,7 @@ func TestServiceCreateSkipsReassemblyWhenAffectedRoutesAreDisabled(t *testing.T)
 	basePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txPluginRepo).Times(1)
 	baseRouteRepo.EXPECT().WithTx(gomock.Any()).Return(txRouteRepo).Times(1)
 	baseRoutePluginRepo.EXPECT().WithTx(gomock.Any()).Return(txRoutePluginRepo).Times(1)
-	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0\\.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
+	uploadManager.EXPECT().FromMultipartFile(gomock.Any(), "auth_filter_1_2_0.wasm", uploads.PluginUpload).Return("checksum", nil).Times(1)
 
 	gomock.InOrder(
 		txPluginRepo.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, plugin *pluginmodel.Plugin) error {
@@ -327,7 +327,7 @@ func TestServiceCreateSkipsReassemblyWhenAffectedRoutesAreDisabled(t *testing.T)
 	_, err = svc.Create(context.Background(), &multipart.FileHeader{}, &pluginmodel.CreateRequest{
 		Name:     "auth_filter",
 		Version:  "1.2.0",
-		Filename: "auth_filter_1_2_0\\.wasm",
+		Filename: "auth_filter_1_2_0.wasm",
 	})
 	require.NoError(t, err)
 }

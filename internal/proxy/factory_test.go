@@ -19,6 +19,7 @@ package proxy_test
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
@@ -32,6 +33,7 @@ import (
 	"github.com/mikhail5545/wasmforge/internal/uploads"
 	"github.com/mikhail5545/wasmforge/internal/util/memory"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 )
@@ -151,7 +153,7 @@ func TestFactory_Assemble(t *testing.T) {
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
 				// Expect immediate building the route without middleware when there are no plugins
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any()).Return(nil)
+				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, route.AllowedMethods, gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -428,4 +430,111 @@ func TestFactory_Disassemble(t *testing.T) {
 		assert.Error(t, err)
 		assert.ErrorIs(t, err, assert.AnError)
 	})
+}
+
+func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	builder := mockproxy.NewMockBuilder(ctrl)
+	uploadsManager := mockuploads.NewMockManager(ctrl)
+	mwFactory := mockmw.NewMockFactory(ctrl)
+
+	logger, cleanup, err := setupLogger()
+	require.NoError(t, err)
+	t.Cleanup(cleanup)
+
+	observer := &recordingObserver{}
+	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, observer, logger)
+
+	routeID := uuid.MustParse("00000000-0000-0000-0000-000000000100")
+	pluginID := uuid.MustParse("00000000-0000-0000-0000-000000000200")
+	routePluginID := uuid.MustParse("00000000-0000-0000-0000-000000000300")
+
+	route := &routemodel.Route{
+		ID:        routeID,
+		Path:      "/test",
+		TargetURL: "http://localhost:8080/test",
+	}
+	plugins := []*routepluginmodel.RoutePlugin{
+		{
+			ID:       routePluginID,
+			RouteID:  routeID,
+			PluginID: pluginID,
+			Plugin: pluginmodel.Plugin{
+				ID:       pluginID,
+				Filename: "test-plugin-1.wasm",
+			},
+		},
+	}
+
+	uploadsManager.EXPECT().
+		Read("test-plugin-1.wasm", uploads.PluginUpload).
+		Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
+	mwFactory.EXPECT().
+		Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+		Return(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				observer.steps = append(observer.steps, "wasm-before")
+				next.ServeHTTP(w, r)
+				observer.steps = append(observer.steps, "wasm-after")
+			})
+		}, nil)
+	builder.EXPECT().
+		BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any()).
+		DoAndReturn(func(_ string, _ string, _ []string, _ proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
+			var handler http.Handler = http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+				observer.steps = append(observer.steps, "terminal")
+			})
+			for i := len(middlewares) - 1; i >= 0; i-- {
+				handler = middlewares[i](handler)
+			}
+			handler.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, route.Path, nil))
+			return nil
+		})
+
+	require.NoError(t, factory.Assemble(context.Background(), route, plugins))
+	require.Equal(t, "/test", observer.pluginRoutePath)
+	require.Equal(t, routePluginID.String(), observer.pluginRoutePluginID)
+	require.Equal(t, []string{
+		"route-before",
+		"plugin-before",
+		"wasm-before",
+		"terminal",
+		"wasm-after",
+		"plugin-after",
+		"route-after",
+	}, observer.steps)
+}
+
+type recordingObserver struct {
+	pluginRoutePath     string
+	pluginRoutePluginID string
+	steps               []string
+}
+
+func (o *recordingObserver) RouteMiddleware(_ string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			o.steps = append(o.steps, "route-before")
+			next.ServeHTTP(w, r)
+			o.steps = append(o.steps, "route-after")
+		})
+	}
+}
+
+func (*recordingObserver) OverallMiddleware() func(http.Handler) http.Handler {
+	return nil
+}
+
+func (o *recordingObserver) PluginMiddleware(routePath string, routePluginID string) func(http.Handler) http.Handler {
+	o.pluginRoutePath = routePath
+	o.pluginRoutePluginID = routePluginID
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			o.steps = append(o.steps, "plugin-before")
+			next.ServeHTTP(w, r)
+			o.steps = append(o.steps, "plugin-after")
+		})
+	}
 }

@@ -14,12 +14,17 @@
 /bin
 /bin/*.exe
 
+**/bin/
+**/artifacts/
+**/results/
+**/tmp/
+**/target/
+
 # Wazero runtime cache
 /cache
 
 # Logs
 /logs
-
 # Idea configuration files
 .idea
 

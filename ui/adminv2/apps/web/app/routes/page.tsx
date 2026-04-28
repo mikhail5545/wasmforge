@@ -60,7 +60,7 @@ import {
 } from "@workspace/ui/components/card"
 import { AlertModal } from "@/components/dialog/alert-modal"
 
-export default function RoutesPage() {
+function RoutesPageContent() {
   const router = useRouter()
 
   const [orderField, setOrderField] = useState("created_at");
@@ -78,7 +78,7 @@ export default function RoutesPage() {
   );
 
   return (
-    <SidebarLayout page_title={"Routes"}>
+    <>
       <AlertModal
         variant={"alert"}
         size={"sm"}
@@ -368,6 +368,15 @@ export default function RoutesPage() {
           </div>
         )}
       </div>
+    </>
+  )
+}
+
+export default function RoutesPage() {
+
+  return (
+    <SidebarLayout page_title={"Routes"}>
+      <RoutesPageContent />
     </SidebarLayout>
   )
 }

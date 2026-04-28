@@ -63,3 +63,22 @@ export interface TimeseriesResponse{
   bucket_seconds: number
   points: TimeseriesPoint[]
 }
+
+export interface RoutePluginSummary {
+  route_plugin_id: string
+  plugin_id: string
+  plugin_name: string
+  execution_order: number
+  total_requests: number
+  avg_rps: number
+  avg_latency_ms: number
+  status_code_counts: Record<string, number>
+  status_code_percentages: Record<string, number>
+}
+
+export interface RoutePluginsResponse {
+  from: string
+  to: string
+  route_path: string
+  plugins: RoutePluginSummary[]
+}

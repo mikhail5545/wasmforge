@@ -71,10 +71,6 @@ http://localhost:8080
 
 From there, you can create routes, upload WASM plugins, and attach plugins to routes.
 
-## Benchmarking
-
-For repeatable performance benchmarks (baseline vs WASM plugin vs native middleware), use the toolkit in [`bench/`](./bench/README.md).
-
 ## Project status
 
 WasmForge is actively evolving. See:

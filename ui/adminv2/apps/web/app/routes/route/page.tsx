@@ -41,6 +41,7 @@ import React from "react"
 import { format } from "date-fns"
 import { DateTimeInput } from "@/components/date-time-input"
 import {
+  RoutePluginsResponse,
   RouteSummaryResponse,
   TimeseriesResponse,
 } from "@/types/ProxyServerStatistics"
@@ -100,8 +101,9 @@ import {
 } from "@workspace/ui/components/popover"
 import { NormalizeTimeSeriesPointsStatusCodes } from "@/lib/normalize-stats"
 import { TimeSeriesAreaChart, TimeSeriesStatusCodeLineChart } from "@/components/time-series-charts"
+import { RouteFlowRuntime } from "@/components/route-flow-runtime"
 
-export default function RoutePage() {
+function RoutePageContent() {
   const params = useSearchParams()
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
@@ -128,6 +130,10 @@ export default function RoutePage() {
   const timeSeriesData = useData<TimeseriesResponse>(
     `http://localhost:8080/api/proxy/stats/timeseries?route=${encodeURIComponent(path)}&from=${timeSeriesRange.range.from.date.toISOString()}&to=${timeSeriesRange.range.to.date.toISOString()}`,
     "timeseries"
+  )
+  const routePluginMetricsData = useData<RoutePluginsResponse>(
+    `http://localhost:8080/api/proxy/stats/route/plugins?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
+    "route_plugins",
   )
 
   const [orderDirection, setOrderDirection] = React.useState<string>("asc")
@@ -191,11 +197,13 @@ export default function RoutePage() {
         variant={"alert"}
         size={"sm"}
         title={"Unexpected error occurred"}
-        visible={!!routeData.error || !!error || !!overViewData.error}
+        visible={!!routeData.error || !!error || !!overViewData.error || !!routePluginMetricsData.error || !!routePluginsData.error}
         description={
           routeData?.error?.message ||
           error?.message ||
           overViewData?.error?.message ||
+          routePluginMetricsData?.error?.message ||
+          routePluginsData?.error?.message ||
           "No additional information available. Retrying in 5 seconds."
         }
         onClose={async () => {
@@ -204,6 +212,12 @@ export default function RoutePage() {
           }
           if (overViewData.error) {
             await overViewData.refetch()
+          }
+          if (routePluginMetricsData.error) {
+            await routePluginMetricsData.refetch()
+          }
+          if (routePluginsData.error) {
+            await routePluginsData.refetch()
           }
           if (error) {
             reset()
@@ -499,6 +513,16 @@ export default function RoutePage() {
                   </div>
                 </div>
                 <Separator />
+                <RouteFlowRuntime
+                  routePath={routeData.data!.path}
+                  targetURL={routeData.data!.target_url}
+                  routePlugins={routePluginsData.data}
+                  pluginMetrics={routePluginMetricsData.data?.plugins ?? []}
+                  pluginsLoading={routePluginsData.loading}
+                  metricsLoading={routePluginMetricsData.loading}
+                  metricsError={routePluginMetricsData.error?.message}
+                />
+                <Separator />
                 <div className={"flex flex-col gap-5"}>
                   <div className={"flex flex-row items-center gap-5"}>
                     <p className={"text-2xl"}>Status Codes Statistics</p>
@@ -657,5 +681,21 @@ export default function RoutePage() {
         )}
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function RoutePage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Route Details"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"size-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <RoutePageContent />
+    </React.Suspense>
   )
 }

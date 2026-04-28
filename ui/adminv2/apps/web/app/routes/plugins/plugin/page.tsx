@@ -45,7 +45,7 @@ import { useMutation } from "@/hooks/use-mutation"
 import { AlertModal } from "@/components/dialog/alert-modal"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@workspace/ui/components/dialog"
 
-export default function RoutePluginPage() {
+function RoutePluginPageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const pluginId = params.get("pluginId") ?? ""
@@ -209,5 +209,21 @@ export default function RoutePluginPage() {
         )}
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function RoutePluginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Route Plugin Details"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"size-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <RoutePluginPageContent />
+    </React.Suspense>
   )
 }

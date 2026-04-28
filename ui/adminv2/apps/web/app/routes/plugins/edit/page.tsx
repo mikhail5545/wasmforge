@@ -76,7 +76,7 @@ import { ErrorResponse } from "@/types/ErrorResponse"
 import { AlertModal } from "@/components/dialog/alert-modal"
 import { Badge } from "@workspace/ui/components/badge"
 
-export default function EditRoutePluginPage() {
+function EditRoutePluginPageContent() {
   const params = useSearchParams()
   const routePluginId = params.get("pluginId") ?? ""
   const routePluginData = useData<RoutePlugin>(
@@ -597,5 +597,21 @@ export default function EditRoutePluginPage() {
         </div>
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function EditRoutePluginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Edit Route Plugin"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"size-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <EditRoutePluginPageContent />
+    </React.Suspense>
   )
 }

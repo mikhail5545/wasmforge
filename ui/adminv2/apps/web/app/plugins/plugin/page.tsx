@@ -55,9 +55,9 @@ import {
 } from "@workspace/ui/components/table"
 import { Badge } from "@workspace/ui/components/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
+  DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
 
-export default function PluginPage() {
+function PluginPageContent() {
   const params = useSearchParams()
   const name = params.get("name") ?? ""
   const version = params.get("version") ?? ""
@@ -392,5 +392,21 @@ export default function PluginPage() {
         )}
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function PluginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Plugin"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"size-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <PluginPageContent />
+    </React.Suspense>
   )
 }

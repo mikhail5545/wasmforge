@@ -62,7 +62,7 @@ const data = {
       },
       {
         title: "Documentation",
-        link: "/documentation",
+        link: "/docs",
         icon: BookText,
         isActive: false,
       }

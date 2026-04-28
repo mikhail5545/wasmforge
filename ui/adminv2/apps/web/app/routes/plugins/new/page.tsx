@@ -43,7 +43,7 @@ const initialFormState: Omit<RoutePlugin, "id" | "created_at" | "plugin"> = {
   config: null,
 }
 
-export default function NewRoutePluginPage() {
+function NewRoutePluginPageContent() {
   const params = useSearchParams()
   const pluginId = params.get("pluginId")
   const routeId = params.get("routeId")
@@ -290,5 +290,21 @@ export default function NewRoutePluginPage() {
         </Button>
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function NewRoutePluginPage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Attach Plugin"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"size-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <NewRoutePluginPageContent />
+    </React.Suspense>
   )
 }

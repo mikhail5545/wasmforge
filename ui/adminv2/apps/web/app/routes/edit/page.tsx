@@ -41,7 +41,7 @@ import { useMutation } from "@/hooks/use-mutation"
 import { ErrorResponse } from "@/types/ErrorResponse"
 import { AlertModal } from "@/components/dialog/alert-modal"
 
-export default function EditRoutePage() {
+function EditRoutePageContent() {
   const router = useRouter()
   const params = useSearchParams()
   const path = params.get("path") ?? ""
@@ -454,5 +454,21 @@ export default function EditRoutePage() {
         )}
       </div>
     </SidebarLayout>
+  )
+}
+
+export default function EditRoutePage() {
+  return (
+    <React.Suspense
+      fallback={
+        <SidebarLayout page_title={"Edit Route"}>
+          <div className={"flex items-center justify-center p-6"}>
+            <Spinner className={"h-10 w-10"} />
+          </div>
+        </SidebarLayout>
+      }
+    >
+      <EditRoutePageContent />
+    </React.Suspense>
   )
 }

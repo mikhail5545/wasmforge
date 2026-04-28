@@ -25,7 +25,8 @@ import { AppSidebar } from "@/components/navigation/app-sidebar"
 import { useTheme } from "next-themes"
 import { Button } from "@workspace/ui/components/button"
 import { SunMoon } from "lucide-react"
-import React from "react"
+import React, { Suspense } from "react"
+import { Spinner } from "@workspace/ui/components/spinner"
 
 export const SidebarLayout = ({
   page_title,
@@ -72,7 +73,11 @@ export const SidebarLayout = ({
             </div>
           </div>
         </header>
-        {children}
+        <Suspense fallback={
+          <div className={"flex items-center justify-center py-50"}>
+            <Spinner />
+          </div>
+        }>{children}</Suspense>
       </SidebarInset>
     </SidebarProvider>
   )

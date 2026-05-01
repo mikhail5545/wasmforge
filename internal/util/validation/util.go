@@ -19,6 +19,7 @@ package validation
 import (
 	"fmt"
 	"regexp"
+	"time"
 
 	semver "github.com/Masterminds/semver/v3"
 	validation "github.com/go-ozzo/ozzo-validation/v4"
@@ -55,6 +56,20 @@ func extractValue[T any](dest *T, value any) error {
 		*dest = *v
 	default:
 		return fmt.Errorf("must be a %T or *%T", *dest, *dest)
+	}
+	return nil
+}
+
+func IsValidTimeAfterNow(value any, minGap time.Duration) error {
+	var t time.Time
+	if err := extractValue(&t, value); err != nil {
+		return err
+	}
+	if t.IsZero() {
+		return fmt.Errorf("time is zero")
+	}
+	if t.Before(time.Now().Add(-minGap)) {
+		return fmt.Errorf("time is out of range")
 	}
 	return nil
 }

@@ -98,7 +98,6 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 			MaxIdleConsPerHost:    req.MaxIdleConsPerHost,
 			MaxConsPerHost:        req.MaxConsPerHost,
 			ResponseHeaderTimeout: req.ResponseHeaderTimeout,
-			AllowedMethods:        req.AllowedMethods,
 			Enabled:               false,
 		}
 

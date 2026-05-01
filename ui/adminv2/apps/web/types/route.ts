@@ -28,5 +28,6 @@ export interface Route {
   max_idle_cons_per_host?: number
   response_header_timeout?: number
   max_cons_per_host?: number
+  allowed_methods: string[]
   plugins?: RoutePlugin[]
 }

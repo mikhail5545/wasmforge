@@ -1,14 +1,14 @@
 [CmdletBinding()]
 param(
-    [switch]$SkipNmpInstall
+    [switch]$SkipNpmInstall
 )
 
 $ErrorActionPreference = "Stop"
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $RootDir = Resolve-Path (Join-Path $ScriptDir "..")
-$UiDir = Join-Path $RootDir "ui\admin-ui"
-$UiOutDir = Join-Path $UiDir "out"
+$UiDir = Join-Path $RootDir "ui\adminv2"
+$UiOutDir = Join-Path $UiDir "apps\web\out"
 $EmbedDir = Join-Path $RootDir "pkg\ui\out"
 $BinDir = Join-Path $RootDir "bin"
 $BinPath = Join-Path $BinDir "wasmforge.exe"
@@ -25,7 +25,7 @@ Require-Command go
 Write-Host "==> Building Admin UI"
 Push-Location $UiDir
 try{
-    if (-not $SkipNmpInstall) {
+    if (-not $SkipNpmInstall) {
         npm install
     }
     npm run build

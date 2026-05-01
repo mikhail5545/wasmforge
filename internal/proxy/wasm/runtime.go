@@ -48,6 +48,9 @@ func NewWasmRuntime(ctx context.Context, logger *zap.Logger) (wazero.Runtime, fu
 		NewFunctionBuilder().WithFunc(hostGetQueryParam).Export("host_get_query_param").
 		NewFunctionBuilder().WithFunc(hostGetRawQuery).Export("host_get_raw_query").
 		NewFunctionBuilder().WithFunc(hostGetJSONConfig).Export("host_get_json_config").
+		NewFunctionBuilder().WithFunc(hostAuthIsAuthenticated).Export("host_auth_is_authenticated").
+		NewFunctionBuilder().WithFunc(hostAuthSubject).Export("host_auth_subject").
+		NewFunctionBuilder().WithFunc(hostAuthClaim).Export("host_auth_claim").
 		Instantiate(ctx)
 
 	if err != nil {

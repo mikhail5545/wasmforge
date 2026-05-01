@@ -63,6 +63,13 @@ func parseArgs() *app.Config {
 	pflag.BoolVarP(&cfg.LogConfig.UseTimestamp, "use-timestamps", "t", true, "Use timestamps in logs filenames")
 	pflag.StringVarP(&cfg.LogConfig.FileLevel, "file-log-level", "f", "info", "Case-insensitive log level for file output (debug, info, warn, error)")
 	pflag.StringVarP(&cfg.LogConfig.ConsoleLevel, "console-log-level", "s", "debug", "Case-insensitive log level for console output (debug, info, warn, error)")
+	pflag.StringVar(&cfg.AuthEncryption.Provider, "auth-encryption-provider", "local", "Auth key encryption provider (local, 1password, or aws-kms)")
+	pflag.StringVar(&cfg.AuthEncryption.MasterKeyEnvName, "auth-encryption-master-key-env", "WASMFORGE_AUTH_MASTER_KEY", "Environment variable containing the local auth encryption master key")
+	pflag.StringVar(&cfg.AuthEncryption.OnePasswordReference, "auth-encryption-1password-reference", "", "1Password secret reference for the auth encryption master key")
+	pflag.StringVar(&cfg.AuthEncryption.OnePasswordTokenEnv, "auth-encryption-1password-token-env", "OP_SERVICE_ACCOUNT_TOKEN", "Environment variable containing the 1Password service account token")
+	pflag.StringVar(&cfg.AuthEncryption.OnePasswordIntegration, "auth-encryption-1password-integration", "wasmforge", "Integration name reported to the 1Password SDK")
+	pflag.StringVar(&cfg.AuthEncryption.AWSKMSRegion, "auth-encryption-aws-kms-region", "", "AWS region for the auth encryption KMS key")
+	pflag.StringVar(&cfg.AuthEncryption.AWSKMSKeyID, "auth-encryption-aws-kms-key-id", "", "AWS KMS key ID or ARN for auth encryption")
 	pflag.Parse()
 
 	return cfg

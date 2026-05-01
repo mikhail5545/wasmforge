@@ -31,7 +31,7 @@ go test ./...
 5. Build admin UI:
 
 ```bash
-npm --prefix ui/admin-ui run build
+npm --prefix ui/adminv2 run build
 ```
 
 ## Workflow

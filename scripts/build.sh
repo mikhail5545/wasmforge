@@ -19,6 +19,7 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 UI_DIR="$ROOT_DIR/ui/adminv2"
+UI_BUILD_DIR="$UI_DIR/apps/web"
 EMBED_DIR="$ROOT_DIR/pkg/ui/out"
 UI_OUT_DIR="$UI_DIR/apps/web/out"
 BIN_DIR="$ROOT_DIR/bin"
@@ -32,12 +33,16 @@ require_cmd() {
 }
 
 require_cmd npm
+require_cmd npx
 require_cmd go
 
 echo "==> Building Admin UI"
 pushd "$UI_DIR" > /dev/null
 npm install
-npm run build
+popd > /dev/null
+
+pushd "$UI_BUILD_DIR" > /dev/null
+npx next build
 popd > /dev/null
 
 echo "==> Preparing embedded UI output"

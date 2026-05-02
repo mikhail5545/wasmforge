@@ -148,6 +148,7 @@ UPSTREAM_PID=$!
 wait_http_ok "http://127.0.0.1:${UPSTREAM_PORT}/health"
 
 echo "Starting WasmForge admin on :$WASMFORGE_ADMIN_PORT ..."
+export WASMFORGE_AUTH_MASTER_KEY=3MLAC3IgIF14lj0yGhKP8bxXxAb807tlrRgu0RU5Sx4=
 "$WASMFORGE_BIN" \
   --admin-port "$WASMFORGE_ADMIN_PORT" \
   --plugins-uploads-dir "$UPLOADS_DIR" \

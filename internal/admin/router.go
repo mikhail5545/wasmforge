@@ -18,20 +18,26 @@ package admin
 
 import (
 	"github.com/labstack/echo/v5"
+	authcfghandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/auth/config"
+	keyhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/auth/key"
 	pluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/plugin"
 	certhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/cert"
 	cfghandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/config"
 	serverhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/server"
 	statshandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/proxy/stats"
 	routehandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route"
+	routemethodhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route/method"
 	routepluginhandler "github.com/mikhail5545/wasmforge/internal/admin/handlers/route/plugin"
 	"github.com/mikhail5545/wasmforge/internal/proxy/server"
+	configsvc "github.com/mikhail5545/wasmforge/internal/services/auth/config"
+	keyservice "github.com/mikhail5545/wasmforge/internal/services/auth/key"
 	pluginservice "github.com/mikhail5545/wasmforge/internal/services/plugin"
 	certservice "github.com/mikhail5545/wasmforge/internal/services/proxy/cert"
 	cfgservice "github.com/mikhail5545/wasmforge/internal/services/proxy/config"
 	serverservice "github.com/mikhail5545/wasmforge/internal/services/proxy/server"
 	statsservice "github.com/mikhail5545/wasmforge/internal/services/proxy/stats"
 	routeservice "github.com/mikhail5545/wasmforge/internal/services/route"
+	routemethodsvc "github.com/mikhail5545/wasmforge/internal/services/route/method"
 	routepluginservice "github.com/mikhail5545/wasmforge/internal/services/route/plugin"
 )
 
@@ -40,11 +46,14 @@ type (
 		PluginSvc      *pluginservice.Service
 		RoutePluginSvc *routepluginservice.Service
 		RouteSvc       *routeservice.Service
+		AuthConfigSvc  *configsvc.Service
+		AuthKeySvc     *keyservice.Service
 		ProxyServer    *server.Server
 		CertSvc        *certservice.Service
 		ConfigSvc      *cfgservice.Service
 		ServerSvc      *serverservice.Service
 		ProxyStatsSvc  *statsservice.Service
+		RouteMethodSvc *routemethodsvc.Service
 	}
 
 	router struct {
@@ -67,6 +76,7 @@ func (r *router) register(e *echo.Group) {
 	r.registerRouteRoutes(e)
 	r.registerRoutePluginRoutes(e)
 	r.registerPluginRoutes(e)
+	r.registerAuthRoutes(e)
 }
 
 func (r *router) registerProxy(e *echo.Group) {
@@ -100,6 +110,7 @@ func (r *router) registerProxy(e *echo.Group) {
 
 func (r *router) registerRouteRoutes(e *echo.Group) {
 	routeHandler := routehandler.New(r.deps.RouteSvc)
+	routeMethodHandler := routemethodhandler.New(r.deps.RouteMethodSvc)
 	routes := e.Group("/routes")
 
 	routes.GET("/:id", routeHandler.Get)
@@ -109,6 +120,11 @@ func (r *router) registerRouteRoutes(e *echo.Group) {
 	routes.POST("/:id/disable", routeHandler.Disable)
 	routes.PATCH("/:id", routeHandler.Update)
 	routes.DELETE("/:id", routeHandler.Delete)
+
+	routes.GET("/:id/methods/:method", routeMethodHandler.Get)
+	routes.GET("/:id/methods", routeMethodHandler.List)
+	routes.POST("/:id/methods/", routeMethodHandler.Set)
+	routes.DELETE("/:id/methods/:method", routeMethodHandler.Delete)
 }
 
 func (r *router) registerRoutePluginRoutes(e *echo.Group) {
@@ -130,4 +146,21 @@ func (r *router) registerPluginRoutes(e *echo.Group) {
 	plugins.GET("", pluginHandler.List)
 	plugins.POST("", pluginHandler.Create)
 	plugins.DELETE("/:id", pluginHandler.Delete)
+}
+
+func (r *router) registerAuthRoutes(e *echo.Group) {
+	configHandler := authcfghandler.New(r.deps.AuthConfigSvc)
+	keyHandler := keyhandler.New(r.deps.AuthKeySvc)
+
+	authGroup := e.Group("/auth")
+	authGroup.GET("/routes/:route_id/config", configHandler.Get)
+	authGroup.PUT("/routes/:route_id/config", configHandler.Set)
+	authGroup.DELETE("/routes/:route_id/config", configHandler.Delete)
+	authGroup.POST("/validate", configHandler.ValidateToken)
+
+	authGroup.GET("/keys", keyHandler.List)
+	authGroup.GET("/keys/:kid", keyHandler.Get)
+	authGroup.POST("/keys", keyHandler.Create)
+	authGroup.POST("/keys/generate", keyHandler.Generate)
+	authGroup.DELETE("/keys/:kid", keyHandler.Delete)
 }

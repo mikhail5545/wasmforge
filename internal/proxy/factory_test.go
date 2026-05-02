@@ -62,7 +62,7 @@ func setupTest(t *testing.T) (*gomock.Controller, *mockproxy.MockBuilder, *mocku
 	}
 	t.Cleanup(cleanup)
 
-	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, nil, logger)
+	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, nil, nil, nil, nil, nil, logger)
 
 	return ctrl, builder, uploadsManager, mwFactory, factory
 }
@@ -143,7 +143,7 @@ func TestFactory_Assemble(t *testing.T) {
 						})
 					}, nil)
 
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -153,7 +153,7 @@ func TestFactory_Assemble(t *testing.T) {
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
 				// Expect immediate building the route without middleware when there are no plugins
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, route.AllowedMethods, gomock.Any()).Return(nil)
+				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -205,7 +205,7 @@ func TestFactory_Assemble(t *testing.T) {
 						})
 					}, nil)
 
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any()).Return(assert.AnError)
+				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(assert.AnError)
 			},
 			wantErr:   true,
 			targetErr: assert.AnError,
@@ -308,7 +308,7 @@ func TestFactory_Reassemble(t *testing.T) {
 						})
 					}, nil)
 
-				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any()).Return(nil)
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -317,7 +317,7 @@ func TestFactory_Reassemble(t *testing.T) {
 			route:   route,
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
-				builder.EXPECT().RebuildRouteMiddlewares(route.Path).Return(nil)
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -326,7 +326,7 @@ func TestFactory_Reassemble(t *testing.T) {
 			route:   route,
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
-				builder.EXPECT().RebuildRouteMiddlewares(route.Path).Return(assert.AnError)
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any()).Return(assert.AnError)
 			},
 			wantErr:   true,
 			targetErr: assert.AnError,
@@ -382,7 +382,7 @@ func TestFactory_Reassemble(t *testing.T) {
 						})
 					}, nil)
 
-				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any()).Return(assert.AnError)
+				builder.EXPECT().RebuildRouteMiddlewares(route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(assert.AnError)
 			},
 			wantErr:   true,
 			targetErr: assert.AnError,
@@ -445,7 +445,7 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	observer := &recordingObserver{}
-	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, observer, logger)
+	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, observer, nil, nil, nil, nil, logger)
 
 	routeID := uuid.MustParse("00000000-0000-0000-0000-000000000100")
 	pluginID := uuid.MustParse("00000000-0000-0000-0000-000000000200")
@@ -481,7 +481,7 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 			})
 		}, nil)
 	builder.EXPECT().
-		BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any()).
+		BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ string, _ string, _ []string, _ proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 			var handler http.Handler = http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 				observer.steps = append(observer.steps, "terminal")

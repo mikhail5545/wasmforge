@@ -94,7 +94,11 @@ func (a *App) Init(ctx context.Context) error {
 	}
 	a.proxyServer = proxyServer
 
-	a.setupServices()
+	if err := a.setupServices(ctx); err != nil {
+		a.logger.Error("failed to initialize auth services", zap.Error(err))
+		return err
+	}
+	a.proxyServer.ConfigureAuth(a.repos.AuthConfigRepo, a.services.TokenValidator, a.services.TokenIssuer, a.repos.AuthAuditRepo)
 
 	if err := a.services.ProxyConfigSvc.Init(ctx); err != nil {
 		a.logger.Error("failed to initialize proxy config", zap.Error(err))
@@ -105,6 +109,8 @@ func (a *App) Init(ctx context.Context) error {
 		PluginSvc:      a.services.PluginSvc,
 		RoutePluginSvc: a.services.RoutePluginSvc,
 		RouteSvc:       a.services.RouteSvc,
+		AuthConfigSvc:  a.services.AuthConfigSvc,
+		AuthKeySvc:     a.services.AuthKeySvc,
 		ProxyServer:    a.proxyServer,
 		CertSvc:        a.services.ProxyCertSvc,
 		ServerSvc:      a.services.ProxyServerSvc,

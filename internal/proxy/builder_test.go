@@ -122,3 +122,30 @@ func TestBuilder_AllowedMethods(t *testing.T) {
 	b.Director().ServeHTTP(w, req)
 	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
 }
+
+func TestBuilder_RebuildRouteMiddlewareKeepsAllowedMethods(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Hello from upstream"))
+	}))
+	defer upstream.Close()
+
+	b := NewBuilder().(*builder)
+	cfg := TransportConfig{
+		Conn:    ConsConfig{},
+		Timeout: TimeoutConfig{IdleConnTimeout: 10},
+	}
+	_ = b.BuildRoute(upstream.URL, "/api", []string{"GET"}, cfg)
+
+	err := b.RebuildRouteMiddlewares("/api", func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			next.ServeHTTP(w, r)
+		})
+	})
+	assert.NoError(t, err)
+
+	req := httptest.NewRequest(http.MethodPost, "/api", nil)
+	w := httptest.NewRecorder()
+	b.Director().ServeHTTP(w, req)
+	assert.Equal(t, http.StatusMethodNotAllowed, w.Code)
+}

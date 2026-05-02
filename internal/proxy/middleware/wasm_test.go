@@ -7,6 +7,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
+	authsvc "github.com/mikhail5545/wasmforge/internal/services/auth"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tetratelabs/wazero"
@@ -71,4 +73,52 @@ func TestFactoryCreate_InstantiatesModuleOnceAndReusesItAcrossRequests(t *testin
 
 	assert.Equal(t, 2, nextCalls)
 	assert.Equal(t, 1, rt.InstantiateCalls(), "module should not be instantiated per request")
+}
+
+func TestWasmMiddleware_PreservesExistingAuthRequestState(t *testing.T) {
+	ctx := context.Background()
+	rt := wazero.NewRuntime(ctx)
+	t.Cleanup(func() {
+		_ = rt.Close(ctx)
+	})
+
+	f := NewFactory(rt, zap.NewNop())
+	wasmBytes := []byte{
+		0x00, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00,
+		0x01, 0x04, 0x01, 0x60, 0x00, 0x00,
+		0x03, 0x02, 0x01, 0x00,
+		0x07, 0x0e, 0x01, 0x0a, 0x6f, 0x6e, 0x5f, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x00, 0x00,
+		0x0a, 0x04, 0x01, 0x02, 0x00, 0x0b,
+	}
+
+	mw, err := f.Create(ctx, wasmBytes, nil)
+	require.NoError(t, err)
+
+	state := &reqctx.RequestState{
+		AuthContext: &reqctx.AuthContext{
+			IsAuthenticated: true,
+			Subject:         "plugin-user",
+			ValidatedToken: &authsvc.ValidatedToken{
+				Subject: "plugin-user",
+				Claims: map[string]interface{}{
+					"role": "admin",
+				},
+			},
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "http://example.com/bench", nil)
+	req = req.WithContext(reqctx.WithRequestState(req.Context(), state))
+
+	handler := mw(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		nextState := reqctx.RequestStateFromContextSafe(r.Context())
+		require.Same(t, state, nextState)
+		require.NotNil(t, nextState.AuthContext)
+		assert.True(t, nextState.AuthContext.IsAuthenticated)
+		assert.Equal(t, "plugin-user", nextState.AuthContext.Subject)
+		w.WriteHeader(http.StatusNoContent)
+	}))
+
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, req)
+	assert.Equal(t, http.StatusNoContent, rec.Code)
 }

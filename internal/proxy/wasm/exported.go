@@ -18,6 +18,8 @@ package wasm
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
 	"github.com/tetratelabs/wazero/api"
@@ -278,4 +280,65 @@ func hostGetJSONConfig(ctx context.Context, mod api.Module, bufPtr, bufMaxLen ui
 		return 0xFFFFFFFF
 	}
 	return configLen
+}
+
+func hostAuthIsAuthenticated(ctx context.Context, mod api.Module) uint32 {
+	state := reqctx.RequestStateFromContextSafe(ctx)
+	if state == nil || state.AuthContext == nil || !state.AuthContext.IsAuthenticated {
+		return 0
+	}
+	return 1
+}
+
+func hostAuthSubject(ctx context.Context, mod api.Module, bufPtr, bufMaxLen uint32) uint32 {
+	state := reqctx.RequestStateFromContextSafe(ctx)
+	if state == nil || state.AuthContext == nil || state.AuthContext.Subject == "" {
+		return 0xFFFFFFFF
+	}
+	return writeStringToMemory(ctx, mod, state.AuthContext.Subject, bufPtr, bufMaxLen, "auth subject")
+}
+
+func hostAuthClaim(ctx context.Context, mod api.Module, keyPtr, keyLen, bufPtr, bufMaxLen uint32) uint32 {
+	state := reqctx.RequestStateFromContextSafe(ctx)
+	logger := reqctx.LoggerFromContext(ctx)
+	if state == nil || state.AuthContext == nil || state.AuthContext.ValidatedToken == nil {
+		return 0xFFFFFFFF
+	}
+
+	keyBytes, ok := mod.Memory().Read(keyPtr, keyLen)
+	if !ok {
+		logger.Error("WASM Access Violation: Failed to read auth claim key", zap.Uint32("ptr", keyPtr), zap.Uint32("len", keyLen))
+		return 0xFFFFFFFF
+	}
+	claim, exists := state.AuthContext.ValidatedToken.Claims[string(keyBytes)]
+	if !exists {
+		return 0xFFFFFFFF
+	}
+
+	value := ""
+	if stringValue, ok := claim.(string); ok {
+		value = stringValue
+	} else {
+		raw, err := json.Marshal(claim)
+		if err != nil {
+			value = fmt.Sprint(claim)
+		} else {
+			value = string(raw)
+		}
+	}
+	return writeStringToMemory(ctx, mod, value, bufPtr, bufMaxLen, "auth claim")
+}
+
+func writeStringToMemory(ctx context.Context, mod api.Module, value string, bufPtr, bufMaxLen uint32, field string) uint32 {
+	logger := reqctx.LoggerFromContext(ctx)
+	raw := []byte(value)
+	writeLen := uint32(len(raw))
+	if writeLen > bufMaxLen {
+		writeLen = bufMaxLen
+	}
+	if !mod.Memory().Write(bufPtr, raw[:writeLen]) {
+		logger.Error("WASM Access Violation: Failed to write value", zap.String("field", field), zap.Uint32("buffer_ptr", bufPtr), zap.Uint32("len", writeLen))
+		return 0xFFFFFFFF
+	}
+	return writeLen
 }

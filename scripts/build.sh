@@ -18,9 +18,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-UI_DIR="$ROOT_DIR/ui/admin-ui"
-EMBED_DIR="$ROOT_DIR/ui/pkg/out"
-UI_OUT_DIR="$UI_DIR/out"
+UI_DIR="$ROOT_DIR/ui/adminv2"
+EMBED_DIR="$ROOT_DIR/pkg/ui/out"
+UI_OUT_DIR="$UI_DIR/apps/web/out"
 BIN_DIR="$ROOT_DIR/bin"
 BIN_PATH="$BIN_DIR/wasmforge"
 

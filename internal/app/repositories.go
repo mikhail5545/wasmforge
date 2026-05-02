@@ -17,10 +17,14 @@
 package app
 
 import (
+	auditrepo "github.com/mikhail5545/wasmforge/internal/database/auth/audit"
+	authconfigrepo "github.com/mikhail5545/wasmforge/internal/database/auth/config"
+	authkeyrepo "github.com/mikhail5545/wasmforge/internal/database/auth/key"
 	pluginrepo "github.com/mikhail5545/wasmforge/internal/database/plugin"
 	configrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/config"
 	statsrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/stats"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
+	routemethodrepo "github.com/mikhail5545/wasmforge/internal/database/route/method"
 	routepluginrepo "github.com/mikhail5545/wasmforge/internal/database/route/plugin"
 )
 
@@ -28,6 +32,10 @@ type Repositories struct {
 	PluginRepo      pluginrepo.Repository
 	RouteRepo       routerepo.Repository
 	RoutePluginRepo routepluginrepo.Repository
+	RouteMethodRepo routemethodrepo.Repository
+	AuthConfigRepo  authconfigrepo.Repository
+	AuthKeyRepo     authkeyrepo.Repository
+	AuthAuditRepo   auditrepo.Repository
 	ProxyConfigRepo configrepo.Repository
 	ProxyStatsRepo  statsrepo.Repository
 }
@@ -37,6 +45,10 @@ func (a *App) setupRepositories() {
 		PluginRepo:      pluginrepo.New(a.db),
 		RouteRepo:       routerepo.New(a.db),
 		RoutePluginRepo: routepluginrepo.New(a.db),
+		RouteMethodRepo: routemethodrepo.New(a.db),
+		AuthConfigRepo:  authconfigrepo.New(a.db),
+		AuthKeyRepo:     authkeyrepo.New(a.db),
+		AuthAuditRepo:   auditrepo.New(a.db),
 		ProxyConfigRepo: configrepo.New(a.db),
 		ProxyStatsRepo:  statsrepo.New(a.db),
 	}

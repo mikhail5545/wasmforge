@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"reflect"
 
 	"github.com/google/uuid"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
@@ -87,14 +86,6 @@ func buildUpdates(existing *routemodel.Route, req *routemodel.UpdateRequest) map
 	patch.UpdateIfChanged(updates, "max_idle_cons_per_host", req.MaxIdleConsPerHost, existing.MaxIdleConsPerHost)
 	patch.UpdateIfChanged(updates, "max_cons_per_host", req.MaxConsPerHost, existing.MaxConsPerHost)
 	patch.UpdateIfChanged(updates, "response_header_timeout", req.ResponseHeaderTimeout, existing.ResponseHeaderTimeout)
-
-	if len(req.AllowedMethods) == 0 {
-		return updates
-	}
-
-	if len(existing.AllowedMethods) == 0 || !reflect.DeepEqual(req.AllowedMethods, existing.AllowedMethods) {
-		updates["allowed_methods"] = req.AllowedMethods
-	}
 
 	return updates
 }

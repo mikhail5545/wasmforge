@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/mikhail5545/wasmforge/internal/models/route/method"
 	"github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"gorm.io/gorm"
 )
@@ -14,16 +15,16 @@ type Route struct {
 	Path      string    `gorm:"uniqueIndex;not null" json:"path"`
 	TargetURL string    `json:"target_url"`
 
-	Enabled               bool     `gorm:"default:false" json:"enabled"`
-	IdleConnTimeout       int      `json:"idle_conn_timeout"`
-	TLSHandshakeTimeout   int      `json:"tls_handshake_timeout"`
-	ExpectContinueTimeout int      `json:"expect_continue_timeout"`
-	MaxIdleCons           *int     `json:"max_idle_conns,omitempty"`
-	MaxIdleConsPerHost    *int     `json:"max_idle_conns_per_host,omitempty"`
-	MaxConsPerHost        *int     `json:"max_conns_per_host,omitempty"`
-	ResponseHeaderTimeout *int     `json:"response_header_timeout"`
-	AllowedMethods        []string `gorm:"type:jsonb" json:"allowed_methods,omitempty"`
+	Enabled               bool `gorm:"default:false" json:"enabled"`
+	IdleConnTimeout       int  `json:"idle_conn_timeout"`
+	TLSHandshakeTimeout   int  `json:"tls_handshake_timeout"`
+	ExpectContinueTimeout int  `json:"expect_continue_timeout"`
+	MaxIdleCons           *int `json:"max_idle_conns,omitempty"`
+	MaxIdleConsPerHost    *int `json:"max_idle_conns_per_host,omitempty"`
+	MaxConsPerHost        *int `json:"max_conns_per_host,omitempty"`
+	ResponseHeaderTimeout *int `json:"response_header_timeout"`
 
+	Methods []method.RouteMethod  `gorm:"foreignKey:RouteID" json:"methods,omitempty"`
 	Plugins []plugins.RoutePlugin `gorm:"foreignKey:RouteID" json:"plugins,omitempty"`
 }
 

@@ -47,7 +47,8 @@ type (
 	internalRoute struct {
 		handler http.Handler // Fully assembled chain: WASM middleware(s) -> Proxy, this will be called when request matches the route
 		// Original reverse httputil.ReverseProxy instance without middleware applied, used for hot-swapping middlewares without re-initializing the instance itself
-		proxy *httputil.ReverseProxy
+		proxy          *httputil.ReverseProxy
+		allowedMethods []string
 	}
 
 	TransportConfig struct {
@@ -116,8 +117,9 @@ func (b *builder) BuildRoute(targetURL, path string, allowedMethods []string, tr
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.routes[path] = &internalRoute{
-		handler: final,
-		proxy:   proxy,
+		handler:        final,
+		proxy:          proxy,
+		allowedMethods: append([]string(nil), allowedMethods...),
 	}
 	b.director.addRoute(path, final)
 	return nil
@@ -136,6 +138,8 @@ func (b *builder) RebuildRouteMiddlewares(path string, middlewares ...func(http.
 	for i := len(middlewares) - 1; i >= 0; i-- {
 		final = middlewares[i](final)
 	}
+	methodRejectMiddleware := middleware.NewRejectMethodMiddleware(route.allowedMethods...)
+	final = methodRejectMiddleware(final)
 	route.handler = final
 	b.director.addRoute(path, final)
 	return nil

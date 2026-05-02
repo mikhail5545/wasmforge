@@ -399,7 +399,8 @@ func TestService_Create_AllowedMethods(t *testing.T) {
 			wantErr: false,
 			checkRes: func(t *testing.T, res *routemodel.Route) {
 				assert.NotNil(t, res)
-				assert.Equal(t, baseReq.AllowedMethods, res.AllowedMethods)
+				// Methods are now managed separately via route_methods table
+				assert.Empty(t, res.Methods)
 			},
 		},
 		{
@@ -418,7 +419,8 @@ func TestService_Create_AllowedMethods(t *testing.T) {
 			wantErr: false,
 			checkRes: func(t *testing.T, res *routemodel.Route) {
 				assert.NotNil(t, res)
-				assert.Empty(t, res.AllowedMethods)
+				// Methods are now managed separately via route_methods table
+				assert.Empty(t, res.Methods)
 			},
 		},
 		{
@@ -642,7 +644,9 @@ func TestService_Update_AllowedMethods(t *testing.T) {
 			checkRes: func(t *testing.T, res map[string]any) {
 				assert.Equal(t, "http://localhost:8000", res["target_url"])
 				assert.Equal(t, 10, res["idle_conn_timeout"])
-				assert.Equal(t, baseReq.AllowedMethods, res["allowed_methods"])
+				// Methods are now managed separately via route_methods table
+				_, hasAllowedMethods := res["allowed_methods"]
+				assert.False(t, hasAllowedMethods, "allowed_methods should not be in updates")
 			},
 		},
 		{

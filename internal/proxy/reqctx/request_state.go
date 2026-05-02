@@ -16,13 +16,30 @@
 
 package reqctx
 
-import "context"
+import (
+	"context"
+
+	"github.com/google/uuid"
+	configmodel "github.com/mikhail5545/wasmforge/internal/models/auth/config"
+	authsvc "github.com/mikhail5545/wasmforge/internal/services/auth"
+)
+
+// AuthContext holds authentication-related information for a request.
+type AuthContext struct {
+	IsAuthenticated bool
+	ValidatedToken  *authsvc.ValidatedToken
+	AuthConfig      *configmodel.AuthConfig
+	Subject         string
+	Error           error
+}
 
 // RequestState holds the state of a request as it is processed through the middleware chain.
 type RequestState struct {
-	Interrupted bool   // Did the plugin interrupt the request?
-	StatusCode  int    // If interrupted, the status code to return
-	Body        []byte // If interrupted, the body to return
+	Interrupted bool         // Did the plugin interrupt the request?
+	StatusCode  int          // If interrupted, the status code to return
+	Body        []byte       // If interrupted, the body to return
+	RouteID     uuid.UUID    // ID of the matched route
+	AuthContext *AuthContext // Authentication context for this request
 }
 
 type stateKey struct{}
@@ -36,4 +53,12 @@ func WithRequestState(ctx context.Context, state *RequestState) context.Context 
 // It panics if the RequestState is not present, so it should only be called after ensuring it has been set.
 func RequestStateFromContext(ctx context.Context) *RequestState {
 	return ctx.Value(stateKey{}).(*RequestState)
+}
+
+// RequestStateFromContextSafe retrieves the RequestState from the reqctx, returning nil if not present.
+func RequestStateFromContextSafe(ctx context.Context) *RequestState {
+	if val := ctx.Value(stateKey{}); val != nil {
+		return val.(*RequestState)
+	}
+	return nil
 }

@@ -36,7 +36,9 @@ import {
   Pencil,
   Power,
   PowerOff,
+  ShieldCheck,
   Trash,
+  Wrench,
 } from "lucide-react"
 import {
   Collapsible,
@@ -87,6 +89,18 @@ const RouteCard = ({
                   <a href={`/routes/edit?path=${route.path}`}>
                     <Pencil />
                     <span>Edit</span>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/routes/edit/methods?path=${route.path}`}>
+                    <Wrench />
+                    <span>Method policies</span>
+                  </a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href={`/routes/auth?path=${route.path}`}>
+                    <ShieldCheck />
+                    <span>Auth config</span>
                   </a>
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={onEnableToggle}>

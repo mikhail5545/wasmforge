@@ -20,12 +20,14 @@ import (
 	"context"
 	"net/http"
 
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
 type requestKey struct{}
 type loggerKey struct{}
 type configKey struct{}
+type routeIDKey struct{}
 
 func WithRequest(ctx context.Context, r *http.Request) context.Context {
 	return context.WithValue(ctx, requestKey{}, r)
@@ -54,4 +56,13 @@ func WithJSONConfig(ctx context.Context, config *string) context.Context {
 func JSONConfigFromContext(ctx context.Context) (*string, bool) {
 	config, ok := ctx.Value(configKey{}).(*string)
 	return config, ok
+}
+
+func WithRouteID(ctx context.Context, routeID uuid.UUID) context.Context {
+	return context.WithValue(ctx, routeIDKey{}, routeID)
+}
+
+func RouteIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(routeIDKey{}).(uuid.UUID)
+	return id, ok
 }

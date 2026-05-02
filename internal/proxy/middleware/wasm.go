@@ -41,7 +41,13 @@ type (
 )
 
 func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
-	state := &reqctx.RequestState{Interrupted: false}
+	state := reqctx.RequestStateFromContextSafe(r.Context())
+	if state == nil {
+		state = &reqctx.RequestState{}
+	}
+	state.Interrupted = false
+	state.StatusCode = 0
+	state.Body = nil
 	reqLogger := m.logger.With(zap.String("path", r.URL.Path), zap.String("method", r.Method))
 
 	ctx := r.Context()

@@ -36,16 +36,18 @@ import (
 )
 
 type Server struct {
-	rt       wazero.Runtime
-	director *proxy.Director
-	builder  proxy.Builder
-	factory  proxy.Factory
-	observer proxy.RequestObserver
-	logger   *zap.Logger
-	cleanup  func() error
-	httpSrv  *http.Server
-	mu       sync.Mutex
-	lastAddr string
+	rt        wazero.Runtime
+	director  *proxy.Director
+	builder   proxy.Builder
+	mwFactory middleware.Factory
+	manager   uploads.Manager
+	factory   proxy.Factory
+	observer  proxy.RequestObserver
+	logger    *zap.Logger
+	cleanup   func() error
+	httpSrv   *http.Server
+	mu        sync.Mutex
+	lastAddr  string
 }
 
 func (s *Server) HTTPServerInstance() *http.Server {
@@ -66,16 +68,27 @@ func New(ctx context.Context, manager uploads.Manager, observer proxy.RequestObs
 	}
 	builder := proxy.NewBuilder()
 	mwFactory := middleware.NewFactory(runtime, logger)
-	factory := proxy.NewFactory(builder, mwFactory, manager, observer, logger)
+	factory := proxy.NewFactory(builder, mwFactory, manager, observer, nil, nil, nil, nil, logger)
 	return &Server{
-		rt:       runtime,
-		director: builder.Director(),
-		builder:  builder,
-		factory:  factory,
-		observer: observer,
-		logger:   logger.With(zap.String("component", "proxy_server")),
-		cleanup:  cleanup,
+		rt:        runtime,
+		director:  builder.Director(),
+		builder:   builder,
+		mwFactory: mwFactory,
+		manager:   manager,
+		factory:   factory,
+		observer:  observer,
+		logger:    logger.With(zap.String("component", "proxy_server")),
+		cleanup:   cleanup,
 	}, nil
+}
+
+func (s *Server) ConfigureAuth(
+	configRepo middleware.ConfigRepository,
+	validator middleware.TokenValidator,
+	issuer middleware.TokenIssuer,
+	auditRepo middleware.AuditRepository,
+) {
+	s.factory = proxy.NewFactory(s.builder, s.mwFactory, s.manager, s.observer, configRepo, validator, issuer, auditRepo, s.logger)
 }
 
 func (s *Server) Start(cfg *configmodel.Config, tlsCfg *tls.Config, ready chan<- error) {

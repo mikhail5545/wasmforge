@@ -42,8 +42,16 @@ func (req *ListRequest) Validate() error {
 func (req *SetRequest) Validate() error {
 	return validation.ValidateStruct(req,
 		validation.Field(&req.RouteID, validationutil.UUIDRule(true)...),
-		validation.Field(&req.Methods, validation.Each()),
+		validation.Field(&req.Methods, validation.Each(validation.By(validateSetRequestMethodSpec))),
 	)
+}
+
+func validateSetRequestMethodSpec(value any) error {
+	spec, ok := value.(SetRequestMethodSpec)
+	if !ok {
+		return validation.NewError("validation_invalid_method_spec", "invalid method spec")
+	}
+	return spec.Validate()
 }
 
 func (req *DeleteRequest) Validate() error {

@@ -139,6 +139,14 @@ func (s *Service) Set(ctx context.Context, req *methodmodel.SetRequest) ([]*meth
 				rm.AllowedAuthSchemes = string(schemes)
 			}
 
+			if len(spec.Metadata) > 0 {
+				metadata, err := json.Marshal(spec.Metadata)
+				if err != nil {
+					return inerrors.NewInvalidArgumentError("invalid metadata format")
+				}
+				rm.Metadata = string(metadata)
+			}
+
 			methods = append(methods, rm)
 		}
 

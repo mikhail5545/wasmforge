@@ -132,6 +132,8 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 		middlewares = append([]func(http.Handler) http.Handler{authMw}, middlewares...)
 	}
 
+	middlewares = prependMethodConfigMiddleware(route.Methods, middlewares)
+
 	// Add RouteID middleware (before auth, so it runs right after observer)
 	routeIDMw := createRouteIDMiddleware(route.ID)
 	middlewares = append([]func(http.Handler) http.Handler{routeIDMw}, middlewares...)
@@ -192,6 +194,8 @@ func (f *factory) Reassemble(ctx context.Context, route *routemodel.Route, plugi
 		authMw := wasmmiddleware.NewAuthMiddleware(f.authConfigRepo, f.tokenValidator, f.tokenIssuer, f.auditRepo, f.logger)
 		middlewares = append([]func(http.Handler) http.Handler{authMw}, middlewares...)
 	}
+
+	middlewares = prependMethodConfigMiddleware(route.Methods, middlewares)
 
 	// Add RouteID middleware (before auth, so it runs right after observer)
 	routeIDMw := createRouteIDMiddleware(route.ID)
@@ -271,6 +275,15 @@ func extractAllowedMethods(methods []methodmodel.RouteMethod) []string {
 		allowed = append(allowed, m.Method)
 	}
 	return allowed
+}
+
+func prependMethodConfigMiddleware(methods []methodmodel.RouteMethod, middlewares []func(http.Handler) http.Handler) []func(http.Handler) http.Handler {
+	methodConfigMap := make(map[string]methodmodel.RouteMethod, len(methods))
+	for _, m := range methods {
+		methodConfigMap[m.Method] = m
+	}
+	methodConfigMw := wasmmiddleware.NewMethodConfigMiddleware(methodConfigMap)
+	return append([]func(http.Handler) http.Handler{methodConfigMw}, middlewares...)
 }
 
 // createRouteIDMiddleware creates a middleware that sets the RouteID in the request context and initializes RequestState

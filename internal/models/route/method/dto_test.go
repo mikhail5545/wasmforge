@@ -97,3 +97,17 @@ func TestSetRequestMethodSpec_Validate(t *testing.T) {
 		})
 	}
 }
+
+func TestSetRequest_ValidateValidatesEachMethodSpec(t *testing.T) {
+	t.Parallel()
+
+	req := &SetRequest{
+		RouteID: "00000000-0000-0000-0000-000000000001",
+		Methods: []SetRequestMethodSpec{
+			{Method: "GET"},
+			{Method: "INVALID"},
+		},
+	}
+
+	require.Error(t, req.Validate())
+}

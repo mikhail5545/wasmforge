@@ -35,13 +35,14 @@ type SetRequest struct {
 }
 
 type SetRequestMethodSpec struct {
-	Method                 string   `json:"method"`
-	MaxRequestPayloadBytes *int64   `json:"max_request_payload_bytes,omitempty"`
-	RequestTimeoutMs       *int     `json:"request_timeout_ms,omitempty"`
-	ResponseTimeoutMs      *int     `json:"response_timeout_ms,omitempty"`
-	RateLimitPerMinute     *int     `json:"rate_limit_per_minute,omitempty"`
-	RequireAuthentication  *bool    `json:"require_authentication,omitempty"`
-	AllowedAuthSchemes     []string `json:"allowed_auth_schemes,omitempty"`
+	Method                 string         `json:"method"`
+	MaxRequestPayloadBytes *int64         `json:"max_request_payload_bytes,omitempty"`
+	RequestTimeoutMs       *int           `json:"request_timeout_ms,omitempty"`
+	ResponseTimeoutMs      *int           `json:"response_timeout_ms,omitempty"`
+	RateLimitPerMinute     *int           `json:"rate_limit_per_minute,omitempty"`
+	RequireAuthentication  *bool          `json:"require_authentication,omitempty"`
+	AllowedAuthSchemes     []string       `json:"allowed_auth_schemes,omitempty"`
+	Metadata               map[string]any `json:"metadata,omitempty"`
 }
 
 func (s SetRequestMethodSpec) Validate() error {

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import {RoutePlugin} from "@/types/RoutePlugin"
+import { RoutePlugin } from "@/types/RoutePlugin"
 
 export interface Route {
   readonly id: string
@@ -30,4 +30,41 @@ export interface Route {
   max_cons_per_host?: number
   allowed_methods: string[]
   plugins?: RoutePlugin[]
+}
+
+export type HttpMethod =
+  | "GET"
+  | "POST"
+  | "PUT"
+  | "DELETE"
+  | "PATCH"
+  | "HEAD"
+  | "OPTIONS"
+  | "TRACE"
+  | "CONNECT"
+
+export interface RouteMethod {
+  readonly id: string
+  created_at: string
+  updated_at: string
+  route_id: string
+  method: HttpMethod
+  max_request_payload_bytes?: number
+  request_timeout_ms?: number
+  response_timeout_ms?: number
+  rate_limit_per_minute?: number
+  require_authentication: boolean
+  allowed_auth_schemes?: string
+  metadata?: string
+}
+
+export interface RouteMethodSpec {
+  method: HttpMethod
+  max_request_payload_bytes?: number
+  request_timeout_ms?: number
+  response_timeout_ms?: number
+  rate_limit_per_minute?: number
+  require_authentication?: boolean
+  allowed_auth_schemes?: string[]
+  metadata?: Record<string, unknown>
 }

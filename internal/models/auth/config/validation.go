@@ -34,6 +34,6 @@ func (req *UpsertRequest) Validate() error {
 			KeyBackendTypeDatabase, KeyBackendTypeJWKS, KeyBackendTypeEnv,
 		)),
 		validation.Field(&req.TokenTTLSeconds, validation.Required, validation.Min(1)),
-		validation.Field(&req.AllowedAlgorithms, validation.Required, validation.In("RS256").Error("only RS256 algorithm is supported")),
+		validation.Field(&req.AllowedAlgorithms, validation.Required, validation.Each(validation.In("RS256").Error("only RS256 algorithm is supported"))),
 	)
 }

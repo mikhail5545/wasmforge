@@ -19,8 +19,7 @@
 #include <stdexcept>
 #include <vector>
 
-extern "C"{
-    // Pointers in WASM are 32-bit integers (uint32_t)
+extern "C" {
     uint32_t host_get_header(uint32_t k_ptr, uint32_t k_len, uint32_t b_ptr, uint32_t b_len);
     uint32_t host_get_method(uint32_t b_ptr, uint32_t b_len);
     uint32_t host_get_path(uint32_t b_ptr, uint32_t b_len);
@@ -29,96 +28,83 @@ extern "C"{
     void host_send_response(uint32_t status_code, uint32_t b_ptr, uint32_t b_len);
     void host_log(uint32_t level, uint32_t msg_ptr, uint32_t msg_len);
     void host_set_header(uint32_t k_ptr, uint32_t k_len, uint32_t v_ptr, uint32_t v_len);
+    uint32_t host_get_json_config(uint32_t b_ptr, uint32_t b_len);
+    uint32_t host_auth_is_authenticated();
+    uint32_t host_auth_subject(uint32_t b_ptr, uint32_t b_len);
+    uint32_t host_auth_claim(uint32_t k_ptr, uint32_t k_len, uint32_t b_ptr, uint32_t b_len);
 }
 
-enum LogLevel {
-    DEBUG, INFO, WARN, ERROR
-};
+namespace Proxy {
+    enum LogLevel {
+        DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3
+    };
 
-class Proxy {
-public:
-    static std::string get_header(const std::string& key) {
-        std::vector<char> buffer(1024);
+    const uint32_t NOT_FOUND = 0xFFFFFFFF;
 
-        const uint32_t wrote = host_get_header(
-            reinterpret_cast<uintptr_t>(key.c_str()),
-            key.size(),
-            reinterpret_cast<uintptr_t>(buffer.data()),
-            buffer.size()
+    inline std::string get_string_from_host(uint32_t (*func)(uint32_t, uint32_t)) {
+        std::vector<char> buffer(4096);
+        uint32_t wrote = func(reinterpret_cast<uintptr_t>(buffer.data()), buffer.size());
+        if (wrote == NOT_FOUND) return "";
+        return {buffer.data(), wrote};
+    }
+
+    inline std::string get_header(const std::string& key) {
+        std::vector<char> buffer(4096);
+        uint32_t wrote = host_get_header(
+            reinterpret_cast<uintptr_t>(key.c_str()), key.size(),
+            reinterpret_cast<uintptr_t>(buffer.data()), buffer.size()
         );
-        if (wrote == 0xFFFFFF) {
-            throw std::runtime_error("host_get_header call failed");
-        }
+        if (wrote == NOT_FOUND) return "";
         return {buffer.data(), wrote};
     }
 
-    static std::string get_method() {
-        std::vector<char> buffer(1024);
+    inline std::string get_method() { return get_string_from_host(host_get_method); }
+    inline std::string get_path() { return get_string_from_host(host_get_path); }
 
-        const uint32_t wrote = host_get_method(reinterpret_cast<uintptr_t>(buffer.data()), 1024);
-        if (wrote == 0xFFFFFF) {
-            throw std::runtime_error("host_get_method call failed");
-        }
-        return {buffer.data(), wrote};
-    }
-
-    static std::string get_path() {
-        std::vector<char> buffer(1024);
-
-        const uint32_t wrote = host_get_path(reinterpret_cast<uintptr_t>(buffer.data()), buffer.size());
-        if (wrote == 0xFFFFFF) {
-            throw std::runtime_error("host_get_path call failed");
-        }
-        return {buffer.data(), wrote};
-    }
-
-    static std::string get_query_param(const std::string& key) {
-        std::vector<char> buffer(1024);
-
-        const uint32_t wrote = host_get_query_param(
-            reinterpret_cast<uintptr_t>(key.c_str()),
-            key.size(),
-            reinterpret_cast<uintptr_t>(buffer.data()),
-            buffer.size()
+    inline std::string get_query_param(const std::string& key) {
+        std::vector<char> buffer(4096);
+        uint32_t wrote = host_get_query_param(
+            reinterpret_cast<uintptr_t>(key.c_str()), key.size(),
+            reinterpret_cast<uintptr_t>(buffer.data()), buffer.size()
         );
-        if (wrote == 0xFFFFFF) {
-            throw std::runtime_error("host_get_query_param call failed");
-        }
+        if (wrote == NOT_FOUND) return "";
         return {buffer.data(), wrote};
     }
 
-    static std::string get_raw_query() {
-        std::vector<char> buffer(1024);
+    inline std::string get_raw_query() { return get_string_from_host(host_get_raw_query); }
 
-        const uint32_t wrote = host_get_raw_query(reinterpret_cast<uintptr_t>(buffer.data()), buffer.size());
-        if (wrote == 0xFFFFFF) {
-            throw std::runtime_error("host_get_raw_query call failed");
-        }
-        return {buffer.data(), wrote};
-    }
-
-    static void send_response(const uint32_t status_code, const std::string& response) {
+    inline void send_response(uint32_t status_code, const std::string& response) {
         host_send_response(status_code, reinterpret_cast<uintptr_t>(response.data()), response.size());
     }
 
-    static void log(const LogLevel log_level, const std::string& msg) {
-        host_log(log_level, reinterpret_cast<uintptr_t>(msg.data()), msg.size());
+    inline void log(LogLevel level, const std::string& msg) {
+        host_log(level, reinterpret_cast<uintptr_t>(msg.data()), msg.size());
     }
 
-    static void set_header(const std::string& key, const std::string& value) {
-        host_set_header(
-            reinterpret_cast<uintptr_t>(key.data()),
-            key.size(),
-            reinterpret_cast<uintptr_t>(value.data()),
-            value.size()
-            );
+    inline void set_header(const std::string& key, const std::string& value) {
+        host_set_header(reinterpret_cast<uintptr_t>(key.data()), key.size(), reinterpret_cast<uintptr_t>(value.data()), value.size());
     }
-};
 
-// The Entry Point Macro
+    inline std::string get_json_config() { return get_string_from_host(host_get_json_config); }
+
+    inline bool is_authenticated() { return host_auth_is_authenticated() != 0; }
+
+    inline std::string get_auth_subject() { return get_string_from_host(host_auth_subject); }
+
+    inline std::string get_auth_claim(const std::string& key) {
+        std::vector<char> buffer(4096);
+        uint32_t wrote = host_auth_claim(
+            reinterpret_cast<uintptr_t>(key.c_str()), key.size(),
+            reinterpret_cast<uintptr_t>(buffer.data()), buffer.size()
+        );
+        if (wrote == NOT_FOUND) return "";
+        return {buffer.data(), wrote};
+    }
+}
+
 #define PROXY_PLUGIN(HandlerFunc)\
-    extern "C" __attribute__((visibility("default"))) void _start() {\
+    extern "C" __attribute__((visibility("default"))) void on_request() {\
         HandlerFunc();\
     }
 
-#endif //WASMFORGE_SDK_H
+#endif

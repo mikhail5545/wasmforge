@@ -66,6 +66,7 @@ func (s *Service) List(ctx context.Context, req *methodmodel.ListRequest) ([]*me
 	if err := req.Validate(); err != nil {
 		return nil, inerrors.NewValidationError(err)
 	}
+	s.logger.Debug("retrieving a list of route methods", zap.String("route_id", req.RouteID))
 	methods, err := s.methodRepo.List(ctx, methodrepo.WithRouteIDs(uuid.MustParse(req.RouteID)))
 	if err != nil {
 		s.logger.Error("failed to list route methods", zap.Error(err))

@@ -121,10 +121,10 @@ func (r *router) registerRouteRoutes(e *echo.Group) {
 	routes.PATCH("/:id", routeHandler.Update)
 	routes.DELETE("/:id", routeHandler.Delete)
 
-	routes.GET("/:id/methods/:method", routeMethodHandler.Get)
-	routes.GET("/:id/methods", routeMethodHandler.List)
-	routes.POST("/:id/methods/", routeMethodHandler.Set)
-	routes.DELETE("/:id/methods/:method", routeMethodHandler.Delete)
+	routes.GET("/:route_id/methods/:method", routeMethodHandler.Get)
+	routes.GET("/:route_id/methods", routeMethodHandler.List)
+	routes.POST("/:route_id/methods", routeMethodHandler.Set)
+	routes.DELETE("/:route_id/methods/:method", routeMethodHandler.Delete)
 }
 
 func (r *router) registerRoutePluginRoutes(e *echo.Group) {

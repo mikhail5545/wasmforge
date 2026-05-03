@@ -21,6 +21,7 @@ import (
 
 	"github.com/mikhail5545/wasmforge/internal/database/pagination"
 	materialmodel "github.com/mikhail5545/wasmforge/internal/models/auth/key"
+	"github.com/mikhail5545/wasmforge/internal/util/memory"
 )
 
 func (r *repository) get(ctx context.Context, filter *filter) (*materialmodel.Material, error) {
@@ -47,6 +48,7 @@ func (r *repository) list(ctx context.Context, filter *filter) ([]*materialmodel
 	db = ApplyFilters(db, filter)
 
 	db, err := pagination.ApplyCursor(db, pagination.ApplyCursorParams{
+		TableName:  memory.Ptr("key_materials"),
 		PageSize:   filter.PageSize,
 		PageToken:  filter.PageToken,
 		OrderDir:   filter.OrderDirection,

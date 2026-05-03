@@ -73,6 +73,8 @@ func (s *Service) Upsert(ctx context.Context, req *configmodel.UpsertRequest) (*
 		return nil, err
 	}
 
+	s.logger.Debug("upserting route auth config", zap.String("route_id", req.RouteID))
+
 	requiredClaims, err := metadata.MarshalJSON(req.RequiredClaims)
 	if err != nil {
 		return nil, inerrors.NewValidationError(err)
@@ -102,6 +104,7 @@ func (s *Service) Upsert(ctx context.Context, req *configmodel.UpsertRequest) (*
 
 		existing, err := txRepo.Get(ctx, configrepo.WithRouteIDs(route.ID))
 		if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
+			s.logger.Error("failed to get existing auth config", zap.Error(err))
 			return fmt.Errorf("failed to get existing auth config: %w", err)
 		}
 
@@ -123,15 +126,14 @@ func (s *Service) Upsert(ctx context.Context, req *configmodel.UpsertRequest) (*
 		}
 
 		if existing != nil {
+			s.logger.Debug("route auth config already exists, updating", zap.String("route_id", req.RouteID), zap.String("config_id", existing.ID.String()))
 			cfg.ID = existing.ID
 			cfg.CreatedAt = existing.CreatedAt
-			if err := txRepo.Update(ctx, cfg); err != nil {
-				return fmt.Errorf("failed to update auth config: %w", err)
-			}
-			return nil
 		}
-		if err := txRepo.Create(ctx, cfg); err != nil {
-			return fmt.Errorf("failed to create auth config: %w", err)
+
+		if err := txRepo.Upsert(ctx, cfg); err != nil {
+			s.logger.Error("failed to upsert auth config", zap.Error(err))
+			return fmt.Errorf("failed to upsert: %w", err)
 		}
 		return nil
 	})

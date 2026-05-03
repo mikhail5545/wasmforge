@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	keyrepo "github.com/mikhail5545/wasmforge/internal/database/auth/key"
+	materialrepo "github.com/mikhail5545/wasmforge/internal/database/auth/key"
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/auth/config"
 	keymodel "github.com/mikhail5545/wasmforge/internal/models/auth/key"
 	"github.com/mikhail5545/wasmforge/internal/services/auth/metadata"
@@ -29,7 +30,7 @@ func activeValidationKey(ctx context.Context, repo keyrepo.Repository, resolver 
 			}
 			return key.KeyID, publicKey, nil
 		}
-		keys, err := repo.ListActiveByAuthConfig(ctx, cfg.ID)
+		keys, err := repo.UnpaginatedList(ctx, materialrepo.WithAuthConfigIDs(cfg.ID), materialrepo.WithIsActive(true))
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to list active keys: %w", err)
 		}
@@ -88,7 +89,7 @@ func activeValidationKey(ctx context.Context, repo keyrepo.Repository, resolver 
 func activeSigningKey(ctx context.Context, repo keyrepo.Repository, resolver *keyManager, cfg *configmodel.AuthConfig) (string, *rsa.PrivateKey, error) {
 	switch effectiveBackend(cfg) {
 	case configmodel.KeyBackendTypeDatabase:
-		keys, err := repo.ListActiveByAuthConfig(ctx, cfg.ID)
+		keys, err := repo.UnpaginatedList(ctx, materialrepo.WithAuthConfigIDs(cfg.ID), materialrepo.WithIsActive(true))
 		if err != nil {
 			return "", nil, fmt.Errorf("failed to list active signing keys: %w", err)
 		}

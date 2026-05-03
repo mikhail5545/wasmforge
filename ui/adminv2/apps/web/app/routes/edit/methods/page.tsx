@@ -248,7 +248,7 @@ function EditRouteMethodsPageContent() {
     }
 
     const result = await mutate(
-      `http://localhost:8080/api/routes/${routeData.data.id}/methods/`,
+      `http://localhost:8080/api/routes/${routeData.data.id}/methods`,
       "POST",
       { methods: buildPayload(methods) }
     )

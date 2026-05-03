@@ -34,28 +34,30 @@ pub mod proxy {
         if wrote == NOT_FOUND {
             return None;
         }
-        Some(String::from_utf8_lossy(&buf[..wrote as usize]).to_string())
+        let len = (wrote as usize).min(4096);
+        Some(String::from_utf8_lossy(&buf[..len]).to_string())
     }
 
-    pub fn get_header(key: &str) -> Option<String> {
+    fn get_string_by_key_from_host<F>(key: &str, f: F) -> Option<String>
+    where F: FnOnce(*const u8, u32, *mut u8, u32) -> u32 {
         let mut buf = [0u8; 4096];
-        let wrote = unsafe { host_get_header(key.as_ptr(), key.len() as u32, buf.as_mut_ptr(), 4096) };
+        let wrote = f(key.as_ptr(), key.len() as u32, buf.as_mut_ptr(), 4096);
         if wrote == NOT_FOUND {
             return None;
         }
-        Some(String::from_utf8_lossy(&buf[..wrote as usize]).to_string())
+        let len = (wrote as usize).min(4096);
+        Some(String::from_utf8_lossy(&buf[..len]).to_string())
+    }
+
+    pub fn get_header(key: &str) -> Option<String> {
+        unsafe { get_string_by_key_from_host(key, |kp, ks, bp, bs| host_get_header(kp, ks, bp, bs)) }
     }
 
     pub fn get_method() -> Option<String> { unsafe { get_string_from_host(|ptr, len| host_get_method(ptr, len)) } }
     pub fn get_path() -> Option<String> { unsafe { get_string_from_host(|ptr, len| host_get_path(ptr, len)) } }
 
     pub fn get_query_param(key: &str) -> Option<String> {
-        let mut buf = [0u8; 4096];
-        let wrote = unsafe { host_get_query_param(key.as_ptr(), key.len() as u32, buf.as_mut_ptr(), 4096) };
-        if wrote == NOT_FOUND {
-            return None;
-        }
-        Some(String::from_utf8_lossy(&buf[..wrote as usize]).to_string())
+        unsafe { get_string_by_key_from_host(key, |kp, ks, bp, bs| host_get_query_param(kp, ks, bp, bs)) }
     }
 
     pub fn get_raw_query() -> Option<String> { unsafe { get_string_from_host(|ptr, len| host_get_raw_query(ptr, len)) } }
@@ -79,12 +81,7 @@ pub mod proxy {
     pub fn get_auth_subject() -> Option<String> { unsafe { get_string_from_host(|ptr, len| host_auth_subject(ptr, len)) } }
 
     pub fn get_auth_claim(key: &str) -> Option<String> {
-        let mut buf = [0u8; 4096];
-        let wrote = unsafe { host_auth_claim(key.as_ptr(), key.len() as u32, buf.as_mut_ptr(), 4096) };
-        if wrote == NOT_FOUND {
-            return None;
-        }
-        Some(String::from_utf8_lossy(&buf[..wrote as usize]).to_string())
+        unsafe { get_string_by_key_from_host(key, |kp, ks, bp, bs| host_auth_claim(kp, ks, bp, bs)) }
     }
 }
 

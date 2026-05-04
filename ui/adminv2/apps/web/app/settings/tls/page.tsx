@@ -64,7 +64,7 @@ const initialTLSGenerateFormState: {
 
 export default function TLSConfigurationPage() {
   const proxyServerStatus = useData<ProxyServerStatus>(
-    "http://localhost:8080/api/proxy/config",
+    "/api/proxy/config",
     "status"
   )
 
@@ -98,7 +98,7 @@ export default function TLSConfigurationPage() {
     if (tlsGenerateFormState === initialTLSGenerateFormState) return
 
     const result = await mutate(
-      'http://localhost:8080/api/proxy/certs/generate',
+      '/api/proxy/certs/generate',
       'POST',
       JSON.stringify(tlsGenerateFormState),
       { 'Content-Type': 'application/json' },
@@ -129,7 +129,7 @@ export default function TLSConfigurationPage() {
     formData.append("key_file", keyFile)
 
     const result = await mutate(
-      'http://localhost:8080/api/proxy/certs/upload',
+      '/api/proxy/certs/upload',
       'POST',
       formData
     )

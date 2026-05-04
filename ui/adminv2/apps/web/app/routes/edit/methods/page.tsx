@@ -168,12 +168,12 @@ function EditRouteMethodsPageContent() {
   const params = useSearchParams()
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
-    path ? `http://localhost:8080/api/routes/${encodeURIComponent(path)}` : null,
+    path ? `/api/routes/${encodeURIComponent(path)}` : null,
     "route"
   )
   const methodsData = useData<RouteMethod[]>(
     routeData.data
-      ? `http://localhost:8080/api/routes/${routeData.data.id}/methods`
+      ? `/api/routes/${routeData.data.id}/methods`
       : null,
     "methods"
   )
@@ -248,7 +248,7 @@ function EditRouteMethodsPageContent() {
     }
 
     const result = await mutate(
-      `http://localhost:8080/api/routes/${routeData.data.id}/methods`,
+      `/api/routes/${routeData.data.id}/methods`,
       "POST",
       { methods: buildPayload(methods) }
     )

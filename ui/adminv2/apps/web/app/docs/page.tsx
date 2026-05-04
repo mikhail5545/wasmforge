@@ -100,6 +100,32 @@ curl -X POST http://localhost:8080/api/route-plugins \\
     "config": "{\\"header\\":\\"x-gateway\\",\\"value\\":\\"wasmforge\\"}"
   }'`
 
+const flagsExample = `./bin/wasmforge --admin-port 9090 \\
+  --logs-dir /tmp/logs \\
+  --file-log-level debug`
+
+const dockerWithFlagsExample = `docker run -p 9090:9090 mikhailkulik:wasmforge \\
+  --admin-port 9090 \\
+  --logs-dir /tmp/logs \\
+  --file-log-level debug`
+
+const allCmdArgs = `-a, --admin-port int                                 Port for the admin server (default 8080)
+      --auth-encryption-1password-integration string   Integration name reported to the 1Password SDK (default "wasmforge")
+      --auth-encryption-1password-reference string     1Password secret reference for the auth encryption master key
+      --auth-encryption-1password-token-env string     Environment variable containing the 1Password service account token (default "OP_SERVICE_ACCOUNT_TOKEN")
+      --auth-encryption-aws-kms-key-id string          AWS KMS key ID or ARN for auth encryption
+      --auth-encryption-aws-kms-region string          AWS region for the auth encryption KMS key
+      --auth-encryption-master-key-env string          Environment variable containing the local auth encryption master key (default "WASMFORGE_AUTH_MASTER_KEY")
+      --auth-encryption-provider string                Auth key encryption provider (local, 1password, or aws-kms) (default "local")
+  -c, --certs-uploads-dir string                       Directory for uploaded TLS certificates (default "./certs")
+  -s, --console-log-level string                       Case-insensitive log level for console output (debug, info, warn, error) (default "debug")
+  -f, --file-log-level string                          Case-insensitive log level for file output (debug, info, warn, error) (default "info")
+  -h, --help                                           Show this help message
+      --log-files                                      Enable logging to files (default true)
+  -l, --logs-dir string                                Directory for log files (default "./logs")
+  -p, --plugins-uploads-dir string                     Directory for uploaded WASM modules (default "./uploads")
+  -t, --use-timestamps                                 Use timestamps in logs filenames (default true)`
+
 export default function DocsPage() {
   return (
     <SidebarLayout page_title={"Documentation"}>
@@ -155,6 +181,34 @@ export default function DocsPage() {
             <strong>http://localhost:8080</strong>. Admin API routes are under{" "}
             <code className={"rounded bg-muted px-1 font-mono"}>/api</code>.
           </p>
+        </DocSection>
+
+        <DocSection
+          id={"flags"}
+          title={"Command Line Arguments"}
+          description={"Description of available command line arguments."}
+        >
+          <p>
+            You can use different command line arguments to modify and configure certain
+            behaviour, such as the admin listen port, log levels, and file
+            locations. You are particularly interested in{" "}
+            <a href={"/docs/auth"} className={"underline"}>
+              private key encryption
+            </a>{" "}
+            args if you want to setup robust auth workflow. For
+            example, to change the admin listen port to 9090 and set the file
+            log level to debug, you can run the following command:
+          </p>
+          <CodeBlock
+            tabs={[
+              { label: 'shell', code: flagsExample },
+              { label: "Docker", code: dockerWithFlagsExample }
+            ]}
+          />
+          <p>
+            Here is the complete list of all command line arguments that you can use (use <code>--help</code>):
+          </p>
+          <CodeBlock code={allCmdArgs} />
         </DocSection>
 
         <DocSection

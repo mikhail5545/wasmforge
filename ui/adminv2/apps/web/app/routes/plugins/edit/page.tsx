@@ -80,7 +80,7 @@ function EditRoutePluginPageContent() {
   const params = useSearchParams()
   const routePluginId = params.get("pluginId") ?? ""
   const routePluginData = useData<RoutePlugin>(
-    `http://localhost:8080/api/route-plugins/${routePluginId}`,
+    `/api/route-plugins/${routePluginId}`,
     'route_plugin'
   )
   const router = useRouter()
@@ -106,7 +106,7 @@ function EditRoutePluginPageContent() {
   }, [editableRoutePlugin, routePluginData.data])
 
 
-  const pluginPath = routePluginData.data?.plugin_id ? `http://localhost:8080/api/plugins/${routePluginData.data.plugin_id}` : null
+  const pluginPath = routePluginData.data?.plugin_id ? `/api/plugins/${routePluginData.data.plugin_id}` : null
   const pluginData = useData<Plugin>(pluginPath, "plugin")
   const [selectedPlugin, setSelectedPlugin] = React.useState<Plugin | null>(
     pluginData.data
@@ -161,7 +161,7 @@ function EditRoutePluginPageContent() {
     }
 
     const result = await mutate(
-      `http://localhost:8080/api/route-plugins/${routePluginData.data.plugin_id}`,
+      `/api/route-plugins/${routePluginData.data.plugin_id}`,
       'PATCH',
       JSON.stringify(editableRoutePlugin),
       { 'Content-Type': 'application/json' },

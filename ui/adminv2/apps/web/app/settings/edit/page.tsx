@@ -51,7 +51,7 @@ type configForm = {
 
 export default function EditProxyServerConfigPage() {
   const proxyServerStatus = useData<ProxyServerStatus>(
-    "http://localhost:8080/api/proxy/config",
+    "/api/proxy/config",
     "status"
   )
   const router = useRouter()
@@ -77,7 +77,7 @@ export default function EditProxyServerConfigPage() {
     if (!configFormState) return
 
     const response = await mutate(
-      'http://localhost:8080/api/proxy/config',
+      '/api/proxy/config',
       'PATCH',
       JSON.stringify(configFormState),
       { 'Content-Type': 'application/json' },

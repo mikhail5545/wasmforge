@@ -82,7 +82,7 @@ export default function NewPluginPage(){
     formData.append("metadata", JSON.stringify(formState))
 
     const result = await mutate(
-      'http://localhost:8080/api/plugins',
+      '/api/plugins',
       'POST',
       formData,
     )

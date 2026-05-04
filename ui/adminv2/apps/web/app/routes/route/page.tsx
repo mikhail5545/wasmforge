@@ -107,7 +107,7 @@ function RoutePageContent() {
   const params = useSearchParams()
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
-    `http://localhost:8080/api/routes/${encodeURIComponent(path)}`,
+    `/api/routes/${encodeURIComponent(path)}`,
     "route"
   )
   const router = useRouter()
@@ -123,16 +123,16 @@ function RoutePageContent() {
   const timeSeriesRange = useRange()
 
   const overViewData = useData<RouteSummaryResponse>(
-    `http://localhost:8080/api/proxy/stats/route?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
+    `/api/proxy/stats/route?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
     "route"
   )
 
   const timeSeriesData = useData<TimeseriesResponse>(
-    `http://localhost:8080/api/proxy/stats/timeseries?route=${encodeURIComponent(path)}&from=${timeSeriesRange.range.from.date.toISOString()}&to=${timeSeriesRange.range.to.date.toISOString()}`,
+    `/api/proxy/stats/timeseries?route=${encodeURIComponent(path)}&from=${timeSeriesRange.range.from.date.toISOString()}&to=${timeSeriesRange.range.to.date.toISOString()}`,
     "timeseries"
   )
   const routePluginMetricsData = useData<RoutePluginsResponse>(
-    `http://localhost:8080/api/proxy/stats/route/plugins?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
+    `/api/proxy/stats/route/plugins?path=${encodeURIComponent(path)}&from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
     "route_plugins",
   )
 
@@ -157,7 +157,7 @@ function RoutePageContent() {
     }
 
     const enabled = routeData.data.enabled
-    const callUrl = `http://localhost:8080/api/routes/${routeData.data.id}/${enabled ? "disable" : "enable"}`
+    const callUrl = `/api/routes/${routeData.data.id}/${enabled ? "disable" : "enable"}`
 
     const response = await mutate(callUrl, "POST")
 
@@ -176,7 +176,7 @@ function RoutePageContent() {
     }
 
     const response = await mutate(
-      `http://localhost:8080/api/routes/${routeData.data.id}`,
+      `/api/routes/${routeData.data.id}`,
       "DELETE"
     )
 

@@ -26,6 +26,7 @@ import {
   parseErrorResponse,
 } from "@/lib/ErrorResponse"
 import {ErrorResponse} from "@/types/ErrorResponse";
+import { getApiBaseUrl } from "@/config"
 
 type Method = "POST" | "PUT" | "PATCH" | "DELETE"
 type MutationPayload = BodyInit | Record<string, unknown> | null
@@ -122,7 +123,8 @@ export function useMutation(): UseMutation {
           }
         }
 
-        const response = await fetch(path, {
+        const url = `${getApiBaseUrl()}${path}`
+        const response = await fetch(url, {
           method,
           headers,
           body,

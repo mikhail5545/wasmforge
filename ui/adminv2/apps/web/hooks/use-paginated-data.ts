@@ -19,8 +19,7 @@ import {
   parseErrorResponse,
 } from "@/lib/ErrorResponse"
 import { ErrorResponse } from "@/types/ErrorResponse";
-
-const BACKEND_URL = "http://localhost:8080"
+import { getApiBaseUrl } from "@/config"
 
 interface CacheEntry {
   items: unknown[]
@@ -170,20 +169,28 @@ export function usePaginatedData<T>(
       token?: string,
       queryParams?: QueryParams
     ) => {
-      const url = new URL(path, BACKEND_URL)
-      url.searchParams.set("of", orderField)
-      url.searchParams.set("od", orderDirection)
-      url.searchParams.set("ps", pageSize.toString())
+      const baseUrl = `${getApiBaseUrl()}${path}`
+      const searchParams = new URLSearchParams()
+
+      searchParams.set("of", orderField)
+      searchParams.set("od", orderDirection)
+      searchParams.set("ps", pageSize.toString())
+
       if (token) {
-        url.searchParams.set("pt", token)
+        searchParams.set("pt", token)
       }
 
       const normalizedQueryParams = normalizeQueryParams(queryParams)
-      for (const [queryKey, queryValue] of Object.entries(normalizedQueryParams)) {
-        url.searchParams.set(queryKey, queryValue)
+      for (const [queryKey, queryValue] of Object.entries(
+        normalizedQueryParams
+      )) {
+        searchParams.set(queryKey, queryValue)
       }
 
-      return url.toString()
+      const queryString = searchParams.toString()
+      const separator = baseUrl.includes("?") ? "&" : "?"
+
+      return queryString ? `${baseUrl}${separator}${queryString}` : baseUrl
     },
     [path, pageSize]
   )

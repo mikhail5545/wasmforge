@@ -27,11 +27,10 @@ import { useRouter } from "next/navigation"
 import { AlertModal } from "@/components/dialog/alert-modal"
 import { SidebarLayout } from "@/components/navigation/sidebar-layout"
 import {
-  Field, FieldContent,
+  Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-  FieldLegend,
   FieldSet,
 } from "@workspace/ui/components/field"
 import {
@@ -40,9 +39,6 @@ import {
   CardTitle,
   CardContent, CardDescription,
 } from "@workspace/ui/components/card"
-import { RadioGroup, RadioGroupItem } from "@workspace/ui/components/radio-group"
-import { Label } from "@workspace/ui/components/label"
-import { Checkbox } from "@workspace/ui/components/checkbox"
 
 const initialRouteFormState: Omit<Route, "id" | "created_at" | "enabled"> = {
   path: '',
@@ -63,8 +59,6 @@ export default function NewRoutePage() {
   const [validationErrors, setValidationErrors] = useState<Record<string, string> | null>(null)
   const [showErrorAlert, setShowErrorAlert] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [methodsAllowed, setMethodsAllowed] = useState('all') // all or custom
-  const [allowSet, setAllowSet] = useState<Set<string>>(new Set())
 
   const resolveError = useCallback((mutationError: ErrorResponse) => {
     if (mutationError.code === "VALIDATION_FAILED") {
@@ -80,17 +74,10 @@ export default function NewRoutePage() {
       return
     }
 
-    const allowed = Array.from(allowSet)
-    const payload = {
-      ...formState,
-      ...(methodsAllowed === 'custom' ? { allowed_methods: allowed } : {})
-    }
-    console.log("submit payload", { methodsAllowed, allowed, payload })
-
     const result = await mutate(
-      'http://localhost:8080/api/routes',
+      '/api/routes',
       'POST',
-      JSON.stringify(payload),
+      JSON.stringify(formState),
       { 'Content-Type': 'application/json' },
     )
     if (!result.success) {
@@ -107,16 +94,7 @@ export default function NewRoutePage() {
         setCreatedPath(created.route.path)
       }
     }
-  }, [formState, mutate, resolveError, allowSet, methodsAllowed])
-
-  const handleMethodCheckboxChange = (checked: boolean, method: string) => {
-    setAllowSet(prev => {
-      const next = new Set(prev)
-      if (checked) next.add(method)
-      else next.delete(method)
-      return next
-    })
-  }
+  }, [formState, mutate, resolveError])
 
   return (
     <SidebarLayout page_title={"Create a new route"}>
@@ -164,7 +142,7 @@ export default function NewRoutePage() {
           </div>
           <div className={"flex flex-col gap-5 py-10"}>
             <div className={"flex flex-col gap-5 lg:flex-row"}>
-              <div className={"flex w-full lg:w-1/3"}>
+              <div className={"flex w-full lg:w-1/2"}>
                 <Card className={"w-full"}>
                   <CardHeader>
                     <CardTitle>Required Information</CardTitle>
@@ -325,7 +303,7 @@ export default function NewRoutePage() {
                   </CardContent>
                 </Card>
               </div>
-              <div className={"flex w-full lg:w-1/3"}>
+              <div className={"flex w-full lg:w-1/2"}>
                 <Card className={"w-full"}>
                   <CardHeader>
                     <CardTitle>Additional Timings Configuration</CardTitle>
@@ -459,193 +437,6 @@ export default function NewRoutePage() {
                           </Field>
                         </div>
                       </FieldGroup>
-                    </FieldSet>
-                  </CardContent>
-                </Card>
-              </div>
-              <div className={"flex w-full lg:w-1/3"}>
-                <Card className={"w-full"}>
-                  <CardHeader>
-                    <CardTitle>Allowed Methods</CardTitle>
-                    <CardDescription>
-                      By default, all methods are allowed. You can restrict
-                      allowed methods for the route by selecting
-                      &quot;Custom&quot; option and choosing methods you want to
-                      allow.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className={"flex flex-col gap-4"}>
-                    <RadioGroup
-                      value={methodsAllowed}
-                      onValueChange={(value) => {
-                        setMethodsAllowed(value)
-                        if (value === 'all') setAllowSet(new Set())
-                      }}
-                    >
-                      <div className={"flex items-center gap-2"}>
-                        <RadioGroupItem value={"all"} />
-                        <Label>All</Label>
-                      </div>
-                      <div className={"flex items-center gap-2"}>
-                        <RadioGroupItem value={"custom"} />
-                        <Label>Custom</Label>
-                      </div>
-                    </RadioGroup>
-                    <FieldSet
-                      disabled={methodsAllowed === "all"}
-                      className={"flex flex-col gap-2"}
-                    >
-                      <FieldLegend>Custom selection</FieldLegend>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-center gap-5"
-                        }
-                      >
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("GET")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "GET"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>GET</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("POST")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "POST"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>POST</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      </div>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-center gap-5"
-                        }
-                      >
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("PUT")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "PUT"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>PUT</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("DELETE")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "DELETE"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>DELETE</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      </div>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-center gap-5"
-                        }
-                      >
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("OPTIONS")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "OPTIONS"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>OPTIONS</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("PATCH")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "PATCH"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>PATCH</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      </div>
-                      <div
-                        className={
-                          "flex flex-row items-center justify-center gap-5"
-                        }
-                      >
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("HEAD")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "HEAD"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>HEAD</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                        <Field orientation={"horizontal"}>
-                          <Checkbox
-                            checked={allowSet.has("CONNECT")}
-                            onCheckedChange={(checked) =>
-                              handleMethodCheckboxChange(
-                                checked === true,
-                                "CONNECT"
-                              )
-                            }
-                          />
-                          <FieldContent>
-                            <FieldLabel>CONNECT</FieldLabel>
-                          </FieldContent>
-                        </Field>
-                      </div>
-                      <Field orientation={"horizontal"}>
-                        <Checkbox
-                          checked={allowSet.has("TRACE")}
-                          onCheckedChange={(checked) =>
-                            handleMethodCheckboxChange(
-                              checked === true,
-                              "TRACE"
-                            )
-                          }
-                        />
-                        <FieldContent>
-                          <FieldLabel>TRACE</FieldLabel>
-                        </FieldContent>
-                      </Field>
                     </FieldSet>
                   </CardContent>
                 </Card>

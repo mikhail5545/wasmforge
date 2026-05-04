@@ -62,7 +62,7 @@ function PluginPageContent() {
   const name = params.get("name") ?? ""
   const version = params.get("version") ?? ""
   const pluginData = useData<Plugin>(
-    `http://localhost:8080/api/plugins/${encodeURIComponent(name)}?version=${encodeURIComponent(version)}`,
+    `/api/plugins/${encodeURIComponent(name)}?version=${encodeURIComponent(version)}`,
     "plugin"
   )
 
@@ -100,7 +100,7 @@ function PluginPageContent() {
     if (!pluginData.data) return
 
     const result = await mutate(
-      `http://localhost:8080/api/plugins/${pluginId}`,
+      `/api/plugins/${pluginId}`,
       'DELETE'
     )
 

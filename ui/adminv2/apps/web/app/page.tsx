@@ -85,7 +85,7 @@ import { AlertModal } from "@/components/dialog/alert-modal"
 export default function Page() {
 
   const proxyServerStatus = useData<ProxyServerStatus>(
-    "http://localhost:8080/api/proxy/config",
+    "/api/proxy/config",
     "status"
   );
 
@@ -97,18 +97,18 @@ export default function Page() {
   const timeSeriesRange = useRange()
 
   const overViewData = useData<OverviewResponse>(
-    `http://localhost:8080/api/proxy/stats/overview?from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
+    `/api/proxy/stats/overview?from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
     'overview',
   )
   const timeSeriesData = useData<TimeseriesResponse>(
-    `http://localhost:8080/api/proxy/stats/timeseries?from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
+    `/api/proxy/stats/timeseries?from=${overviewRange.range.from.date.toISOString()}&to=${overviewRange.range.to.date.toISOString()}`,
     "timeseries"
   )
 
   const toggleRun = React.useCallback(async() => {
     if (!proxyServerStatus.data) return
 
-    const callUrl = `http://localhost:8080/api/proxy/server/${proxyServerStatus.data.running ? "stop" : "start"}`
+    const callUrl = `/api/proxy/server/${proxyServerStatus.data.running ? "stop" : "start"}`
 
     const response = await mutate(
       callUrl,
@@ -127,7 +127,7 @@ export default function Page() {
     if (!proxyServerStatus.data) return
 
     const response = await mutate(
-      'http://localhost:8080/api/proxy/server/restart',
+      '/api/proxy/server/restart',
       'POST'
     )
 

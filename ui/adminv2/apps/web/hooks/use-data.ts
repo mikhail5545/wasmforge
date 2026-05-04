@@ -19,6 +19,7 @@ import {
   makeFallbackErrorResponse,
 } from "@/lib/ErrorResponse"
 import { ErrorResponse } from "@/types/ErrorResponse"
+import { getApiBaseUrl } from "@/config"
 
 interface Data<T> {
   data: T | null
@@ -86,8 +87,9 @@ export function useData<T>(path: string | null, key: string): Data<T> {
     setLoading(true)
     setError(null)
 
+    const url = `${getApiBaseUrl()}${path}`
     try {
-      const response = await fetch(path, { method: "GET", signal: controller.signal })
+      const response = await fetch(url, { method: "GET", signal: controller.signal })
       const text = await response.text()
       const parsed = parseResponseBody(text)
 

@@ -17,11 +17,9 @@
 
 import {
   ChevronDownIcon, ChevronLeft, ChevronRight, CircleAlert,
-  HardDriveUpload,
   MoreHorizontal,
   MoreVertical,
   RouteOff,
-  Trash2,
   Wrench,
 } from "lucide-react"
 import {

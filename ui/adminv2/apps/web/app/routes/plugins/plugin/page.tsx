@@ -50,7 +50,7 @@ function RoutePluginPageContent() {
   const params = useSearchParams()
   const pluginId = params.get("pluginId") ?? ""
   const pluginData = useData<RoutePlugin>(
-    `http://localhost:8080/api/route-plugins/${pluginId}`,
+    `/api/route-plugins/${pluginId}`,
     'route_plugin',
   )
 
@@ -65,7 +65,7 @@ function RoutePluginPageContent() {
     if (!pluginData.data) return
 
     const result = await mutate(
-      `http://localhost:8080/api/route-plugins/${pluginId}`,
+      `/api/route-plugins/${pluginId}`,
       "DELETE"
     )
 

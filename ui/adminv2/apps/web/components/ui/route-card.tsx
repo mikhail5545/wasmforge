@@ -152,7 +152,7 @@ const RouteCard = ({
             </p>
             <p
               className={"text-center text-xl"}
-            >{`${route?.idle_conn_timeout} sec`}</p>
+            >{`${route?.tls_handshake_timeout} sec`}</p>
           </div>
           <div className={"flex flex-col gap-4 rounded-xl bg-background p-5"}>
             <p className={"text-center text-muted-foreground"}>

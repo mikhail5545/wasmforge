@@ -103,12 +103,6 @@ const data = {
         icon: BookText,
         isActive: false,
       },
-      {
-        title: "About",
-        link: "/about",
-        icon: Info,
-        isActive: false,
-      },
     ],
     label: "Resources",
   },

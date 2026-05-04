@@ -46,7 +46,7 @@ function EditRoutePageContent() {
   const params = useSearchParams()
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
-    `http://localhost:8080/api/routes/${encodeURIComponent(path)}`,
+    `/api/routes/${encodeURIComponent(path)}`,
     "route"
   )
 
@@ -85,7 +85,7 @@ function EditRoutePageContent() {
       return
     }
     const result = await mutate(
-      `http://localhost:8080/api/routes/${routeData.data.id}`,
+      `/api/routes/${routeData.data.id}`,
       "PATCH",
       JSON.stringify(editableRoute),
       { "Content-Type": "application/json" }

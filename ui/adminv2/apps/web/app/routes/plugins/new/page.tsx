@@ -49,10 +49,10 @@ function NewRoutePluginPageContent() {
   const routeId = params.get("routeId")
 
   const routePath = routeId
-    ? `http://localhost:8080/api/routes/${routeId}`
+    ? `/api/routes/${routeId}`
     : null
   const pluginPath = pluginId
-    ? `http://localhost:8080/api/plugins/${pluginId}`
+    ? `/api/plugins/${pluginId}`
     : null
 
   const routeData = useData<Route>(routePath, "route")
@@ -162,7 +162,7 @@ function NewRoutePluginPageContent() {
     }
 
     const result = await mutate(
-      "http://localhost:8080/api/route-plugins",
+      "/api/route-plugins",
       "POST",
       JSON.stringify(formState),
       { "Content-Type": "application/json" }

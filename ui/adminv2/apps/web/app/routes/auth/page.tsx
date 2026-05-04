@@ -195,7 +195,7 @@ function buildPayload(form: AuthForm): AuthConfigPayload {
 
 async function fetchAuthConfig(routeID: string): Promise<AuthConfig | null> {
   const response = await fetch(
-    `http://localhost:8080/api/auth/routes/${routeID}/config`
+    `/api/auth/routes/${routeID}/config`
   )
   if (response.status === 404) {
     return null
@@ -213,7 +213,7 @@ function RouteAuthPageContent() {
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
     path
-      ? `http://localhost:8080/api/routes/${encodeURIComponent(path)}`
+      ? `/api/routes/${encodeURIComponent(path)}`
       : null,
     "route"
   )
@@ -221,7 +221,7 @@ function RouteAuthPageContent() {
   const [orderDirection, setOrderDirection] = React.useState("asc")
   const [perPage, setPerPage] = React.useState('10')
   const keysData = usePaginatedData<AuthKey>(
-    `http://localhost:8080/api/auth/keys?r_ids=${routeData.data?.id ?? null}&is_active=true`,
+    `/api/auth/keys?r_ids=${routeData.data?.id ?? null}&is_active=true`,
     "keys",
     parseInt(perPage),
     orderField,
@@ -306,7 +306,7 @@ function RouteAuthPageContent() {
       return
     }
     const result = await mutate(
-      `http://localhost:8080/api/auth/routes/${routeData.data.id}/config`,
+      `/api/auth/routes/${routeData.data.id}/config`,
       "PUT",
       JSON.stringify(buildPayload(form)),
       { "Content-Type": "application/json" }
@@ -326,7 +326,7 @@ function RouteAuthPageContent() {
       return
     }
     const result = await mutate(
-      `http://localhost:8080/api/auth/routes/${routeData.data.id}/config`,
+      `/api/auth/routes/${routeData.data.id}/config`,
       "DELETE"
     )
     if (!result.success) {
@@ -344,7 +344,7 @@ function RouteAuthPageContent() {
       return
     }
     const result = await mutate(
-      "http://localhost:8080/api/auth/keys/generate",
+      "/api/auth/keys/generate",
       "POST",
       {
         route_id: routeData.data.id,
@@ -369,7 +369,7 @@ function RouteAuthPageContent() {
     if (!routeData.data) {
       return
     }
-    const result = await mutate("http://localhost:8080/api/auth/keys", "POST", {
+    const result = await mutate("/api/auth/keys", "POST", {
       route_id: routeData.data.id,
       key_id: keyID,
       private_key_pem: privateKeyPEM,
@@ -391,7 +391,7 @@ function RouteAuthPageContent() {
   const deleteKey = React.useCallback(
     async (key: AuthKey) => {
       const result = await mutate(
-        `http://localhost:8080/api/auth/keys/${encodeURIComponent(key.key_id)}`,
+        `/api/auth/keys/${encodeURIComponent(key.key_id)}`,
         "DELETE"
       )
       if (!result.success) {
@@ -408,7 +408,7 @@ function RouteAuthPageContent() {
       return
     }
     const result = await mutate(
-      "http://localhost:8080/api/auth/validate",
+      "/api/auth/validate",
       "POST",
       { route_id: routeData.data.id, token: tokenToValidate }
     )

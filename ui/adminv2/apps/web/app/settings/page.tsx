@@ -66,7 +66,7 @@ import { useMutation } from "@/hooks/use-mutation"
 export default function SettingsPage() {
 
   const proxyServerStatus = useData<ProxyServerStatus>(
-    "http://localhost:8080/api/proxy/config",
+    "/api/proxy/config",
     "status"
   )
 
@@ -78,7 +78,7 @@ export default function SettingsPage() {
     if (!proxyServerStatus.data) return
 
     const response = await mutate(
-      "http://localhost:8080/api/proxy/certs",
+      "/api/proxy/certs",
       "DELETE"
     )
 
@@ -92,7 +92,7 @@ export default function SettingsPage() {
   const toggleRun = React.useCallback(async () => {
     if (!proxyServerStatus.data) return
 
-    const callUrl = `http://localhost:8080/api/proxy/server/${proxyServerStatus.data.running ? "stop" : "start"}`
+    const callUrl = `/api/proxy/server/${proxyServerStatus.data.running ? "stop" : "start"}`
 
     const response = await mutate(callUrl, "POST")
 
@@ -111,7 +111,7 @@ export default function SettingsPage() {
     if (!proxyServerStatus.data) return
 
     const response = await mutate(
-      'http://localhost:8080/api/proxy/server/restart',
+      '/api/proxy/server/restart',
       'POST'
     )
 

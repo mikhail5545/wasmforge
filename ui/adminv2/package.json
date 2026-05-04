@@ -13,7 +13,7 @@
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
     "prettier": "^3.8.1",
-    "prettier-plugin-tailwindcss": "^0.7.2",
+    "prettier-plugin-tailwindcss": "^0.8.0",
     "turbo": "^2.8.17",
     "typescript": "6.0.3"
   },

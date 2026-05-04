@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2026. Mikhail Kulik. 
+ * Copyright (c) 2026. Mikhail Kulik.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,14 +13,21 @@
  * limitations under the License.
  */
 
-'use client'
+"use client"
 
 import React from "react"
 
-import { LayoutDashboard, Route, ToyBrick, Webhook, BookText } from "lucide-react"
+import {
+  BookText,
+  Info,
+  LayoutDashboard,
+  Route,
+  ToyBrick,
+  Webhook,
+} from "lucide-react"
 
-import {NavMain} from "@/components/navigation/nav-main"
-import {NavSecondary} from "@/components/navigation/nav-secondary"
+import { NavMain } from "@/components/navigation/nav-main"
+import { NavSecondary } from "@/components/navigation/nav-secondary"
 import {
   Sidebar,
   SidebarContent,
@@ -80,7 +87,7 @@ const data = {
       link: "/plugins",
       icon: ToyBrick,
       isActive: false,
-    }
+    },
   ],
   navSecondary: {
     items: [
@@ -95,10 +102,16 @@ const data = {
         link: "/docs",
         icon: BookText,
         isActive: false,
-      }
+      },
+      {
+        title: "About",
+        link: "/about",
+        icon: Info,
+        isActive: false,
+      },
     ],
-    label: "API Reference",
-  }
+    label: "Resources",
+  },
 }
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {

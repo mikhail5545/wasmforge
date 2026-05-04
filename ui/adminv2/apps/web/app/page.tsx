@@ -395,7 +395,9 @@ export default function Page() {
                   </div>
                   <div className={"w-full lg:w-1/2"}>
                     <StatusCountsRadarChart
-                      counts={overViewData.data?.status_code_counts || {}}
+                      counts={
+                      overViewData.data?.status_code_counts || {}
+                    }
                       title={"Status Code Counts"}
                       description={`Showing status code counts in a period from ${format(overviewRange.range.from.date, "PPP-HH:mm")} to ${format(overviewRange.range.to.date, "PPP-HH:mm")}`}
                     />

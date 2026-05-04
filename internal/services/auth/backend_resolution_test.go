@@ -14,7 +14,7 @@ import (
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	authmocks "github.com/mikhail5545/wasmforge/internal/database/auth/mocks"
+	materialmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/key"
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/auth/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,7 +34,7 @@ func TestValidator_ValidateToken_EnvBackend(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, zap.NewNop())
 
 	metadata := `{"env_public_key_var":"WF_ENV_PUBLIC","env_key_id":"env-kid"}`
@@ -79,7 +79,7 @@ func TestValidator_ValidateToken_JWKSBackend(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, zap.NewNop())
 
 	cacheTTL := 60
@@ -121,7 +121,7 @@ func TestIssuer_IssueToken_EnvBackend(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, zap.NewNop())
 
 	authConfig := &configmodel.AuthConfig{
@@ -147,7 +147,7 @@ func TestIssuer_IssueToken_JWKSBackendRejected(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, zap.NewNop())
 
 	authConfig := &configmodel.AuthConfig{

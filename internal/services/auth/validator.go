@@ -29,6 +29,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -destination=../../mocks/services/auth/validator.go -package=auth . TokenValidator
+
 type TokenValidator interface {
 	ValidateToken(ctx context.Context, tokenString string, config *configmodel.AuthConfig) (*ValidatedToken, error)
 }

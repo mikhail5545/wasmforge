@@ -18,6 +18,8 @@ package proxy
 
 import "net/http"
 
+//go:generate mockgen -destination=../mocks/proxy/observer.go -package=proxy . RequestObserver,PluginRequestObserver
+
 type RequestObserver interface {
 	RouteMiddleware(routePath string) func(http.Handler) http.Handler
 	OverallMiddleware() func(http.Handler) http.Handler

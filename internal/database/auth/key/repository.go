@@ -24,6 +24,8 @@ import (
 	"gorm.io/gorm"
 )
 
+//go:generate mockgen -destination=../../../mocks/database/auth/key/repository.go -package=key . Repository
+
 type (
 	Repository interface {
 		DB() *gorm.DB
@@ -35,8 +37,6 @@ type (
 		Update(ctx context.Context, material *materialmodel.Material) error
 		Updates(ctx context.Context, id uuid.UUID, updates map[string]any) error
 		Delete(ctx context.Context, id string) error
-		GetByID(ctx context.Context, id string) (*materialmodel.Material, error)
-		GetByKeyID(ctx context.Context, keyID string) (*materialmodel.Material, error)
 	}
 
 	repository struct {
@@ -82,12 +82,4 @@ func (r *repository) Updates(ctx context.Context, id uuid.UUID, updates map[stri
 
 func (r *repository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&materialmodel.Material{}, "key_id = ?", id).Error
-}
-
-func (r *repository) GetByID(ctx context.Context, id string) (*materialmodel.Material, error) {
-	return r.get(ctx, newFilter(WithKeyIDs(id)))
-}
-
-func (r *repository) GetByKeyID(ctx context.Context, keyID string) (*materialmodel.Material, error) {
-	return r.get(ctx, newFilter(WithKeyIDs(keyID)))
 }

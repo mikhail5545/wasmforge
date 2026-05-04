@@ -17,7 +17,7 @@ func activeValidationKey(ctx context.Context, repo keyrepo.Repository, resolver 
 	switch effectiveBackend(cfg) {
 	case configmodel.KeyBackendTypeDatabase:
 		if keyID != "" {
-			key, err := repo.GetByKeyID(ctx, keyID)
+			key, err := repo.Get(ctx, materialrepo.WithKeyIDs(keyID))
 			if err != nil {
 				return "", nil, fmt.Errorf("failed to get key material: %w", err)
 			}

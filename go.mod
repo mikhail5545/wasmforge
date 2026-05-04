@@ -11,7 +11,7 @@ require (
 	github.com/go-ozzo/ozzo-validation/v4 v4.3.0
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/google/uuid v1.6.0
-	github.com/labstack/echo/v5 v5.1.0
+	github.com/labstack/echo/v5 v5.1.1
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/tetratelabs/wazero v1.11.0

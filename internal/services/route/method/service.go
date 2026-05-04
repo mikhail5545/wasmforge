@@ -85,6 +85,8 @@ func (s *Service) Set(ctx context.Context, req *methodmodel.SetRequest) ([]*meth
 		txMethodRepo := s.methodRepo.WithTx(tx)
 		txRouteRepo := s.routeRepo.WithTx(tx)
 
+		s.logger.Debug("updating route method policies", zap.String("route_id", req.RouteID))
+
 		route, err := txRouteRepo.Get(ctx, routerepo.WithIDs(uuid.MustParse(req.RouteID)))
 		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -172,6 +174,8 @@ func (s *Service) Delete(ctx context.Context, req *methodmodel.DeleteRequest) er
 
 	return s.methodRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txMethodRepo := s.methodRepo.WithTx(tx)
+
+		s.logger.Debug("deleting route method policies", zap.String("route_id", req.RouteID))
 
 		method, err := txMethodRepo.Get(ctx, methodrepo.WithRouteIDs(uuid.MustParse(req.RouteID)), methodrepo.WithMethods(req.Method))
 		if err != nil {

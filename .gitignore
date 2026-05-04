@@ -20,6 +20,10 @@
 **/tmp/
 **/target/
 
+/docs
+/uploads
+/certs
+
 # Wazero runtime cache
 /cache
 

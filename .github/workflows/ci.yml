@@ -21,27 +21,31 @@ jobs:
         with:
           fetch-depth: '0'
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '25'
           cache: 'npm'
-          cache-dependency-path: ui/admin-ui/package-lock.json
+          cache-dependency-path: ui/adminv2/package-lock.json
+      
+      - name: Install UI Dependencies
+        working-directory: ui/adminv2
+        run: npm ci
 
       - name: Build UI
-        working-directory: ui/admin-ui
-        run: npm ci && npm run build
+        working-directory: ui/adminv2/apps/web
+        run: npx next build
 
       - name: Prepare Embed
         run: |
           mkdir -p pkg/ui/out
-          cp -r ui/admin-ui/out/* pkg/ui/out/
+          cp -r ui/adminv2/apps/web/out/* pkg/ui/out/
           ls -R pkg/ui/out
 
       - name: Setup Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25'
+          go-version: '1.26.2'
           cache: true
 
       - name: Cache Go modules

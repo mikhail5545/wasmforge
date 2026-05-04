@@ -88,6 +88,8 @@ func (s *Service) Create(ctx context.Context, req *routemodel.CreateRequest) (*r
 	err := s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.routeRepo.WithTx(tx)
 
+		s.logger.Debug("creating a new route", zap.String("path", req.Path))
+
 		route = &routemodel.Route{
 			Path:                  req.Path,
 			TargetURL:             req.TargetURL,
@@ -216,6 +218,8 @@ func (s *Service) Delete(ctx context.Context, req *routemodel.IDRequest) error {
 	}
 	return s.routeRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.routeRepo.WithTx(tx)
+
+		s.logger.Debug("deleting route", zap.String("route_id", req.ID))
 
 		route, err := s.getInTx(ctx, txRepo, uuid.MustParse(req.ID))
 		if err != nil {

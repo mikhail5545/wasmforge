@@ -39,11 +39,14 @@ func New(deps *Dependencies, logger *zap.Logger) *Server {
 		middleware.Recover(),
 		middleware.RequestLoggerWithConfig(
 			middleware.RequestLoggerConfig{
-				LogURI:      true,
-				LogLatency:  true,
-				LogStatus:   true,
-				LogMethod:   true,
-				HandleError: true,
+				LogURI:           true,
+				LogLatency:       true,
+				LogStatus:        true,
+				LogMethod:        true,
+				LogRemoteIP:      true,
+				LogRequestID:     true,
+				LogContentLength: true,
+				HandleError:      true,
 				LogValuesFunc: func(c *echo.Context, v middleware.RequestLoggerValues) error {
 					if v.Error != nil {
 						logger.Error("request error",
@@ -51,6 +54,9 @@ func New(deps *Dependencies, logger *zap.Logger) *Server {
 							zap.String("uri", v.URI),
 							zap.Int("status", v.Status),
 							zap.Duration("latency", v.Latency),
+							zap.String("remote ip", v.RemoteIP),
+							zap.String("request id", v.RequestID),
+							zap.String("content length", v.ContentLength),
 							zap.Error(v.Error),
 						)
 					} else {
@@ -59,6 +65,9 @@ func New(deps *Dependencies, logger *zap.Logger) *Server {
 							zap.String("uri", v.URI),
 							zap.Int("status", v.Status),
 							zap.Duration("latency", v.Latency),
+							zap.String("remote ip", v.RemoteIP),
+							zap.String("request id", v.RequestID),
+							zap.String("content length", v.ContentLength),
 						)
 					}
 					return nil

@@ -87,6 +87,8 @@ func (s *Service) Update(ctx context.Context, req *configmodel.UpdateRequest) er
 	return s.configRepo.DB().Transaction(func(tx *gorm.DB) error {
 		txRepo := s.configRepo.WithTx(tx)
 
+		s.logger.Debug("updating proxy config")
+
 		config, err := txRepo.Get(ctx)
 		if err != nil {
 			s.logger.Error("failed to get proxy config for update", zap.Error(err))

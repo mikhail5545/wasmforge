@@ -30,7 +30,6 @@ import {
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@workspace/ui/components/dropdown-menu"
 import {
@@ -195,17 +194,6 @@ function RoutesPageContent() {
                                         <Wrench size={10} />
                                         <span>Details</span>
                                       </DropdownMenuItem>
-                                      <DropdownMenuItem>
-                                        <HardDriveUpload size={10} />
-                                        Enable
-                                      </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
-                                      <DropdownMenuItem
-                                        className={"text-destructive"}
-                                      >
-                                        <Trash2 size={10} />
-                                        Delete
-                                      </DropdownMenuItem>
                                     </DropdownMenuContent>
                                   </DropdownMenu>
                                 </TableCell>
@@ -260,6 +248,18 @@ function RoutesPageContent() {
                                       <MoreHorizontal />
                                     </Button>
                                   </DropdownMenuTrigger>
+                                  <DropdownMenuContent>
+                                    <DropdownMenuItem
+                                      onClick={() =>
+                                        router.push(
+                                          `/routes/route?path=${route.path}`
+                                        )
+                                      }
+                                    >
+                                      <Wrench size={10} />
+                                      <span>Details</span>
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>
                             </CardHeader>

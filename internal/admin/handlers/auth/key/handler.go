@@ -26,12 +26,12 @@ import (
 )
 
 type Handler struct {
-	svc keysvc.Service
+	svc *keysvc.Service
 }
 
 func New(svc *keysvc.Service) *Handler {
 	return &Handler{
-		svc: *svc,
+		svc: svc,
 	}
 }
 

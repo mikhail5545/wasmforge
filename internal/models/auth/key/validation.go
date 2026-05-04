@@ -20,7 +20,6 @@ import (
 	"time"
 
 	validation "github.com/go-ozzo/ozzo-validation/v4"
-	"github.com/go-ozzo/ozzo-validation/v4/is"
 	validationutil "github.com/mikhail5545/wasmforge/internal/util/validation"
 )
 
@@ -58,7 +57,6 @@ func (req *CreateRequest) Validate() error {
 		validation.Field(&req.PublicKeyPEM, validation.Required),
 		validation.Field(&req.PrivateKeyPEM, validation.Required),
 		validation.Field(&req.ExpiresAt, validation.When(req.ExpiresAt != nil, validation.By(validateExpiresAt))),
-		validation.Field(&req.Metadata, is.JSON),
 	)
 }
 
@@ -67,7 +65,6 @@ func (req *GenerateRequest) Validate() error {
 		validation.Field(&req.KeyID, validation.Required),
 		validation.Field(&req.RouteID, validationutil.UUIDRule(true)...),
 		validation.Field(&req.ExpiresInDays, validation.Required, validation.Min(1)),
-		validation.Field(&req.Metadata, is.JSON),
 	)
 }
 

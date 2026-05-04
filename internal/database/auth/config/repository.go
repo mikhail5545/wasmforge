@@ -32,6 +32,7 @@ type (
 		List(ctx context.Context, opt ...FilterOption) ([]*authconfig.AuthConfig, string, error)
 		UnpaginatedList(ctx context.Context, opt ...FilterOption) ([]*authconfig.AuthConfig, error)
 		Create(ctx context.Context, cfg *authconfig.AuthConfig) error
+		Upsert(ctx context.Context, cfg *authconfig.AuthConfig) error
 		Update(ctx context.Context, cfg *authconfig.AuthConfig) error
 		Delete(ctx context.Context, id uuid.UUID) error
 	}
@@ -69,8 +70,12 @@ func (r *repository) Create(ctx context.Context, cfg *authconfig.AuthConfig) err
 	return r.db.WithContext(ctx).Create(cfg).Error
 }
 
+func (r *repository) Upsert(ctx context.Context, cfg *authconfig.AuthConfig) error {
+	return r.db.WithContext(ctx).Save(cfg).Error
+}
+
 func (r *repository) Update(ctx context.Context, cfg *authconfig.AuthConfig) error {
-	return r.db.WithContext(ctx).Model(cfg).Updates(cfg).Error
+	return r.db.WithContext(ctx).Model(cfg).Where("id = ?", cfg.ID).Updates(cfg).Error
 }
 
 func (r *repository) Delete(ctx context.Context, id uuid.UUID) error {

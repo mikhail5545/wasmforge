@@ -18,14 +18,21 @@
 import React from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import {
-  ArrowLeft,
+  ArrowLeft, ChevronDownIcon, ChevronLeft, ChevronRight,
   CircleAlert,
   CircleCheck,
   KeyRound,
-  ShieldCheck,
+  ShieldCheck, ToyBrick,
   Trash2,
 } from "lucide-react"
-
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@workspace/ui/components/table"
 import { AlertModal } from "@/components/dialog/alert-modal"
 import { SidebarLayout } from "@/components/navigation/sidebar-layout"
 import { useData } from "@/hooks/use-data"
@@ -72,6 +79,10 @@ import { Separator } from "@workspace/ui/components/separator"
 import { Spinner } from "@workspace/ui/components/spinner"
 import { Switch } from "@workspace/ui/components/switch"
 import { Textarea } from "@workspace/ui/components/textarea"
+import { usePaginatedData } from "@/hooks/use-paginated-data"
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@workspace/ui/components/empty"
+import { DropdownMenu, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuTrigger } from "@workspace/ui/components/dropdown-menu"
+import { DropdownMenuContent } from "@radix-ui/react-dropdown-menu"
 
 type AuthForm = {
   validate_tokens: boolean
@@ -201,15 +212,23 @@ function RouteAuthPageContent() {
   const params = useSearchParams()
   const path = params.get("path") ?? ""
   const routeData = useData<Route>(
-    path ? `http://localhost:8080/api/routes/${encodeURIComponent(path)}` : null,
+    path
+      ? `http://localhost:8080/api/routes/${encodeURIComponent(path)}`
+      : null,
     "route"
   )
-  const keysData = useData<AuthKey[]>(
-    routeData.data
-      ? `http://localhost:8080/api/auth/keys?r_ids=${routeData.data.id}&ps=50`
-      : null,
-    "keys"
+  const [orderField, setOrderField] = React.useState('created_at')
+  const [orderDirection, setOrderDirection] = React.useState("asc")
+  const [perPage, setPerPage] = React.useState('10')
+  const keysData = usePaginatedData<AuthKey>(
+    `http://localhost:8080/api/auth/keys?r_ids=${routeData.data?.id ?? null}&is_active=true`,
+    "keys",
+    parseInt(perPage),
+    orderField,
+    orderDirection as 'asc' | 'desc',
+    { preload: true }
   )
+  
   const { loading, error, mutate, reset } = useMutation()
   const [authConfig, setAuthConfig] = React.useState<AuthConfig | null>(null)
   const [configLoading, setConfigLoading] = React.useState(false)
@@ -355,7 +374,7 @@ function RouteAuthPageContent() {
       key_id: keyID,
       private_key_pem: privateKeyPEM,
       public_key_pem: publicKeyPEM,
-      metadata: primaryKey ? { primary: true } : undefined,
+      metadata: primaryKey ? JSON.stringify({ primary: true }) : undefined,
     })
     if (!result.success) {
       resolveError(result.error)
@@ -441,7 +460,11 @@ function RouteAuthPageContent() {
         ) : (
           <>
             <Card>
-              <CardHeader className={"flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"}>
+              <CardHeader
+                className={
+                  "flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+                }
+              >
                 <div>
                   <CardTitle className={"flex items-center gap-2"}>
                     <ShieldCheck size={18} />
@@ -492,7 +515,9 @@ function RouteAuthPageContent() {
                       <Select
                         value={form.key_backend_type}
                         onValueChange={(value) =>
-                          updateForm({ key_backend_type: value as KeyBackendType })
+                          updateForm({
+                            key_backend_type: value as KeyBackendType,
+                          })
                         }
                       >
                         <SelectTrigger className={"w-full"}>
@@ -575,7 +600,9 @@ function RouteAuthPageContent() {
                           updateForm({ required_claims: event.target.value })
                         }
                       />
-                      <FieldDescription>Comma-separated claim names.</FieldDescription>
+                      <FieldDescription>
+                        Comma-separated claim names.
+                      </FieldDescription>
                     </Field>
                     <Field>
                       <FieldLabel>Allowed algorithms</FieldLabel>
@@ -600,7 +627,9 @@ function RouteAuthPageContent() {
                           updateForm({ claims_mapping: event.target.value })
                         }
                       />
-                      <FieldError>{validationErrors?.claims_mapping}</FieldError>
+                      <FieldError>
+                        {validationErrors?.claims_mapping}
+                      </FieldError>
                     </Field>
                     <Field>
                       <FieldLabel>Metadata JSON</FieldLabel>
@@ -739,7 +768,8 @@ function RouteAuthPageContent() {
                         value={generatedKey.private_key_pem}
                       />
                       <FieldDescription>
-                        The API returns generated private key material only once.
+                        The API returns generated private key material only
+                        once.
                       </FieldDescription>
                     </Field>
                   )}
@@ -766,14 +796,18 @@ function RouteAuthPageContent() {
                     keysData.data?.map((key) => (
                       <div
                         key={key.id}
-                        className={"flex items-center justify-between rounded-lg border p-3"}
+                        className={
+                          "flex items-center justify-between rounded-lg border p-3"
+                        }
                       >
                         <div className={"flex flex-col gap-1"}>
                           <div className={"flex items-center gap-2"}>
                             <span className={"font-mono text-sm"}>
                               {key.key_id}
                             </span>
-                            <Badge variant={key.is_active ? "default" : "outline"}>
+                            <Badge
+                              variant={key.is_active ? "default" : "outline"}
+                            >
                               {key.is_active ? "active" : "inactive"}
                             </Badge>
                             {key.metadata?.primary === true && (
@@ -798,6 +832,74 @@ function RouteAuthPageContent() {
                       </div>
                     ))
                   )}
+                  <div className={"mt-5 flex flex-row justify-end gap-5"}>
+                    <div
+                      className={
+                        "flex flex-row items-center justify-center gap-2"
+                      }
+                    >
+                      <p className={"text-sm font-semibold"}>Rows per page</p>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            disabled={keysData.loading}
+                          >
+                            {perPage}
+                            <ChevronDownIcon />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                          <DropdownMenuRadioGroup
+                            value={perPage}
+                            onValueChange={setPerPage}
+                          >
+                            <DropdownMenuRadioItem value={"5"}>
+                              5
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value={"10"}>
+                              10
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value={"20"}>
+                              20
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value={"30"}>
+                              30
+                            </DropdownMenuRadioItem>
+                            <DropdownMenuRadioItem value={"40"}>
+                              40
+                            </DropdownMenuRadioItem>
+                          </DropdownMenuRadioGroup>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                    <div
+                      className={
+                        "flex flex-row items-center justify-center gap-2"
+                      }
+                    >
+                      <Button
+                        variant={"outline"}
+                        size={"icon"}
+                        disabled={
+                          keysData.loading || keysData.previousPageToken === ""
+                        }
+                        onClick={() => keysData.previousPage()}
+                      >
+                        <ChevronLeft />
+                      </Button>
+                      <Button
+                        variant={"outline"}
+                        size={"icon"}
+                        disabled={
+                          keysData.loading || keysData.nextPageToken === ""
+                        }
+                        onClick={() => keysData.nextPage()}
+                      >
+                        <ChevronRight />
+                      </Button>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -825,7 +927,9 @@ function RouteAuthPageContent() {
                   </Button>
                 </div>
                 {validationResult && (
-                  <pre className={"overflow-auto rounded-lg bg-muted p-4 text-xs"}>
+                  <pre
+                    className={"overflow-auto rounded-lg bg-muted p-4 text-xs"}
+                  >
                     {JSON.stringify(validationResult, null, 2)}
                   </pre>
                 )}

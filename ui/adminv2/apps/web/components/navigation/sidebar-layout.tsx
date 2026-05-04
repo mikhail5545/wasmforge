@@ -32,11 +32,15 @@ export const SidebarLayout = ({
   page_title,
   children,
 }: {
-  page_title?: string
+  page_title: string
   children: React.ReactNode
 }) => {
   const { resolvedTheme, setTheme } = useTheme()
 
+  React.useEffect(() => {
+    document.title = `${page_title} | WasmForge Dashboard`
+  }, [page_title])
+  
   return (
     <SidebarProvider>
       <AppSidebar />

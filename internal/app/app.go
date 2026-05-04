@@ -108,6 +108,7 @@ func (a *App) Init(ctx context.Context) error {
 	a.adminServer = admin.New(&admin.Dependencies{
 		PluginSvc:      a.services.PluginSvc,
 		RoutePluginSvc: a.services.RoutePluginSvc,
+		RouteMethodSvc: a.services.RouteMethodSvc,
 		RouteSvc:       a.services.RouteSvc,
 		AuthConfigSvc:  a.services.AuthConfigSvc,
 		AuthKeySvc:     a.services.AuthKeySvc,

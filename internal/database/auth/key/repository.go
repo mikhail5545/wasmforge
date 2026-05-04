@@ -33,11 +33,10 @@ type (
 		UnpaginatedList(ctx context.Context, opt ...FilterOption) ([]*materialmodel.Material, error)
 		Create(ctx context.Context, material *materialmodel.Material) error
 		Update(ctx context.Context, material *materialmodel.Material) error
+		Updates(ctx context.Context, id uuid.UUID, updates map[string]any) error
 		Delete(ctx context.Context, id string) error
 		GetByID(ctx context.Context, id string) (*materialmodel.Material, error)
 		GetByKeyID(ctx context.Context, keyID string) (*materialmodel.Material, error)
-		ListByAuthConfig(ctx context.Context, authConfigID interface{}) ([]*materialmodel.Material, error)
-		ListActiveByAuthConfig(ctx context.Context, authConfigID interface{}) ([]*materialmodel.Material, error)
 	}
 
 	repository struct {
@@ -77,6 +76,10 @@ func (r *repository) Update(ctx context.Context, material *materialmodel.Materia
 	return r.db.WithContext(ctx).Model(material).Updates(material).Error
 }
 
+func (r *repository) Updates(ctx context.Context, id uuid.UUID, updates map[string]any) error {
+	return r.db.WithContext(ctx).Model(&materialmodel.Material{}).Where("id = ?", id).Updates(updates).Error
+}
+
 func (r *repository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&materialmodel.Material{}, "key_id = ?", id).Error
 }
@@ -87,38 +90,4 @@ func (r *repository) GetByID(ctx context.Context, id string) (*materialmodel.Mat
 
 func (r *repository) GetByKeyID(ctx context.Context, keyID string) (*materialmodel.Material, error) {
 	return r.get(ctx, newFilter(WithKeyIDs(keyID)))
-}
-
-func (r *repository) ListByAuthConfig(ctx context.Context, authConfigID interface{}) ([]*materialmodel.Material, error) {
-	id, ok := authConfigID.(uuid.UUID)
-	if !ok {
-		// Try to parse as string if it's a UUID string
-		if idStr, ok := authConfigID.(string); ok {
-			var err error
-			id, err = uuid.Parse(idStr)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, gorm.ErrInvalidData
-		}
-	}
-	return r.unpaginatedList(ctx, newFilter(WithAuthConfigIDs(id)))
-}
-
-func (r *repository) ListActiveByAuthConfig(ctx context.Context, authConfigID interface{}) ([]*materialmodel.Material, error) {
-	id, ok := authConfigID.(uuid.UUID)
-	if !ok {
-		// Try to parse as string if it's a UUID string
-		if idStr, ok := authConfigID.(string); ok {
-			var err error
-			id, err = uuid.Parse(idStr)
-			if err != nil {
-				return nil, err
-			}
-		} else {
-			return nil, gorm.ErrInvalidData
-		}
-	}
-	return r.unpaginatedList(ctx, newFilter(WithAuthConfigIDs(id), WithIsActive(true)))
 }

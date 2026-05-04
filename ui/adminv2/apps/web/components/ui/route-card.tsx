@@ -83,7 +83,7 @@ const RouteCard = ({
                 <Ellipsis />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent className={"min-w-42"}>
               <DropdownMenuGroup>
                 <DropdownMenuItem asChild>
                   <a href={`/routes/edit?path=${route.path}`}>

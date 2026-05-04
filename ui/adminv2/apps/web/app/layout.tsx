@@ -4,6 +4,7 @@ import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils";
 import {TooltipProvider} from "@workspace/ui/components/tooltip"
+import React from "react"
 
 const geist = Geist({subsets:['latin'],variable:'--font-sans'})
 

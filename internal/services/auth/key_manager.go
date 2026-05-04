@@ -218,7 +218,7 @@ func (km *keyManager) GetPrivateKeyPEM(ctx context.Context, keyID string) (strin
 func (km *keyManager) ListActiveKeys(ctx context.Context, authConfigID uuid.UUID) ([]*materialmodel.Material, error) {
 	km.logger.Debug("listing active keys", zap.String("auth_config_id", authConfigID.String()))
 
-	keys, err := km.keyMaterialRepo.ListActiveByAuthConfig(ctx, authConfigID)
+	keys, err := km.keyMaterialRepo.UnpaginatedList(ctx, materialrepo.WithAuthConfigIDs(authConfigID), materialrepo.WithIsActive(true))
 	if err != nil {
 		return nil, fmt.Errorf("failed to list active keys: %w", err)
 	}

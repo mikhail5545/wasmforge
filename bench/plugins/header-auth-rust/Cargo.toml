@@ -6,6 +6,9 @@ edition = "2021"
 [lib]
 crate-type = ["cdylib"]
 
+[dependencies]
+wasmforge-sdk = { path = "../../../sdk/rust" }
+
 [profile.release]
 panic = "abort"
 lto = true

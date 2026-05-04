@@ -33,8 +33,10 @@ func (r *repository) get(ctx context.Context, filter *filter) (*authconfig.AuthC
 	db = ApplyFilters(db, filter)
 
 	var cfg authconfig.AuthConfig
-	err := db.First(&cfg).Error
-	return &cfg, err
+	if err := db.First(&cfg).Error; err != nil {
+		return nil, err
+	}
+	return &cfg, nil
 }
 
 func (r *repository) list(ctx context.Context, filter *filter) ([]*authconfig.AuthConfig, string, error) {
@@ -83,6 +85,8 @@ func (r *repository) unpaginatedList(ctx context.Context, filter *filter) ([]*au
 	db = ApplyIdentityFilters(db, filter)
 	db = ApplyFilters(db, filter)
 
-	err := db.Find(&cfgs).Error
-	return cfgs, err
+	if err := db.Find(&cfgs).Error; err != nil {
+		return nil, err
+	}
+	return cfgs, nil
 }

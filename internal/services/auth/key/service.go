@@ -227,8 +227,9 @@ func (s *Service) Delete(ctx context.Context, req *materialmodel.DeleteRequest) 
 		}
 		return fmt.Errorf("failed to get key: %w", err)
 	}
-	now := time.Now()
-	key.IsActive = false
-	key.ExpiresAt = &now
-	return s.keyRepo.Update(ctx, key)
+	updates := map[string]any{
+		"is_active":  false,
+		"expires_at": time.Now(),
+	}
+	return s.keyRepo.Updates(ctx, key.ID, updates)
 }

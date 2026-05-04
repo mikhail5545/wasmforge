@@ -17,6 +17,7 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -48,14 +49,14 @@ func openLogFile(logCfg LogConfig) (*os.File, error) {
 	var fileName string
 	if logCfg.UseTimestamp {
 		now := time.Now()
-		fileName = fmt.Sprintf("%02d-%s-%d-%02d-%02d-app.log", now.Day(), now.Month().String(), now.Year(), now.Hour(), now.Minute())
+		fileName = now.Format("2006-01-02-15-04") + "-app.log"
 	} else {
 		fileName = "app.log"
 	}
 
 	// Ensure directory exists
 	if err := os.MkdirAll(logCfg.Directory, 0o755); err != nil {
-		if os.IsPermission(err) {
+		if errors.Is(err, os.ErrPermission) {
 			// Try fallback directory if permission denied
 			file, err := fallbackLogDir(fileName)
 			if err != nil {
@@ -75,34 +76,59 @@ func openLogFile(logCfg LogConfig) (*os.File, error) {
 	return file, nil
 }
 
-// newLogger creates a new zap.Logger based on the provided LogConfig.
-// Make sure to call the returned cleanup function to close file handles to prevent potential recourse leak.
-func newLogger(logCfg LogConfig) (*zap.Logger, func(), error) {
+func newFileCore(logCfg LogConfig) (zapcore.Core, *os.File, error) {
+	if !logCfg.FileLogs {
+		return nil, nil, nil
+	}
+
 	f, err := openLogFile(logCfg)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	// writers
-	consoleWS := zapcore.Lock(os.Stdout)
+	fileEnc := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
 	fileWS := zapcore.AddSync(f)
+	return zapcore.NewCore(fileEnc, fileWS, normalizeLogLevel(logCfg.FileLevel)), f, nil
+}
 
-	// encoders
+func newConsoleCore(logCfg LogConfig) (zapcore.Core, error) {
+	consoleWS := zapcore.Lock(os.Stdout)
+
 	consoleEncCfg := zap.NewDevelopmentEncoderConfig()
 	consoleEncCfg.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	consoleEnc := zapcore.NewConsoleEncoder(consoleEncCfg)
 
-	fileEnc := zapcore.NewJSONEncoder(zap.NewProductionEncoderConfig())
+	return zapcore.NewCore(consoleEnc, consoleWS, normalizeLogLevel(logCfg.ConsoleLevel)), nil
+}
 
-	core := zapcore.NewTee(
-		zapcore.NewCore(consoleEnc, consoleWS, normalizeLogLevel(logCfg.ConsoleLevel)),
-		zapcore.NewCore(fileEnc, fileWS, normalizeLogLevel(logCfg.ConsoleLevel)),
-	)
+// newLogger creates a new zap.Logger based on the provided LogConfig.
+// Make sure to call the returned cleanup function to close file handles to prevent potential recourse leak.
+func newLogger(logCfg LogConfig) (*zap.Logger, func(), error) {
+	fileCore, f, err := newFileCore(logCfg)
+	if err != nil {
+		return nil, nil, err
+	}
+	consoleCore, err := newConsoleCore(logCfg)
+	if err != nil {
+		if f != nil {
+			_ = f.Close()
+		}
+		return nil, nil, err
+	}
+
+	var core zapcore.Core
+	if fileCore != nil {
+		core = zapcore.NewTee(fileCore, consoleCore)
+	} else {
+		core = consoleCore
+	}
 
 	logger := zap.New(core, zap.AddCaller())
 	cleanup := func() {
 		_ = logger.Sync()
-		_ = f.Close()
+		if f != nil {
+			_ = f.Close()
+		}
 	}
 	return logger, cleanup, nil
 }

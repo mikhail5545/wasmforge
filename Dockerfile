@@ -1,25 +1,33 @@
-FROM ubuntu:latest
-LABEL authors="mikhai5545"
-
-ENTRYPOINT ["top", "-b"]
-FROM node:18-alpine AS ui-builder
+FROM node:20-alpine AS ui-builder
+RUN apk add --no-cache libc6-compat
 WORKDIR /app
-COPY ui/adminv2/package*.json ./
-COPY ui/adminv2/ ./
-RUN npm install
-RUN npm run build
 
-FROM golang:1.25-alpine AS go-builder
+COPY ui/adminv2 .
+
+RUN npm install
+
+WORKDIR /app/apps/web
+
+RUN npx next build
+
+FROM golang:1.26.2-alpine AS go-builder
+RUN apk add --no-cache build-base
 WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 COPY --from=ui-builder /app/apps/web/out ./pkg/ui/out
-RUN go build -o gateway cmd/gateway/main.go
 
-FROM alpine:latest
-WORKDIR /root/
-COPY --from=go-builder /app/gateway ./
+ENV CGO_ENABLED=1
+RUN go build -o wasmforge cmd/gateway/main.go
+
+FROM alpine:3.22.4 AS runner
+WORKDIR /root
+
+COPY --from=go-builder /app/wasmforge ./
 EXPOSE 8080
-EXPOSE 9090
-CMD ["./gateway"]
+# Defualt port of the proxy server
+EXPOSE 9000
+ENTRYPOINT ["./wasmforge"]
+
+USER nobody

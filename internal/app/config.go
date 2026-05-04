@@ -21,6 +21,7 @@ import "os"
 type (
 	LogConfig struct {
 		Directory    string
+		FileLogs     bool
 		UseTimestamp bool
 		FileLevel    string
 		ConsoleLevel string

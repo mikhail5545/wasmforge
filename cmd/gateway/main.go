@@ -19,6 +19,7 @@ package main
 import (
 	"context"
 	"log"
+	"os"
 
 	"github.com/mikhail5545/wasmforge/internal/app"
 	"github.com/spf13/pflag"
@@ -56,9 +57,12 @@ func parseArgs() *app.Config {
 		},
 	}
 
+	help := pflag.BoolP("help", "h", false, "Show this help message")
+
 	pflag.Int64VarP(&cfg.AdminServerConfig.Port, "admin-port", "a", 8080, "Port for the admin server")
 	pflag.StringVarP(&cfg.UploadsConfig.PluginsDirectory, "plugins-uploads-dir", "p", "./uploads", "Directory for uploaded WASM modules")
 	pflag.StringVarP(&cfg.UploadsConfig.CertsDirectory, "certs-uploads-dir", "c", "./certs", "Directory for uploaded TLS certificates")
+	pflag.BoolVar(&cfg.LogConfig.FileLogs, "log-files", true, "Enable logging to files")
 	pflag.StringVarP(&cfg.LogConfig.Directory, "logs-dir", "l", "./logs", "Directory for log files")
 	pflag.BoolVarP(&cfg.LogConfig.UseTimestamp, "use-timestamps", "t", true, "Use timestamps in logs filenames")
 	pflag.StringVarP(&cfg.LogConfig.FileLevel, "file-log-level", "f", "info", "Case-insensitive log level for file output (debug, info, warn, error)")
@@ -71,6 +75,11 @@ func parseArgs() *app.Config {
 	pflag.StringVar(&cfg.AuthEncryption.AWSKMSRegion, "auth-encryption-aws-kms-region", "", "AWS region for the auth encryption KMS key")
 	pflag.StringVar(&cfg.AuthEncryption.AWSKMSKeyID, "auth-encryption-aws-kms-key-id", "", "AWS KMS key ID or ARN for auth encryption")
 	pflag.Parse()
+
+	if *help {
+		pflag.PrintDefaults()
+		os.Exit(0)
+	}
 
 	return cfg
 }

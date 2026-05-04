@@ -18,6 +18,7 @@ package config
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	configrepo "github.com/mikhail5545/wasmforge/internal/database/proxy/config"
@@ -44,7 +45,7 @@ func New(server *server.Server, configRepo configrepo.Repository, logger *zap.Lo
 
 func (s *Service) Init(ctx context.Context) error {
 	_, err := s.configRepo.Get(ctx)
-	if err != nil && err != gorm.ErrRecordNotFound {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		s.logger.Error("failed to get proxy config during initialization", zap.Error(err))
 		return fmt.Errorf("failed to get proxy config during initialization: %w", err)
 	}

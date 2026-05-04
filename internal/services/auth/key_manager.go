@@ -41,6 +41,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -destination=../../mocks/services/auth/key_manager.go -package=auth . KeyManager
+
 func defaultHTTPClient() *http.Client {
 	return &http.Client{Timeout: 10 * time.Second}
 }
@@ -89,7 +91,7 @@ func NewKeyManager(
 func (km *keyManager) GetPublicKey(ctx context.Context, keyID string) (*rsa.PublicKey, error) {
 	km.logger.Debug("getting public key", zap.String("key_id", keyID))
 
-	keyMat, err := km.keyMaterialRepo.GetByKeyID(ctx, keyID)
+	keyMat, err := km.keyMaterialRepo.Get(ctx, materialrepo.WithKeyIDs(keyID))
 	if err != nil {
 		return nil, NewFetchFailedError(keyID, err)
 	}
@@ -125,7 +127,7 @@ func (km *keyManager) GetPublicKey(ctx context.Context, keyID string) (*rsa.Publ
 func (km *keyManager) GetPrivateKey(ctx context.Context, keyID string) (*rsa.PrivateKey, error) {
 	km.logger.Debug("getting private key", zap.String("key_id", keyID))
 
-	keyMat, err := km.keyMaterialRepo.GetByKeyID(ctx, keyID)
+	keyMat, err := km.keyMaterialRepo.Get(ctx, materialrepo.WithKeyIDs(keyID))
 	if err != nil {
 		return nil, NewFetchFailedError(keyID, err)
 	}
@@ -153,7 +155,7 @@ func (km *keyManager) GetPrivateKey(ctx context.Context, keyID string) (*rsa.Pri
 func (km *keyManager) GetPublicKeyPEM(ctx context.Context, keyID string) (string, error) {
 	km.logger.Debug("getting public key PEM", zap.String("key_id", keyID))
 
-	keyMat, err := km.keyMaterialRepo.GetByKeyID(ctx, keyID)
+	keyMat, err := km.keyMaterialRepo.Get(ctx, materialrepo.WithKeyIDs(keyID))
 	if err != nil {
 		return "", NewFetchFailedError(keyID, err)
 	}
@@ -189,7 +191,7 @@ func (km *keyManager) GetPublicKeyPEM(ctx context.Context, keyID string) (string
 func (km *keyManager) GetPrivateKeyPEM(ctx context.Context, keyID string) (string, error) {
 	km.logger.Debug("getting private key PEM", zap.String("key_id", keyID))
 
-	keyMat, err := km.keyMaterialRepo.GetByKeyID(ctx, keyID)
+	keyMat, err := km.keyMaterialRepo.Get(ctx, materialrepo.WithKeyIDs(keyID))
 	if err != nil {
 		return "", NewFetchFailedError(keyID, err)
 	}

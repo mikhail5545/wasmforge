@@ -28,7 +28,8 @@ import (
 	"encoding/pem"
 
 	"github.com/google/uuid"
-	authmocks "github.com/mikhail5545/wasmforge/internal/database/auth/mocks"
+	configmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/config"
+	materialmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/key"
 	keymodel "github.com/mikhail5545/wasmforge/internal/models/auth/key"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -40,8 +41,8 @@ func TestGetPublicKeyFromDatabase(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, _, pubPEM := testGenerateRSAKeyPairPEM(t)
@@ -55,7 +56,7 @@ func TestGetPublicKeyFromDatabase(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -69,8 +70,8 @@ func TestGetPublicKeyFromPrivateKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privPEM, _ := testGenerateRSAKeyPairPEM(t)
@@ -84,7 +85,7 @@ func TestGetPublicKeyFromPrivateKey(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -98,8 +99,8 @@ func TestGetPrivateKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privPEM, _ := testGenerateRSAKeyPairPEM(t)
@@ -113,7 +114,7 @@ func TestGetPrivateKey(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -127,8 +128,8 @@ func TestGetPublicKeyPEM(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, _, pubPEM := testGenerateRSAKeyPairPEM(t)
@@ -142,7 +143,7 @@ func TestGetPublicKeyPEM(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -156,8 +157,8 @@ func TestGetPrivateKeyPEM(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privPEM, _ := testGenerateRSAKeyPairPEM(t)
@@ -171,7 +172,7 @@ func TestGetPrivateKeyPEM(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -185,14 +186,14 @@ func TestKeyNotFound(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	keyID := "nonexistent-key"
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(nil, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -208,8 +209,8 @@ func TestKeyExpired(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, _, pubPEM := testGenerateRSAKeyPairPEM(t)
@@ -224,7 +225,7 @@ func TestKeyExpired(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -240,8 +241,8 @@ func TestInvalidPEMFormat(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	keyID := "test-key"
@@ -255,7 +256,7 @@ func TestInvalidPEMFormat(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -271,8 +272,8 @@ func TestListActiveKeys(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	authConfigID := uuid.New()
@@ -295,7 +296,7 @@ func TestListActiveKeys(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return(keys, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -309,8 +310,8 @@ func TestListActiveKeysFiltersExpired(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	authConfigID := uuid.New()
@@ -335,7 +336,7 @@ func TestListActiveKeysFiltersExpired(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return(keys, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -350,8 +351,8 @@ func TestGetPublicKeyPEMFromPrivateKey(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privPEM, _ := testGenerateRSAKeyPairPEM(t)
@@ -365,7 +366,7 @@ func TestGetPublicKeyPEMFromPrivateKey(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -380,8 +381,8 @@ func TestGetPrivateKeyWithoutPrivateKeyPEM(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, _, pubPEM := testGenerateRSAKeyPairPEM(t)
@@ -395,7 +396,7 @@ func TestGetPrivateKeyWithoutPrivateKeyPEM(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -411,8 +412,8 @@ func TestGetPublicKeyWithoutData(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	keyID := "test-key"
@@ -424,7 +425,7 @@ func TestGetPublicKeyWithoutData(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)
@@ -440,8 +441,8 @@ func TestParsePrivateKeyPKCS8(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	privKey, err := rsa.GenerateKey(rand.Reader, 2048)
@@ -465,7 +466,7 @@ func TestParsePrivateKeyPKCS8(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), keyID).
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMat, nil)
 
 	km := NewKeyManager(keyRepo, configRepo, nil, logger)

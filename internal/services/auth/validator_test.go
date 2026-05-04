@@ -31,7 +31,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 
-	authmocks "github.com/mikhail5545/wasmforge/internal/database/auth/mocks"
+	materialmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/key"
 )
 
 func TestValidator_ValidateToken_Valid(t *testing.T) {
@@ -44,7 +44,7 @@ func TestValidator_ValidateToken_Valid(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -81,7 +81,7 @@ func TestValidator_ValidateToken_Valid(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "test-key").
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMaterial, nil).
 		Times(1)
 
@@ -102,7 +102,7 @@ func TestValidator_ValidateToken_ExpiredToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -139,7 +139,7 @@ func TestValidator_ValidateToken_ExpiredToken(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "test-key").
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMaterial, nil).
 		Times(1)
 
@@ -156,7 +156,7 @@ func TestValidator_ValidateToken_MalformedToken(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfig := &configmodel.AuthConfig{
@@ -177,7 +177,7 @@ func TestValidator_ValidateToken_InvalidAudience(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -214,7 +214,7 @@ func TestValidator_ValidateToken_InvalidAudience(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "test-key").
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMaterial, nil).
 		Times(1)
 
@@ -233,7 +233,7 @@ func TestValidator_ValidateToken_InvalidIssuer(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -270,7 +270,7 @@ func TestValidator_ValidateToken_InvalidIssuer(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "test-key").
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMaterial, nil).
 		Times(1)
 
@@ -289,7 +289,7 @@ func TestValidator_ValidateToken_MissingRequiredClaims(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	validator := NewTokenValidator(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -328,7 +328,7 @@ func TestValidator_ValidateToken_MissingRequiredClaims(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "test-key").
+		Get(gomock.Any(), gomock.Any()).
 		Return(keyMaterial, nil).
 		Times(1)
 

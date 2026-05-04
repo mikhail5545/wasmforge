@@ -27,8 +27,9 @@ import (
 	"github.com/mikhail5545/wasmforge/internal/database"
 	authconfigrepo "github.com/mikhail5545/wasmforge/internal/database/auth/config"
 	authkeyrepo "github.com/mikhail5545/wasmforge/internal/database/auth/key"
-	authmocks "github.com/mikhail5545/wasmforge/internal/database/auth/mocks"
 	routerepo "github.com/mikhail5545/wasmforge/internal/database/route"
+	configmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/config"
+	materialmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/key"
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/auth/config"
 	keymodel "github.com/mikhail5545/wasmforge/internal/models/auth/key"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
@@ -87,7 +88,7 @@ func TestKeyServiceCreateEncryptsPrivateKeyBeforePersisting(t *testing.T) {
 
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	created, err := keyRepo.GetByKeyID(context.Background(), "kid-create")
+	created, err := keyRepo.Get(context.Background(), authkeyrepo.WithKeyIDs("kid-create"))
 	require.NoError(t, err)
 	require.NotNil(t, created)
 	assert.Empty(t, created.PrivateKeyPEM)
@@ -105,8 +106,8 @@ func TestKeyManagerDecryptsEncryptedPrivateKeyPEM(t *testing.T) {
 
 	provider := testLocalEncryptionProvider(t)
 	registry := encryption.NewKeyEncryptionRegistry(provider)
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privatePEM, _ := testGenerateRSAKeyPairPEM(t)
@@ -114,7 +115,7 @@ func TestKeyManagerDecryptsEncryptedPrivateKeyPEM(t *testing.T) {
 	require.NoError(t, err)
 
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "kid-encrypted").
+		Get(gomock.Any(), gomock.Any()).
 		Return(&keymodel.Material{
 			KeyID:                      "kid-encrypted",
 			IsActive:                   true,
@@ -137,13 +138,13 @@ func TestKeyManagerSupportsLegacyPlaintextPrivateKeyFallback(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
-	configRepo := authmocks.NewMockConfigRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
+	configRepo := configmock.NewMockRepository(ctrl)
 	logger := zap.NewNop()
 
 	_, privatePEM, _ := testGenerateRSAKeyPairPEM(t)
 	keyRepo.EXPECT().
-		GetByKeyID(gomock.Any(), "kid-legacy").
+		Get(gomock.Any(), gomock.Any()).
 		Return(&keymodel.Material{
 			KeyID:         "kid-legacy",
 			IsActive:      true,

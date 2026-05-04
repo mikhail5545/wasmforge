@@ -30,6 +30,8 @@ import (
 	"go.uber.org/zap"
 )
 
+//go:generate mockgen -destination=../../mocks/services/auth/issuer.go -package=auth . TokenIssuer
+
 type TokenIssuer interface {
 	IssueToken(ctx context.Context, claims map[string]interface{}, config *configmodel.AuthConfig) (string, error)
 }

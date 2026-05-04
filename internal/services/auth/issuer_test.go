@@ -30,7 +30,7 @@ import (
 	"go.uber.org/mock/gomock"
 	"go.uber.org/zap"
 
-	authmocks "github.com/mikhail5545/wasmforge/internal/database/auth/mocks"
+	materialmock "github.com/mikhail5545/wasmforge/internal/mocks/database/auth/key"
 )
 
 func TestIssuer_IssueToken_Success(t *testing.T) {
@@ -41,7 +41,7 @@ func TestIssuer_IssueToken_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -64,7 +64,7 @@ func TestIssuer_IssueToken_Success(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return([]*keymodel.Material{keyMaterial}, nil).
 		Times(1)
 
@@ -96,7 +96,7 @@ func TestIssuer_IssueToken_WithCustomClaims(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -119,7 +119,7 @@ func TestIssuer_IssueToken_WithCustomClaims(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return([]*keymodel.Material{keyMaterial}, nil).
 		Times(1)
 
@@ -152,7 +152,7 @@ func TestIssuer_IssueToken_StandardClaimsOverride(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -175,7 +175,7 @@ func TestIssuer_IssueToken_StandardClaimsOverride(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return([]*keymodel.Material{keyMaterial}, nil).
 		Times(1)
 
@@ -207,7 +207,7 @@ func TestIssuer_IssueToken_WithClaimsMapping(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -235,7 +235,7 @@ func TestIssuer_IssueToken_WithClaimsMapping(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return([]*keymodel.Material{keyMaterial}, nil).
 		Times(1)
 
@@ -266,7 +266,7 @@ func TestIssuer_IssueToken_InvalidClaimsFormat(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfig := &configmodel.AuthConfig{
@@ -295,7 +295,7 @@ func TestIssuer_IssueToken_NilClaims(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	keyRepo := authmocks.NewMockKeyMaterialRepository(ctrl)
+	keyRepo := materialmock.NewMockRepository(ctrl)
 	issuer := NewTokenIssuer(keyRepo, nil, logger)
 
 	authConfigID := uuid.New()
@@ -318,7 +318,7 @@ func TestIssuer_IssueToken_NilClaims(t *testing.T) {
 	}
 
 	keyRepo.EXPECT().
-		ListActiveByAuthConfig(gomock.Any(), authConfigID).
+		UnpaginatedList(gomock.Any(), gomock.Any()).
 		Return([]*keymodel.Material{keyMaterial}, nil).
 		Times(1)
 

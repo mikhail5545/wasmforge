@@ -1,0 +1,93 @@
+name: Bug Report
+description: Create a report to help us improve
+title: "[BUG] - "
+labels: bug
+assignees: 
+  - mikhail5545
+body:
+  - type: markdown
+    attributes: 
+      value: |
+        Thanks for taking the time to report a bug! Please fill in the details below to help us understand the issue and find a solution.
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: A clear and concise description of what the bug is.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: To Reproduce
+      description: Steps to reproduce the behavior.
+      placeholder: |
+        1. Go to '...'
+        2. Click on '....'
+        3. Scroll down to '....'
+        4. See error
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: A clear and concise description of what you expected to happen.
+    validations:
+      required: true
+  - type: dropdown
+    id: auth-provider
+    attributes:
+      label: Authentication provider
+      description: Which authentication provider did you use?
+      options:
+        - Local master key
+        - 1Password
+        - AWS-KMS
+    validations:
+      required: true
+  - type: dropdown
+    id: key-backend
+    attributes:
+      label: Key backend
+      description: Which key backend did you use?
+      options:
+        - Env
+        - Database
+        - JWKS
+    validations:
+      required: true
+  - type: textarea
+    id: desktop
+    attributes:
+      label: Desktop / Environment Information
+      description: OS, Browser, and Version info.
+      placeholder: |
+        - OS: [e.g. iOS]
+        - Browser [e.g. chrome, safari]
+        - Version [e.g. 22]
+  - type: upload
+    id: screenshot
+    attributes:
+      label: Upload screenshot
+      description: If applicable, add screenshots to help explain your problem.
+  - type: markdown
+    attributes:
+      value: |
+        If applicable, provide logs to help explain your problem. You can either copy and paste the logs here or attach a file with the logs. 
+        Please make sure to remove any sensitive information from the logs before sharing.
+  - type: upload
+    id: log-file
+    attributes:
+      label: Upload log file
+      description: If you have a log file that contains relevant information about the bug, please upload it here.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Copy and paste your logs here.
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Add any other context about the problem here.

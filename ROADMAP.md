@@ -4,21 +4,20 @@ This roadmap is a living document and may change as the project evolves.
 
 ## Near term
 
-- [ ] Polish plugin lifecycle UX (upload, versioning, route binding visibility)
-- [ ] Improve observability (structured logs, clearer runtime events)
-- [ ] Expand API docs and usage examples
-- [ ] Strengthen error messages and validation consistency
+ - [ ] Chaos/fault-injection test suite
+ - [ ] OpenTelemetry-compatible metrics and tracing support
+ - [ ] Policy-as-code support for route and plugin configuration
+ - [ ] gRPC support for plugin communication and control plane interactions
 
-## Mid term
+## Midterm
 
-- [ ] Plugin marketplace-style management (search/filter/promote)
-- [ ] Better route policy composition UX
-- [ ] Backup/export/import for gateway config
-- [ ] More robust integration and performance test coverage
+- [ ] Deterministic plugin execution and state management for better reliability and observability
+- [ ] Plugin resource governance
+- [ ] Capability-based permissions for plugins
 
 ## Longer term
 
-- [ ] Multi-node / distributed control-plane story
+- [ ] Distributed data-plane nodes with Raft-based consensus for state synchronization
 - [ ] RBAC and multi-tenant controls
 - [ ] Release channels and safer rolling updates for plugin artifacts
 - [ ] First-class metrics dashboards and SLO-focused tooling

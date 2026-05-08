@@ -14,11 +14,12 @@
 /bin
 /bin/*.exe
 
+
 **/bin/
-**/artifacts/
 **/results/
 **/tmp/
 **/target/
+/bench/artifacts
 
 /docs
 /uploads

@@ -32,20 +32,22 @@ const (
 	CryptoMaterialKindCABundle    CryptoMaterialKind = "ca_bundle"
 )
 
+func (k CryptoMaterialKind) String() string {
+	return string(k)
+}
+
 type CryptoMaterial struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey" json:"id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	ProjectID       uuid.UUID          `gorm:"type:uuid" json:"project_id"`
-	Name            string             `gorm:"type:varchar(255)" json:"name"`
-	Kind            CryptoMaterialKind `gorm:"type:varchar(64);not null" json:"kind"`
-	ObjectRefBucket string             `gorm:"type:varchar(255);not null" json:"object_bucket"`
-	ObjectRefKey    string             `gorm:"type:varchar(512);not null;uniqueIndex" json:"object_key"`
+	AppID     uuid.UUID          `gorm:"type:uuid" json:"app_id"`
+	ProjectID uuid.UUID          `gorm:"type:uuid" json:"project_id"`
+	Name      string             `gorm:"type:varchar(255)" json:"name"`
+	Kind      CryptoMaterialKind `gorm:"type:varchar(64);not null" json:"kind"`
 
-	Encrypted            bool   `gorm:"default:false" json:"encrypted"`
-	HasPrivateMaterial   bool   `gorm:"default:false" json:"has_private_material"`
-	FingerprintSHA256Hex string `gorm:"type:varchar(128);not null" json:"fingerprint_sha256_hex"`
+	Encrypted          bool `gorm:"default:false" json:"encrypted"`
+	HasPrivateMaterial bool `gorm:"default:false" json:"has_private_material"`
 
 	SummaryJSON string `gorm:"type:jsonb;default:'{}'" json:"summary_json,omitempty"`
 }

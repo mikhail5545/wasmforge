@@ -36,6 +36,8 @@ type CryptoMaterialEntry struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
+	ObjectRefBucket      string                  `gorm:"type:varchar(255);not null" json:"object_bucket"`
+	ObjectRefKey         string                  `gorm:"type:varchar(512);not null;uniqueIndex" json:"object_key"`
 	MaterialID           uuid.UUID               `gorm:"type:uuid;not null" json:"material_id"`
 	EntryType            CryptoMaterialEntryType `gorm:"not null" json:"entry_type"`
 	Position             int                     `gorm:"not null;default:0;check:position_non_neg,position >= 0" json:"position"`
@@ -48,7 +50,18 @@ type CryptoMaterialEntry struct {
 	NotBefore            *time.Time              `gorm:"type:datetime;not null" json:"not_before,omitempty"` // Only for certificates
 	NotAfter             *time.Time              `gorm:"type:datetime;not null" json:"not_after,omitempty"`  // Only for certificates
 	IsCA                 bool                    `gorm:"not null" json:"is_ca"`                              // Only for certificates
-	MetadataJSON         string                  `gorm:"type:jsonb;default:'{}'" json:"metadata_json,omitempty"`
+	Checksum             string                  `gorm:"type:varchar(128)" json:"checksum"`
+	SizeBytes            int64                   `gorm:"default:0" json:"size_bytes"`
+
+	// Encryption (all null for non-private material)
+
+	WrappedDEK                 *string `gorm:"type:text" json:"-"`
+	EncryptionNonce            *string `gorm:"type:text" json:"-"`
+	EncryptionAlgorithm        *string `gorm:"type:varchar(64)" json:"-"`
+	EncryptionProvider         *string `gorm:"type:varchar(64)" json:"-"`
+	EncryptionProviderMetadata *string `gorm:"type:jsonb" json:"-"`
+
+	MetadataJSON map[string]any `gorm:"type:jsonb;default:'{}'" json:"metadata_json,omitempty"`
 }
 
 func (*CryptoMaterialEntry) TableName() string {

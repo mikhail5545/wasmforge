@@ -18,6 +18,7 @@ package entry
 
 import (
 	"context"
+	"fmt"
 
 	entrymodel "github.com/mikhail5545/wasmforge/internal/models/storage/crypto/entry"
 	"gorm.io/gorm"
@@ -30,7 +31,7 @@ type Repository interface {
 	List(ctx context.Context, opts ...FilterOption) ([]*entrymodel.CryptoMaterialEntry, string, error)
 	UnpaginatedList(ctx context.Context, opts ...FilterOption) ([]*entrymodel.CryptoMaterialEntry, error)
 	Update(ctx context.Context, updates map[string]any, opts ...FilterOption) (int64, error)
-	Create(ctx context.Context, entry *entrymodel.CryptoMaterialEntry) error
+	Create(ctx context.Context, entries ...*entrymodel.CryptoMaterialEntry) error
 	Delete(ctx context.Context, opts ...FilterOption) (int64, error)
 }
 
@@ -66,8 +67,11 @@ func (r *repository) Update(ctx context.Context, updates map[string]any, opts ..
 	return r.update(ctx, updates, newFilter(opts...))
 }
 
-func (r *repository) Create(ctx context.Context, entry *entrymodel.CryptoMaterialEntry) error {
-	return r.db.WithContext(ctx).Create(entry).Error
+func (r *repository) Create(ctx context.Context, entries ...*entrymodel.CryptoMaterialEntry) error {
+	if len(entries) == 0 {
+		return fmt.Errorf("at least one entry is required")
+	}
+	return r.db.WithContext(ctx).Create(entries).Error
 }
 
 func (r *repository) Delete(ctx context.Context, opts ...FilterOption) (int64, error) {

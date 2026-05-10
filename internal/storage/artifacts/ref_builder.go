@@ -63,7 +63,7 @@ func (b *RefBuilder) Build(projectID, objectID uuid.UUID, appID *uuid.UUID) core
 				"artifacts",
 				projectID.String(),
 				appID.String(),
-				objectID.String()+".wasm",
+				fmt.Sprintf("%s.wasm", objectID.String()),
 			),
 		}
 	}
@@ -74,7 +74,7 @@ func (b *RefBuilder) Build(projectID, objectID uuid.UUID, appID *uuid.UUID) core
 			"objects",
 			"artifacts",
 			projectID.String(),
-			objectID.String()+".wasm",
+			fmt.Sprintf("%s.wasm", objectID.String()),
 		),
 	}
 }

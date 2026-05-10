@@ -40,7 +40,7 @@ type (
 	UploadFromMultipartParams struct {
 		UploadName string
 		ProjectID  uuid.UUID
-		AppID      uuid.UUID
+		AppID      *uuid.UUID
 		Parts      []UploadFromMultipartPart
 	}
 
@@ -54,7 +54,7 @@ type (
 	UploadFromPathParams struct {
 		UploadName string
 		ProjectID  uuid.UUID
-		AppID      uuid.UUID
+		AppID      *uuid.UUID
 		Parts      []UploadFromPathPart
 	}
 
@@ -68,7 +68,7 @@ type (
 	UploadFromBytesParams struct {
 		UploadName string
 		ProjectID  uuid.UUID
-		AppID      uuid.UUID
+		AppID      *uuid.UUID
 		Parts      []UploadFromBytesPart
 	}
 
@@ -82,7 +82,7 @@ type (
 	UploadParams struct {
 		UploadName string
 		ProjectID  uuid.UUID
-		AppID      uuid.UUID
+		AppID      *uuid.UUID
 		Parts      []UploadPart
 	}
 
@@ -102,7 +102,7 @@ type (
 		ID                 uuid.UUID
 		Name               string
 		Kind               materialmodel.CryptoMaterialKind
-		AppID              uuid.UUID
+		AppID              *uuid.UUID
 		ProjectID          uuid.UUID
 		Entries            int
 		HasPrivateMaterial bool
@@ -412,7 +412,13 @@ func (m *manager) savePublicCertMaterial(
 			return err
 		}
 
-		savedRef = m.refBuilder.Build(params.ProjectID, params.AppID, entry.ID)
+		savedRef = m.refBuilder.Build(BuildParams{
+			ObjectID:  entry.ID,
+			ProjectID: params.ProjectID,
+			AppID:     params.AppID,
+			Encrypted: false,
+			Extension: ".crt",
+		})
 
 		if err := txMaterialRepo.Create(ctx, material); err != nil {
 			return fmt.Errorf("failed to save crypto material: %w", err)
@@ -474,7 +480,13 @@ func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationRes
 			return err
 		}
 		entries = append(entries, pkEntry)
-		savedRefs = append(savedRefs, m.refBuilder.Build(params.ProjectID, params.AppID, pkEntry.ID))
+		savedRefs = append(savedRefs, m.refBuilder.Build(BuildParams{
+			ObjectID:  pkEntry.ID,
+			ProjectID: params.ProjectID,
+			AppID:     params.AppID,
+			Encrypted: true,
+			Extension: ".key",
+		}))
 
 		// Then save the matching cert or public key (at position 1)
 		if len(result.CAPairs) == 1 {
@@ -484,7 +496,13 @@ func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationRes
 				return err
 			}
 			entries = append(entries, certEntry)
-			savedRefs = append(savedRefs, m.refBuilder.Build(params.ProjectID, params.AppID, certEntry.ID))
+			savedRefs = append(savedRefs, m.refBuilder.Build(BuildParams{
+				ObjectID:  certEntry.ID,
+				ProjectID: params.ProjectID,
+				AppID:     params.AppID,
+				Encrypted: true,
+				Extension: ".crt",
+			}))
 		} else if len(result.PublicKeys) == 1 {
 			pub := result.PublicKeys[0]
 			pubEntry, err := m.saveEntry(ctx, materialID, params, entrymodel.CryptoMaterialEntryTypePublicKey, 1, pub.ObjectRef, &pub, false)
@@ -492,7 +510,13 @@ func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationRes
 				return err
 			}
 			entries = append(entries, pubEntry)
-			savedRefs = append(savedRefs, m.refBuilder.Build(params.ProjectID, params.AppID, pubEntry.ID))
+			savedRefs = append(savedRefs, m.refBuilder.Build(BuildParams{
+				ObjectID:  pubEntry.ID,
+				ProjectID: params.ProjectID,
+				AppID:     params.AppID,
+				Encrypted: false,
+				Extension: ".key",
+			}))
 		}
 
 		if err := txMaterialRepo.Create(ctx, material); err != nil {
@@ -564,7 +588,13 @@ func (m *manager) saveBundleMaterial(ctx context.Context, result *ValidationResu
 				return err
 			}
 			entries = append(entries, certEntry)
-			savedRefs = append(savedRefs, m.refBuilder.Build(params.ProjectID, params.AppID, certEntry.ID))
+			savedRefs = append(savedRefs, m.refBuilder.Build(BuildParams{
+				ObjectID:  certEntry.ID,
+				ProjectID: params.ProjectID,
+				AppID:     params.AppID,
+				Encrypted: false,
+				Extension: ".crt",
+			}))
 		}
 
 		if err := txMaterialRepo.Create(ctx, material); err != nil {
@@ -623,7 +653,20 @@ func (m *manager) saveEntry(
 		}
 	}()
 
-	ref := m.refBuilder.Build(params.ProjectID, params.AppID, entryID)
+	var ext string
+	switch entryType {
+	case entrymodel.CryptoMaterialEntryTypeCertificate:
+		ext = ".crt"
+	case entrymodel.CryptoMaterialEntryTypePrivateKey, entrymodel.CryptoMaterialEntryTypePublicKey:
+		ext = ".key"
+	}
+	ref := m.refBuilder.Build(BuildParams{
+		ObjectID:  entryID,
+		ProjectID: params.ProjectID,
+		AppID:     params.AppID,
+		Encrypted: encrypt,
+		Extension: ext,
+	})
 
 	var objectInfo core.ObjectInfo
 	var envelope *encryption.Envelope

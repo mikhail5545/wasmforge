@@ -41,9 +41,9 @@ type CryptoMaterial struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	AppID     uuid.UUID          `gorm:"type:uuid" json:"app_id"`
-	ProjectID uuid.UUID          `gorm:"type:uuid" json:"project_id"`
-	Name      string             `gorm:"type:varchar(255)" json:"name"`
+	AppID     *uuid.UUID         `gorm:"type:uuid" json:"app_id"`
+	ProjectID uuid.UUID          `gorm:"type:uuid;not null" json:"project_id"`
+	Name      string             `gorm:"type:varchar(128)" json:"name"`
 	Kind      CryptoMaterialKind `gorm:"type:varchar(64);not null" json:"kind"`
 
 	Encrypted          bool `gorm:"default:false" json:"encrypted"`

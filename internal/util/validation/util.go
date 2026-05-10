@@ -26,13 +26,14 @@ import (
 	"github.com/google/uuid"
 )
 
-// pathRegexp matches strings that start with a forward slash and can contain any characters after it.
-var pathRegexp = regexp.MustCompile("^/.*$")
-
-// wasmFilenameRegexp matches strings that consist of a valid filename (letters, numbers, underscores, or hyphens) followed by the .wasm extension.
-var wasmFilenameRegexp = regexp.MustCompile(`^([a-zA-Z0-9_-]+)\.(wasm)$`)
-var pluginNameRegexp = regexp.MustCompile(`^[a-z0-9]+(?:_[&?a-z0-9]+)*$`)
-var semverRegexp = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`)
+var (
+	// pathRegexp matches strings that start with a forward slash and can contain any characters after it.
+	pathRegexp = regexp.MustCompile("^/.*$")
+	// wasmFilenameRegexp matches strings that consist of a valid filename (letters, numbers, underscores, or hyphens) followed by the .wasm extension.
+	wasmFilenameRegexp = regexp.MustCompile(`^([a-zA-Z0-9_-]+)\.(wasm)$`)
+	pluginNameRegexp   = regexp.MustCompile(`^[a-z0-9]+(?:_[&?a-z0-9]+)*$`)
+	semverRegexp       = regexp.MustCompile(`^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$`)
+)
 
 func composeRules(required bool, additional ...validation.Rule) []validation.Rule {
 	rules := additional

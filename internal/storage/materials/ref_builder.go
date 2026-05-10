@@ -24,6 +24,14 @@ import (
 	"github.com/mikhail5545/wasmforge/internal/storage/core"
 )
 
+type BuildParams struct {
+	ProjectID uuid.UUID
+	AppID     *uuid.UUID
+	ObjectID  uuid.UUID
+	Encrypted bool
+	Extension string
+}
+
 type RefBuilder struct {
 	dataRoot string
 }
@@ -53,17 +61,37 @@ func (b *RefBuilder) BuildTemp() (core.ObjectRef, error) {
 	}, nil
 }
 
-func (b *RefBuilder) Build(projectID, appID, objectID uuid.UUID) core.ObjectRef {
-	// TODO: remove .enc extension for non-encrypted files and preserve .crt, etc.
+func (b *RefBuilder) Build(params BuildParams) core.ObjectRef {
+	if params.Extension == "" {
+		params.Extension = ".pem"
+	}
+	var filename string
+	if params.Encrypted {
+		filename = fmt.Sprintf("%s.%s.enc", params.ObjectID.String(), params.Extension)
+	} else {
+		filename = fmt.Sprintf("%s.%s", params.ObjectID.String(), params.Extension)
+	}
+	if params.AppID != nil {
+		return core.ObjectRef{
+			Bucket: "certificates",
+			Key: filepath.Join(
+				b.dataRoot,
+				"objects",
+				"certificates",
+				params.ProjectID.String(),
+				params.AppID.String(),
+				filename,
+			),
+		}
+	}
 	return core.ObjectRef{
 		Bucket: "certificates",
 		Key: filepath.Join(
 			b.dataRoot,
 			"objects",
 			"certificates",
-			projectID.String(),
-			appID.String(),
-			objectID.String()+".pem.enc",
+			params.ProjectID.String(),
+			filename,
 		),
 	}
 }

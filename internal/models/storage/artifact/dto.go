@@ -14,4 +14,18 @@
  * limitations under the License.
  */
 
-package certificates
+package artifact
+
+type OrderField string
+
+const (
+	OrderFieldCreatedAt OrderField = "created_at"
+	OrderFieldUpdatedAt OrderField = "updated_at"
+	OrderFieldName      OrderField = "name"
+	OrderFieldVersion   OrderField = "version"
+	OrderFieldSizeBytes OrderField = "size_bytes"
+)
+
+func (o OrderField) String() string {
+	return string(o)
+}

@@ -32,7 +32,6 @@ import (
 	materialmodel "github.com/mikhail5545/wasmforge/internal/models/storage/crypto/material"
 	"github.com/mikhail5545/wasmforge/internal/security/encryption"
 	"github.com/mikhail5545/wasmforge/internal/storage/core"
-	"github.com/mikhail5545/wasmforge/internal/storage/fs"
 	"go.uber.org/zap"
 	"gorm.io/gorm"
 )
@@ -109,6 +108,12 @@ type (
 		HasPrivateMaterial bool
 		Encrypted          bool
 	}
+
+	ManagerParams struct {
+		MaterialRepo materialrepo.Repository
+		EntryRepo    entryrepo.Repository
+		ObjectStore  core.ObjectStore
+	}
 )
 
 // Manager manages the whole process of crypto material uploads and validation.
@@ -150,12 +155,13 @@ type manager struct {
 	logger            *zap.Logger
 }
 
-func NewManager(objectStore *fs.ObjectStore, entryRepo entryrepo.Repository, materialRepo materialrepo.Repository, validator *Validator, logger *zap.Logger) Manager {
+func NewManager(cfg Config, params ManagerParams, logger *zap.Logger) Manager {
 	return &manager{
-		objectStore:  objectStore,
-		materialRepo: materialRepo,
-		entryRepo:    entryRepo,
-		validator:    validator,
+		objectStore:  params.ObjectStore,
+		materialRepo: params.MaterialRepo,
+		entryRepo:    params.EntryRepo,
+		validator:    NewValidator(logger),
+		refBuilder:   NewRefBuilder(cfg.DataRoot),
 		logger:       logger.With(zap.String("domain", "storage"), zap.String("component", "material_manager")),
 	}
 }

@@ -27,6 +27,7 @@ var (
 	ErrInvalidObjectRef    = errors.New("invalid object reference")
 	ErrInvalidObjectFormat = errors.New("invalid object format")
 	ErrAmbiguousInput      = errors.New("ambiguous input")
+	ErrDuplicateInput      = errors.New("duplicate input")
 )
 
 func NewSizeLimitExceededError(v any) error {
@@ -47,4 +48,8 @@ func NewInvalidObjectFormatError(v any) error {
 
 func NewAmbiguousInputError(v any) error {
 	return fmt.Errorf("%w: %v", ErrAmbiguousInput, v)
+}
+
+func NewDuplicateInputError(v any) error {
+	return fmt.Errorf("%w: %v", ErrDuplicateInput, v)
 }

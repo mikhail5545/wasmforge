@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package materials
+package artifacts
 
 import (
 	"fmt"
@@ -41,7 +41,7 @@ func (b *RefBuilder) DataRoot() string {
 func (b *RefBuilder) BuildTemp() (core.ObjectRef, error) {
 	randID, err := uuid.NewRandom()
 	if err != nil {
-		return core.ObjectRef{}, fmt.Errorf("error generating random UUID: %v", err)
+		return core.ObjectRef{}, fmt.Errorf("failed to generate random ID: %w", err)
 	}
 	return core.ObjectRef{
 		Bucket: "tmp",
@@ -53,17 +53,28 @@ func (b *RefBuilder) BuildTemp() (core.ObjectRef, error) {
 	}, nil
 }
 
-func (b *RefBuilder) Build(projectID, appID, objectID uuid.UUID) core.ObjectRef {
-	// TODO: remove .enc extension for non-encrypted files and preserve .crt, etc.
+func (b *RefBuilder) Build(projectID, objectID uuid.UUID, appID *uuid.UUID) core.ObjectRef {
+	if appID != nil {
+		return core.ObjectRef{
+			Bucket: "artifacts",
+			Key: filepath.Join(
+				b.dataRoot,
+				"objects",
+				"artifacts",
+				projectID.String(),
+				appID.String(),
+				objectID.String()+".wasm",
+			),
+		}
+	}
 	return core.ObjectRef{
-		Bucket: "certificates",
+		Bucket: "artifacts",
 		Key: filepath.Join(
 			b.dataRoot,
 			"objects",
-			"certificates",
+			"artifacts",
 			projectID.String(),
-			appID.String(),
-			objectID.String()+".pem.enc",
+			objectID.String()+".wasm",
 		),
 	}
 }

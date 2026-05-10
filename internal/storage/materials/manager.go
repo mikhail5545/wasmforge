@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package certificates
+package materials
 
 import (
 	"bytes"
@@ -96,12 +96,11 @@ type (
 
 	Config struct {
 		DataRoot           string
-		DirectoriesPerm    os.FileMode
-		FilesPerm          os.FileMode
 		MaxUploadSizeBytes int64
 	}
 
-	CertificateInfo struct {
+	MaterialInfo struct {
+		ID                 uuid.UUID
 		Name               string
 		Kind               materialmodel.CryptoMaterialKind
 		AppID              uuid.UUID
@@ -112,7 +111,7 @@ type (
 	}
 )
 
-// CertificateManager manages the whole process of certificate uploads and validation.
+// Manager manages the whole process of crypto material uploads and validation.
 // It provides multiple entry points for different upload sources, such as multipart form data, raw bytes, or file paths,
 // but all of them will be converted into a common format with readers and passed to the main Upload method.
 // Currently supported uploads are:
@@ -121,13 +120,13 @@ type (
 // - Key Pair: single CA pair (matching certificate + private key) or 1 private and 1 public key (total 2 files, encrypted)
 // - CA Bundle: multiple certificates, no keys, all CAs, no private material, unencrypted
 // - Trust Bundle: multiple certificates, no keys, not all CAs, no private material, unencrypted
-type CertificateManager interface {
+type Manager interface {
 	// UploadFromMultipart wraps Upload and creates readers from provided [UploadFromMultipartPart.File] entries.
-	UploadFromMultipart(ctx context.Context, params UploadFromMultipartParams) (CertificateInfo, error)
+	UploadFromMultipart(ctx context.Context, params UploadFromMultipartParams) (MaterialInfo, error)
 	// UploadFromBytes wraps Upload and creates readers from provided [UploadFromBytesPart.Data] entries.
-	UploadFromBytes(ctx context.Context, params UploadFromBytesParams) (CertificateInfo, error)
+	UploadFromBytes(ctx context.Context, params UploadFromBytesParams) (MaterialInfo, error)
 	// UploadFromPath wraps Upload and creates readers from provided [UploadFromPathPart.Source] entries.
-	UploadFromPath(ctx context.Context, params UploadFromPathParams) (CertificateInfo, error)
+	UploadFromPath(ctx context.Context, params UploadFromPathParams) (MaterialInfo, error)
 	// Upload manages the whole process of the certificates upload. It can handle the upload of
 	// multiple files for different kinds of crypto material record. For example, [materialmodel.CryptoMaterialKindPublicCert] (1 cert file, unencrypted),
 	// [materialmodel.CryptoMaterialKindKeyPair] (1 cert file + 1 private key file, encrypted), [materialmodel.CryptoMaterialKindTrustBundle]
@@ -137,7 +136,7 @@ type CertificateManager interface {
 	// Each file will be saved as a temp file and validated by the [Validator].
 	//
 	// Upload cycle: temporary file(s) -> validation -> move file(s) to permanent location -> determinicstic processing (db entries)
-	Upload(ctx context.Context, params UploadParams) (CertificateInfo, error)
+	Upload(ctx context.Context, params UploadParams) (MaterialInfo, error)
 }
 
 type manager struct {
@@ -151,18 +150,18 @@ type manager struct {
 	logger            *zap.Logger
 }
 
-func New(objectStore *fs.ObjectStore, entryRepo entryrepo.Repository, materialRepo materialrepo.Repository, validator *Validator, logger *zap.Logger) CertificateManager {
+func NewManager(objectStore *fs.ObjectStore, entryRepo entryrepo.Repository, materialRepo materialrepo.Repository, validator *Validator, logger *zap.Logger) Manager {
 	return &manager{
 		objectStore:  objectStore,
 		materialRepo: materialRepo,
 		entryRepo:    entryRepo,
 		validator:    validator,
-		logger:       logger.With(zap.String("domain", "storage"), zap.String("component", "certificate_manager")),
+		logger:       logger.With(zap.String("domain", "storage"), zap.String("component", "material_manager")),
 	}
 }
 
 // UploadFromMultipart wraps Upload and creates readers from provided [UploadFromMultipartPart.File] entries.
-func (m *manager) UploadFromMultipart(ctx context.Context, params UploadFromMultipartParams) (CertificateInfo, error) {
+func (m *manager) UploadFromMultipart(ctx context.Context, params UploadFromMultipartParams) (MaterialInfo, error) {
 	var cleanupFunctions []func()
 	defer func() {
 		for _, fn := range cleanupFunctions {
@@ -180,7 +179,7 @@ func (m *manager) UploadFromMultipart(ctx context.Context, params UploadFromMult
 	for _, part := range params.Parts {
 		r, err := part.File.Open()
 		if err != nil {
-			return CertificateInfo{}, fmt.Errorf("failed to open multipart file: %w", err)
+			return MaterialInfo{}, fmt.Errorf("failed to open multipart file: %w", err)
 		}
 		cleanupFunctions = append(cleanupFunctions, func() {
 			if err := r.Close(); err != nil {
@@ -199,7 +198,7 @@ func (m *manager) UploadFromMultipart(ctx context.Context, params UploadFromMult
 }
 
 // UploadFromBytes wraps Upload and creates readers from provided [UploadFromBytesPart.Data] entries.
-func (m *manager) UploadFromBytes(ctx context.Context, params UploadFromBytesParams) (CertificateInfo, error) {
+func (m *manager) UploadFromBytes(ctx context.Context, params UploadFromBytesParams) (MaterialInfo, error) {
 	uploadParams := UploadParams{
 		UploadName: params.UploadName,
 		ProjectID:  params.ProjectID,
@@ -218,7 +217,7 @@ func (m *manager) UploadFromBytes(ctx context.Context, params UploadFromBytesPar
 }
 
 // UploadFromPath wraps Upload and creates readers from provided [UploadFromPathPart.Source] entries.
-func (m *manager) UploadFromPath(ctx context.Context, params UploadFromPathParams) (CertificateInfo, error) {
+func (m *manager) UploadFromPath(ctx context.Context, params UploadFromPathParams) (MaterialInfo, error) {
 	var cleanupFunctions []func()
 	defer func() {
 		for _, fn := range cleanupFunctions {
@@ -236,7 +235,7 @@ func (m *manager) UploadFromPath(ctx context.Context, params UploadFromPathParam
 	for _, part := range params.Parts {
 		file, err := os.Open(part.Source)
 		if err != nil {
-			return CertificateInfo{}, fmt.Errorf("failed to open file %s: %w", part.Source, err)
+			return MaterialInfo{}, fmt.Errorf("failed to open file %s: %w", part.Source, err)
 		}
 		cleanupFunctions = append(cleanupFunctions, func() {
 			if err := file.Close(); err != nil {
@@ -254,7 +253,7 @@ func (m *manager) UploadFromPath(ctx context.Context, params UploadFromPathParam
 	return m.Upload(ctx, uploadParams)
 }
 
-// Upload manages the whole process of the certificates upload. It can handle the upload of
+// Upload manages the whole process of the crypto material upload. It can handle the upload of
 // multiple files for different kinds of crypto material record. For example, [materialmodel.CryptoMaterialKindPublicCert] (1 cert file, unencrypted),
 // [materialmodel.CryptoMaterialKindKeyPair] (1 cert file + 1 private key file, encrypted), [materialmodel.CryptoMaterialKindTrustBundle]
 // (multiple cert files, unencrypted), etc.
@@ -263,7 +262,7 @@ func (m *manager) UploadFromPath(ctx context.Context, params UploadFromPathParam
 // Each file will be saved as a temp file and validated by the [Validator].
 //
 // Upload cycle: temporary file(s) -> validation -> move file(s) to permanent location -> determinicstic processing (db entries)
-func (m *manager) Upload(ctx context.Context, params UploadParams) (CertificateInfo, error) {
+func (m *manager) Upload(ctx context.Context, params UploadParams) (MaterialInfo, error) {
 	var cleanupFuncs []func()
 	defer func() {
 		for _, fn := range cleanupFuncs {
@@ -278,19 +277,19 @@ func (m *manager) Upload(ctx context.Context, params UploadParams) (CertificateI
 
 	for i, part := range params.Parts {
 		if part.SizeBytes > m.cfg.MaxUploadSizeBytes {
-			return CertificateInfo{}, core.NewSizeLimitExceededError(m.cfg.MaxUploadSizeBytes)
+			return MaterialInfo{}, core.NewSizeLimitExceededError(m.cfg.MaxUploadSizeBytes)
 		}
 
 		tempRef, err := m.refBuilder.BuildTemp()
 		if err != nil {
-			return CertificateInfo{}, err
+			return MaterialInfo{}, err
 		}
 		metadata[tempRef] = part.Name
 
 		dest, err := os.Create(tempRef.Key)
 		if err != nil {
 			m.logger.Error("failed to create temp file", zap.Error(err))
-			return CertificateInfo{}, fmt.Errorf("failed to create temp file: %w", err)
+			return MaterialInfo{}, fmt.Errorf("failed to create temp file: %w", err)
 		}
 
 		cleanupFuncs = append(cleanupFuncs, func() {
@@ -304,18 +303,18 @@ func (m *manager) Upload(ctx context.Context, params UploadParams) (CertificateI
 			if err := dest.Close(); err != nil {
 				m.logger.Error("failed to close temp file", zap.Error(err))
 			}
-			return CertificateInfo{}, fmt.Errorf("failed to write part to temp file: %w", err)
+			return MaterialInfo{}, fmt.Errorf("failed to write part to temp file: %w", err)
 		}
 		m.logger.Debug("saved file to temporary storage", zap.String("key", tempRef.Key))
 		if err := dest.Close(); err != nil {
 			m.logger.Error("failed to close temp file", zap.Error(err))
-			return CertificateInfo{}, fmt.Errorf("failed to close temp file: %w", err)
+			return MaterialInfo{}, fmt.Errorf("failed to close temp file: %w", err)
 		}
 
 		// Re-open for reading
 		readDest, err := os.Open(tempRef.Key)
 		if err != nil {
-			return CertificateInfo{}, fmt.Errorf("failed to re-open temp file for validation: %w", err)
+			return MaterialInfo{}, fmt.Errorf("failed to re-open temp file for validation: %w", err)
 		}
 
 		cleanupFuncs = append(cleanupFuncs, func() {
@@ -342,7 +341,7 @@ func (m *manager) Upload(ctx context.Context, params UploadParams) (CertificateI
 		Parts: validationParts,
 	})
 	if err != nil {
-		return CertificateInfo{}, err
+		return MaterialInfo{}, err
 	}
 	m.logger.Debug("validation completed, proceeding to permanent save", zap.String("upload_name", params.UploadName), zap.String("upload_kind", validationRes.Kind.String()))
 
@@ -356,7 +355,7 @@ func (m *manager) Upload(ctx context.Context, params UploadParams) (CertificateI
 	case materialmodel.CryptoMaterialKindCABundle:
 		return m.saveCABundleMaterial(ctx, validationRes, params)
 	default:
-		return CertificateInfo{}, fmt.Errorf("unsupported certificate kind: %s", validationRes.Kind)
+		return MaterialInfo{}, fmt.Errorf("unsupported certificate kind: %s", validationRes.Kind)
 	}
 }
 
@@ -364,7 +363,7 @@ func (m *manager) savePublicCertMaterial(
 	ctx context.Context,
 	result *ValidationResult,
 	params UploadParams,
-) (CertificateInfo, error) {
+) (MaterialInfo, error) {
 	// When validation result classified as public cert kind, we expect exactly ONE certificate in the result,
 	// and we will create a single material with one entry for that cert.
 	// Validator should ensure that these assumptions are met, so we will panic if not, since it indicates a bug in the validator.
@@ -374,7 +373,7 @@ func (m *manager) savePublicCertMaterial(
 
 	materialID, err := uuid.NewV7()
 	if err != nil {
-		return CertificateInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
+		return MaterialInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
 	}
 
 	var material *materialmodel.CryptoMaterial
@@ -418,10 +417,11 @@ func (m *manager) savePublicCertMaterial(
 		if savedRef.Key != "" {
 			_ = m.objectStore.Delete(ctx, savedRef)
 		}
-		return CertificateInfo{}, err
+		return MaterialInfo{}, err
 	}
 
-	return CertificateInfo{
+	return MaterialInfo{
+		ID:                 material.ID,
 		Name:               material.Name,
 		AppID:              material.AppID,
 		ProjectID:          material.ProjectID,
@@ -432,10 +432,10 @@ func (m *manager) savePublicCertMaterial(
 	}, nil
 }
 
-func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (CertificateInfo, error) {
+func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (MaterialInfo, error) {
 	materialID, err := uuid.NewV7()
 	if err != nil {
-		return CertificateInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
+		return MaterialInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
 	}
 
 	var material *materialmodel.CryptoMaterial
@@ -500,10 +500,11 @@ func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationRes
 		for _, ref := range savedRefs {
 			_ = m.objectStore.Delete(ctx, ref)
 		}
-		return CertificateInfo{}, err
+		return MaterialInfo{}, err
 	}
 
-	return CertificateInfo{
+	return MaterialInfo{
+		ID:                 material.ID,
 		Name:               material.Name,
 		Kind:               material.Kind,
 		AppID:              material.AppID,
@@ -514,18 +515,18 @@ func (m *manager) saveKeyPairMaterial(ctx context.Context, result *ValidationRes
 	}, nil
 }
 
-func (m *manager) saveTrustBundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (CertificateInfo, error) {
+func (m *manager) saveTrustBundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (MaterialInfo, error) {
 	return m.saveBundleMaterial(ctx, result, params, materialmodel.CryptoMaterialKindTrustBundle)
 }
 
-func (m *manager) saveCABundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (CertificateInfo, error) {
+func (m *manager) saveCABundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams) (MaterialInfo, error) {
 	return m.saveBundleMaterial(ctx, result, params, materialmodel.CryptoMaterialKindCABundle)
 }
 
-func (m *manager) saveBundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams, kind materialmodel.CryptoMaterialKind) (CertificateInfo, error) {
+func (m *manager) saveBundleMaterial(ctx context.Context, result *ValidationResult, params UploadParams, kind materialmodel.CryptoMaterialKind) (MaterialInfo, error) {
 	materialID, err := uuid.NewV7()
 	if err != nil {
-		return CertificateInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
+		return MaterialInfo{}, fmt.Errorf("failed to generate material ID: %w", err)
 	}
 
 	var material *materialmodel.CryptoMaterial
@@ -571,10 +572,11 @@ func (m *manager) saveBundleMaterial(ctx context.Context, result *ValidationResu
 		for _, ref := range savedRefs {
 			_ = m.objectStore.Delete(ctx, ref)
 		}
-		return CertificateInfo{}, err
+		return MaterialInfo{}, err
 	}
 
-	return CertificateInfo{
+	return MaterialInfo{
+		ID:                 material.ID,
 		Name:               material.Name,
 		Kind:               material.Kind,
 		AppID:              material.AppID,

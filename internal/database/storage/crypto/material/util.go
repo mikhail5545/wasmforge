@@ -23,10 +23,13 @@ import (
 
 func applyIdentityFilters(db *gorm.DB, filter *filter) *gorm.DB {
 	if len(filter.IDs) > 0 {
-		db = db.Where("id in ?", filter.IDs)
+		db = db.Where("id IN ?", filter.IDs)
 	}
 	if len(filter.ProjectIDs) > 0 {
-		db = db.Where("project_id in ?", filter.ProjectIDs)
+		db = db.Where("project_id IN ?", filter.ProjectIDs)
+	}
+	if len(filter.AppIDs) > 0 {
+		db = db.Where("app_id IN ?", filter.AppIDs)
 	}
 	return db
 }

@@ -59,9 +59,9 @@ type CryptoMaterialEntry struct {
 	EncryptionNonce            *string `gorm:"type:text" json:"-"`
 	EncryptionAlgorithm        *string `gorm:"type:varchar(64)" json:"-"`
 	EncryptionProvider         *string `gorm:"type:varchar(64)" json:"-"`
-	EncryptionProviderMetadata *string `gorm:"type:jsonb" json:"-"`
+	EncryptionProviderMetadata string  `gorm:"type:jsonb" json:"-"`
 
-	MetadataJSON map[string]any `gorm:"type:jsonb;default:'{}'" json:"metadata_json,omitempty"`
+	MetadataJSON string `gorm:"type:jsonb" json:"metadata_json,omitempty"`
 }
 
 func (*CryptoMaterialEntry) TableName() string {

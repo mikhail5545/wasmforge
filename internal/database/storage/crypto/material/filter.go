@@ -27,6 +27,7 @@ import (
 type filter struct {
 	IDs        uuid.UUIDs
 	ProjectIDs uuid.UUIDs
+	AppIDs     uuid.UUIDs
 
 	Encrypted          *bool
 	HasPrivateMaterial *bool
@@ -49,6 +50,12 @@ func WithIDs(ids ...uuid.UUID) FilterOption {
 func WithProjectIDs(projectIDs ...uuid.UUID) FilterOption {
 	return func(filter *filter) {
 		filter.ProjectIDs = util.CleanUUIDs(projectIDs)
+	}
+}
+
+func WithAppIDs(appIDs ...uuid.UUID) FilterOption {
+	return func(filter *filter) {
+		filter.AppIDs = util.CleanUUIDs(appIDs)
 	}
 }
 

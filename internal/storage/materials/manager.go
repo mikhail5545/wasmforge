@@ -328,12 +328,17 @@ func (m *manager) Upload(ctx context.Context, params UploadParams) (MaterialInfo
 			partName = fmt.Sprintf("part-%d", i)
 		}
 
+		meta, err := json.Marshal(part.Metadata)
+		if err != nil {
+			m.logger.Error("failed to marshal metadata", zap.Error(err))
+			return MaterialInfo{}, fmt.Errorf("failed to marshal metadata: %w", err)
+		}
 		validationParts = append(validationParts, ValidationPart{
 			Name:      partName,
 			Reader:    readDest,
 			SizeHint:  part.SizeBytes,
 			ObjectRef: tempRef,
-			Metadata:  part.Metadata,
+			Metadata:  string(meta),
 		})
 	}
 
@@ -664,7 +669,7 @@ func (m *manager) saveEntry(
 				return nil, fmt.Errorf("failed to marshal provider metadata: %w", err)
 			}
 			metaStr := string(metaBytes)
-			entry.EncryptionProviderMetadata = &metaStr
+			entry.EncryptionProviderMetadata = metaStr
 		}
 	}
 

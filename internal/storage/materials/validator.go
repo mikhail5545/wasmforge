@@ -48,7 +48,7 @@ type (
 		Reader    io.Reader
 		SizeHint  int64
 		ObjectRef core.ObjectRef
-		Metadata  map[string]any
+		Metadata  string // JSON string
 	}
 
 	ValidationResult struct {
@@ -72,7 +72,7 @@ type (
 		BlockType string
 		PartName  string
 		ObjectRef core.ObjectRef
-		Metadata  map[string]any
+		Metadata  string // JSON string
 	}
 
 	CertInfo struct {
@@ -89,7 +89,7 @@ type (
 
 		PartName  string
 		ObjectRef core.ObjectRef
-		Metadata  map[string]any
+		Metadata  string // JSON string
 	}
 
 	CAPair struct {
@@ -115,7 +115,7 @@ type (
 		SubjectPublicKeyInfoSha256Hex string
 		PartName                      string
 		ObjectRef                     core.ObjectRef
-		Metadata                      map[string]any
+		Metadata                      string // JSON string
 	}
 )
 

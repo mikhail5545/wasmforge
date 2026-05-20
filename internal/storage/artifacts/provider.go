@@ -34,18 +34,24 @@ import (
 )
 
 type (
-	// LoadOptions loads an artifact by provided identifier (ID or ProjectID + Name + Version).
-	// Either ID or ProjectID, Name or Version must be provided.
+	// LoadOptions loads an artifact by provided identifier.
+	// Must specify one of the following identifiers, otherwise validation will fail:
+	//
+	//	- ID
+	//	- Name, Version and ProjectID
+	// 	- Ref
 	LoadOptions struct {
 		ID        *uuid.UUID
 		ProjectID *uuid.UUID
 		Name      *string
 		Version   *string
+		Ref       *core.ObjectRef
 	}
 
 	LoadedArtifact struct {
 		R        io.ReadCloser
 		Artifact ArtifactInfo
+		Ref      core.ObjectRef
 	}
 
 	ProviderParams struct {
@@ -89,10 +95,16 @@ func (p *provider) LoadArtifact(ctx context.Context, options LoadOptions) (Loade
 		return LoadedArtifact{}, err
 	}
 
-	ref := core.ObjectRef{
-		Bucket: core.BucketType(artifact.ObjectRefBucket),
-		Key:    artifact.ObjectRefKey,
+	var ref core.ObjectRef
+	if options.Ref != nil {
+		ref = *options.Ref
+	} else {
+		ref = core.ObjectRef{
+			Bucket: core.BucketType(artifact.ObjectRefBucket),
+			Key:    artifact.ObjectRefKey,
+		}
 	}
+
 	r, _, err := p.objectStore.Get(ctx, ref)
 	if err != nil {
 		p.logger.Error("failed to get artifact from object store", zap.Error(err), zap.Any("object_ref", ref))
@@ -117,7 +129,8 @@ func (p *provider) LoadArtifact(ctx context.Context, options LoadOptions) (Loade
 			ChecksumSHA256Hex: artifact.ChecksumSHA256Hex,
 			Metadata:          metadata,
 		},
-		R: r,
+		Ref: ref,
+		R:   r,
 	}, nil
 }
 
@@ -163,7 +176,8 @@ func (p *provider) LoadArtifacts(ctx context.Context, appID, projectID *uuid.UUI
 				ChecksumSHA256Hex: artifact.ChecksumSHA256Hex,
 				Metadata:          metadata,
 			},
-			R: r,
+			Ref: ref,
+			R:   r,
 		})
 	}
 	return loaded, nil
@@ -175,6 +189,8 @@ func (p *provider) getArtifact(ctx context.Context, options LoadOptions) (*artif
 		filterOpt = append(filterOpt, artifactrepo.WithIDs(*options.ID))
 	} else if options.ProjectID != nil && options.Name != nil && options.Version != nil {
 		filterOpt = append(filterOpt, artifactrepo.WithProjectIDs(*options.ProjectID), artifactrepo.WithVersions(*options.Version), artifactrepo.WithNames(*options.Name))
+	} else if options.Ref != nil {
+		filterOpt = append(filterOpt, artifactrepo.WithObjectRef(*options.Ref))
 	}
 	artifact, err := p.artifactRepo.Get(ctx, filterOpt...)
 	if err != nil {
@@ -210,11 +226,19 @@ func (p *provider) listArtifacts(ctx context.Context, appID, projectID *uuid.UUI
 func (opt LoadOptions) Validate() error {
 	return validation.ValidateStruct(&opt,
 		validation.Field(&opt.ID, validation.By(validationutil.IsValidUUIDv7), validation.When(
-			opt.ProjectID == nil || opt.Name == nil || opt.Version == nil,
-			validation.Required),
-		),
-		validation.Field(&opt.ProjectID, validation.By(validationutil.IsValidUUIDv7), validation.When(opt.ID == nil, validation.Required)),
-		validation.Field(&opt.Name, validation.Length(1, 128), validation.When(opt.ID == nil, validation.Required)),
-		validation.Field(&opt.Version, validation.Length(1, 64), validation.By(validationutil.IsValidSemver), validation.When(opt.ID == nil, validation.Required)),
+			(opt.ProjectID == nil || opt.Name == nil || opt.Version == nil) && opt.Ref == nil, validation.Required,
+		)),
+		validation.Field(&opt.ProjectID, validation.By(validationutil.IsValidUUIDv7), validation.When(
+			opt.ID == nil && opt.Ref == nil, validation.Required,
+		)),
+		validation.Field(&opt.Name, validation.Length(1, 128), validation.When(
+			opt.ID == nil && opt.Ref == nil, validation.Required,
+		)),
+		validation.Field(&opt.Version, validation.Length(1, 64), validation.By(validationutil.IsValidSemver), validation.When(
+			opt.ID == nil && opt.Ref == nil, validation.Required,
+		)),
+		validation.Field(&opt.Ref, validation.When(
+			opt.ID == nil && (opt.ProjectID == nil || opt.Name == nil || opt.Version == nil), validation.Required,
+		)),
 	)
 }

@@ -65,6 +65,7 @@ type (
 	}
 )
 
+// Provider manages the crypto material loading from the storage provider.
 type Provider interface {
 	LoadMaterial(ctx context.Context, materialID uuid.UUID) (LoadedMaterial, error)
 	LoadMaterials(ctx context.Context, appID, projectID *uuid.UUID) (LoadedMaterials, error)

@@ -45,7 +45,7 @@
     "@types/react-dom": "^19.2.3",
     "@workspace/eslint-config": "*",
     "@workspace/typescript-config": "*",
-    "eslint": "^10.2.1",
+    "eslint": "^10.4.0",
     "typescript": "^6.0.3"
   }
 }

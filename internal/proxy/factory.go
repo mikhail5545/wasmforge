@@ -25,9 +25,10 @@ import (
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	methodmodel "github.com/mikhail5545/wasmforge/internal/models/route/method"
 	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
+	"github.com/mikhail5545/wasmforge/internal/proxy/app"
 	wasmmiddleware "github.com/mikhail5545/wasmforge/internal/proxy/middleware"
 	"github.com/mikhail5545/wasmforge/internal/proxy/reqctx"
-	"github.com/mikhail5545/wasmforge/internal/uploads"
+	"github.com/mikhail5545/wasmforge/internal/runtime/core"
 	"go.uber.org/zap"
 )
 
@@ -63,8 +64,8 @@ type (
 	factory struct {
 		logger            *zap.Logger
 		builder           Builder
+		runtime           core.Runtime
 		middlewareFactory wasmmiddleware.Factory
-		manager           uploads.Manager
 		observer          RequestObserver
 		authConfigRepo    wasmmiddleware.ConfigRepository
 		tokenValidator    wasmmiddleware.TokenValidator
@@ -75,8 +76,8 @@ type (
 
 func NewFactory(
 	builder Builder,
+	rt core.Runtime,
 	mwFactory wasmmiddleware.Factory,
-	uploadsManager uploads.Manager,
 	observer RequestObserver,
 	authConfigRepo wasmmiddleware.ConfigRepository,
 	tokenValidator wasmmiddleware.TokenValidator,
@@ -86,7 +87,7 @@ func NewFactory(
 ) Factory {
 	return &factory{
 		builder:           builder,
-		manager:           uploadsManager,
+		runtime:           rt,
 		middlewareFactory: mwFactory,
 		observer:          observer,
 		authConfigRepo:    authConfigRepo,
@@ -145,17 +146,25 @@ func (f *factory) Assemble(ctx context.Context, route *routemodel.Route, plugins
 	allowedMethods := extractAllowedMethods(route.Methods)
 
 	// 2. Build the final handler with the middleware chain
-	if err := f.builder.BuildRoute(route.TargetURL, route.Path, allowedMethods, TransportConfig{
-		Conn: ConsConfig{MaxIdleCons: route.MaxIdleCons, MaxIdleConsPerHost: route.MaxIdleConsPerHost, MaxConsPerHost: route.MaxConsPerHost},
-		Timeout: TimeoutConfig{
-			IdleConnTimeout:       route.IdleConnTimeout,
-			TLSHandshakeTimeout:   route.TLSHandshakeTimeout,
-			ExpectContinueTimeout: route.ExpectContinueTimeout,
-			ResponseHeaderTimeout: route.ResponseHeaderTimeout,
-		},
-	}, middlewares...); err != nil {
-		f.logger.Error("failed to build route with middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
-		return fmt.Errorf("failed to build route with middleware chain: %w", err)
+	if route.AppID != nil {
+		appHandler := app.NewHandler(f.runtime, core.ModuleRef{ID: route.AppID}, f.logger)
+		if err := f.builder.BuildAppRoute(route.Path, allowedMethods, appHandler, middlewares...); err != nil {
+			f.logger.Error("failed to build app route with middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to build app route with middleware chain: %w", err)
+		}
+	} else {
+		if err := f.builder.BuildProxyRoute(route.TargetURL, route.Path, allowedMethods, TransportConfig{
+			Conn: ConsConfig{MaxIdleCons: route.MaxIdleCons, MaxIdleConsPerHost: route.MaxIdleConsPerHost, MaxConsPerHost: route.MaxConsPerHost},
+			Timeout: TimeoutConfig{
+				IdleConnTimeout:       route.IdleConnTimeout,
+				TLSHandshakeTimeout:   route.TLSHandshakeTimeout,
+				ExpectContinueTimeout: route.ExpectContinueTimeout,
+				ResponseHeaderTimeout: route.ResponseHeaderTimeout,
+			},
+		}, middlewares...); err != nil {
+			f.logger.Error("failed to build proxy route with middleware chain", zap.String("route_id", route.ID.String()), zap.Error(err))
+			return fmt.Errorf("failed to build proxy route with middleware chain: %w", err)
+		}
 	}
 	return nil
 }
@@ -224,20 +233,14 @@ func (f *factory) composeMiddlewares(ctx context.Context, routePath string, plug
 	middlewares := make([]func(http.Handler) http.Handler, 0, len(plugins))
 	pluginObserver, hasPluginObserver := f.observer.(PluginRequestObserver)
 	for _, rtPlugin := range plugins {
-		// Read raw bytes from the file
-		wasmBytes, err := f.manager.Read(rtPlugin.Plugin.Filename, uploads.PluginUpload)
-		if err != nil {
-			f.logger.Error("failed to read WASM bytes for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Error(err))
-			return nil, fmt.Errorf("failed to read WASM bytes for plugin %s: %w", rtPlugin.Plugin.Filename, err)
-		}
-		f.logger.Debug("successfully read WASM bytes for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Int("size_bytes", len(wasmBytes)))
+		ref := core.ModuleRef{ID: &rtPlugin.PluginID}
 		// Create a new WASM middleware instance for this plugin
-		mw, err := f.middlewareFactory.Create(ctx, wasmBytes, rtPlugin.Config)
+		mw, err := f.middlewareFactory.Create(ctx, ref, rtPlugin.Config)
 		if err != nil {
-			f.logger.Error("failed to create WASM middleware for plugin", zap.String("filename", rtPlugin.Plugin.Filename), zap.Error(err))
-			return nil, fmt.Errorf("failed to create WASM middleware for plugin %s: %w", rtPlugin.Plugin.Filename, err)
+			f.logger.Error("failed to create WASM middleware for plugin", zap.String("plugin_id", rtPlugin.PluginID.String()), zap.Error(err))
+			return nil, fmt.Errorf("failed to create WASM middleware for plugin %s: %w", rtPlugin.PluginID.String(), err)
 		}
-		f.logger.Debug("successfully created WASM middleware for plugin", zap.String("filename", rtPlugin.Plugin.Filename))
+		f.logger.Debug("successfully created WASM middleware for plugin", zap.String("plugin_id", rtPlugin.PluginID.String()))
 		if hasPluginObserver {
 			if pluginMw := pluginObserver.PluginMiddleware(routePath, rtPlugin.ID.String()); pluginMw != nil {
 				inner := mw

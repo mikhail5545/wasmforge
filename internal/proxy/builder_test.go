@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestBuilder_BuildRoute(t *testing.T) {
+func TestBuilder_BuildProxyRoute(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("Hello from upstream"))
@@ -48,7 +48,7 @@ func TestBuilder_BuildRoute(t *testing.T) {
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
 
-	err := b.BuildRoute(upstream.URL, "/api", []string{}, cfg, mw)
+	err := b.BuildProxyRoute(upstream.URL, "/api", []string{}, cfg, mw)
 	assert.NoError(t, err)
 
 	b.mu.RLock()
@@ -67,6 +67,45 @@ func TestBuilder_BuildRoute(t *testing.T) {
 	assert.True(t, middlewareRun)
 }
 
+func TestBuilder_BuildAppRoute(t *testing.T) {
+	b := NewBuilder().(*builder)
+
+	handlerRun := false
+	appHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		handlerRun = true
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("Hello from app"))
+	})
+
+	middlewareRun := false
+	mw := func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			middlewareRun = true
+			w.Header().Set("X-Middleware", "true")
+			next.ServeHTTP(w, r)
+		})
+	}
+
+	err := b.BuildAppRoute("/app", []string{}, appHandler, mw)
+	assert.NoError(t, err)
+
+	b.mu.RLock()
+	route, exists := b.routes["/app"]
+	b.mu.RUnlock()
+	assert.True(t, exists)
+	assert.NotNil(t, route)
+
+	req := httptest.NewRequest(http.MethodGet, "/app", nil)
+	w := httptest.NewRecorder()
+	b.Director().ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, "Hello from app", w.Body.String())
+	assert.Equal(t, "true", w.Header().Get("X-Middleware"))
+	assert.True(t, middlewareRun)
+	assert.True(t, handlerRun)
+}
+
 func TestBuilder_RebuildRouteMiddleware(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -79,7 +118,7 @@ func TestBuilder_RebuildRouteMiddleware(t *testing.T) {
 		Conn:    ConsConfig{},
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
-	_ = b.BuildRoute(upstream.URL, "/api", []string{}, cfg)
+	_ = b.BuildProxyRoute(upstream.URL, "/api", []string{}, cfg)
 
 	mw := func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +149,7 @@ func TestBuilder_AllowedMethods(t *testing.T) {
 		Conn:    ConsConfig{},
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
-	_ = b.BuildRoute(upstream.URL, "/api", []string{"GET", "OPTIONS"}, cfg)
+	_ = b.BuildProxyRoute(upstream.URL, "/api", []string{"GET", "OPTIONS"}, cfg)
 
 	req := httptest.NewRequest(http.MethodGet, "/api", nil)
 	w := httptest.NewRecorder()
@@ -135,7 +174,7 @@ func TestBuilder_RebuildRouteMiddlewareKeepsAllowedMethods(t *testing.T) {
 		Conn:    ConsConfig{},
 		Timeout: TimeoutConfig{IdleConnTimeout: 10},
 	}
-	_ = b.BuildRoute(upstream.URL, "/api", []string{"GET"}, cfg)
+	_ = b.BuildProxyRoute(upstream.URL, "/api", []string{"GET"}, cfg)
 
 	err := b.RebuildRouteMiddlewares("/api", func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

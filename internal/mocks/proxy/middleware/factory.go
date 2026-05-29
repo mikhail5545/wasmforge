@@ -14,6 +14,7 @@ import (
 	http "net/http"
 	reflect "reflect"
 
+	"github.com/mikhail5545/wasmforge/internal/runtime/core"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,16 +43,16 @@ func (m *MockFactory) EXPECT() *MockFactoryMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockFactory) Create(ctx context.Context, wasmBytes []byte, jsonConfig *string) (func(http.Handler) http.Handler, error) {
+func (m *MockFactory) Create(ctx context.Context, ref core.ModuleRef, jsonConfig *string) (func(http.Handler) http.Handler, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", ctx, wasmBytes, jsonConfig)
+	ret := m.ctrl.Call(m, "Create", ctx, ref, jsonConfig)
 	ret0, _ := ret[0].(func(http.Handler) http.Handler)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockFactoryMockRecorder) Create(ctx, wasmBytes, jsonConfig any) *gomock.Call {
+func (mr *MockFactoryMockRecorder) Create(ctx, ref, jsonConfig any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockFactory)(nil).Create), ctx, wasmBytes, jsonConfig)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockFactory)(nil).Create), ctx, ref, jsonConfig)
 }

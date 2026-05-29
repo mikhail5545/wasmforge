@@ -41,23 +41,42 @@ func (m *MockBuilder) EXPECT() *MockBuilderMockRecorder {
 	return m.recorder
 }
 
-// BuildRoute mocks base method.
-func (m *MockBuilder) BuildRoute(targetURL, path string, allowedMethods []string, transportCfg proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
+// BuildProxyRoute mocks base method.
+func (m *MockBuilder) BuildProxyRoute(targetURL, path string, allowedMethods []string, transportCfg proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 	m.ctrl.T.Helper()
 	varargs := []any{targetURL, path, allowedMethods, transportCfg}
 	for _, a := range middlewares {
 		varargs = append(varargs, a)
 	}
-	ret := m.ctrl.Call(m, "BuildRoute", varargs...)
+	ret := m.ctrl.Call(m, "BuildProxyRoute", varargs...)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// BuildRoute indicates an expected call of BuildRoute.
-func (mr *MockBuilderMockRecorder) BuildRoute(targetURL, path, allowedMethods, transportCfg any, middlewares ...any) *gomock.Call {
+// BuildProxyRoute indicates an expected call of BuildProxyRoute.
+func (mr *MockBuilderMockRecorder) BuildProxyRoute(targetURL, path, allowedMethods, transportCfg any, middlewares ...any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	varargs := append([]any{targetURL, path, allowedMethods, transportCfg}, middlewares...)
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildRoute", reflect.TypeOf((*MockBuilder)(nil).BuildRoute), varargs...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildProxyRoute", reflect.TypeOf((*MockBuilder)(nil).BuildProxyRoute), varargs...)
+}
+
+// BuildAppRoute mocks base method.
+func (m *MockBuilder) BuildAppRoute(path string, allowedMethods []string, handler http.Handler, middlewares ...func(http.Handler) http.Handler) error {
+	m.ctrl.T.Helper()
+	varargs := []any{path, allowedMethods, handler}
+	for _, a := range middlewares {
+		varargs = append(varargs, a)
+	}
+	ret := m.ctrl.Call(m, "BuildAppRoute", varargs...)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// BuildAppRoute indicates an expected call of BuildAppRoute.
+func (mr *MockBuilderMockRecorder) BuildAppRoute(path, allowedMethods, handler any, middlewares ...any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	varargs := append([]any{path, allowedMethods, handler}, middlewares...)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BuildAppRoute", reflect.TypeOf((*MockBuilder)(nil).BuildAppRoute), varargs...)
 }
 
 // Director mocks base method.

@@ -29,22 +29,18 @@ import (
 	configmodel "github.com/mikhail5545/wasmforge/internal/models/proxy/config"
 	"github.com/mikhail5545/wasmforge/internal/proxy"
 	"github.com/mikhail5545/wasmforge/internal/proxy/middleware"
-	"github.com/mikhail5545/wasmforge/internal/proxy/wasm"
-	"github.com/mikhail5545/wasmforge/internal/uploads"
-	"github.com/tetratelabs/wazero"
+	"github.com/mikhail5545/wasmforge/internal/runtime/core"
 	"go.uber.org/zap"
 )
 
 type Server struct {
-	rt        wazero.Runtime
+	rt        core.Runtime
 	director  *proxy.Director
 	builder   proxy.Builder
 	mwFactory middleware.Factory
-	manager   uploads.Manager
 	factory   proxy.Factory
 	observer  proxy.RequestObserver
 	logger    *zap.Logger
-	cleanup   func() error
 	httpSrv   *http.Server
 	mu        sync.Mutex
 	lastAddr  string
@@ -60,25 +56,18 @@ func (s *Server) Factory() proxy.Factory {
 	return s.factory
 }
 
-func New(ctx context.Context, manager uploads.Manager, observer proxy.RequestObserver, logger *zap.Logger) (*Server, error) {
-	runtime, cleanup, err := wasm.NewWasmRuntime(ctx, logger)
-	if err != nil {
-		logger.Error("failed to create new WASM runtime", zap.Error(err))
-		return nil, fmt.Errorf("failed to create new WASM runtime: %w", err)
-	}
+func New(ctx context.Context, runtime core.Runtime, observer proxy.RequestObserver, logger *zap.Logger) (*Server, error) {
 	builder := proxy.NewBuilder()
 	mwFactory := middleware.NewFactory(runtime, logger)
-	factory := proxy.NewFactory(builder, mwFactory, manager, observer, nil, nil, nil, nil, logger)
+	factory := proxy.NewFactory(builder, runtime, mwFactory, observer, nil, nil, nil, nil, logger)
 	return &Server{
 		rt:        runtime,
 		director:  builder.Director(),
 		builder:   builder,
 		mwFactory: mwFactory,
-		manager:   manager,
 		factory:   factory,
 		observer:  observer,
 		logger:    logger.With(zap.String("component", "proxy_server")),
-		cleanup:   cleanup,
 	}, nil
 }
 
@@ -88,7 +77,7 @@ func (s *Server) ConfigureAuth(
 	issuer middleware.TokenIssuer,
 	auditRepo middleware.AuditRepository,
 ) {
-	s.factory = proxy.NewFactory(s.builder, s.mwFactory, s.manager, s.observer, configRepo, validator, issuer, auditRepo, s.logger)
+	s.factory = proxy.NewFactory(s.builder, s.rt, s.mwFactory, s.observer, configRepo, validator, issuer, auditRepo, s.logger)
 }
 
 func (s *Server) Start(cfg *configmodel.Config, tlsCfg *tls.Config, ready chan<- error) {
@@ -186,13 +175,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) StopImmediate(ctx context.Context) error {
 	s.logger.Info("cleaning up proxy server resources")
 
-	if err := s.cleanup(); err != nil {
-		s.logger.Error("failed to clean up WASM runtime", zap.Error(err))
-		return fmt.Errorf("failed to clean up WASM runtime: %w", err)
-	}
 	if err := s.rt.Close(ctx); err != nil {
-		s.logger.Error("failed to close WASM runtime", zap.Error(err))
-		return fmt.Errorf("failed to close WASM runtime: %w", err)
+		s.logger.Error("failed to close runtime", zap.Error(err))
+		return fmt.Errorf("failed to close runtime: %w", err)
 	}
 	return nil
 }

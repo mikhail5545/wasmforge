@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package middleware
+package app
 
 import (
 	"fmt"
@@ -26,30 +26,31 @@ import (
 	"go.uber.org/zap"
 )
 
-type (
-	WasmMiddleware struct {
-		logger       *zap.Logger
-		runtime      core.Runtime
-		ref          core.ModuleRef
-		pluginConfig *string
-	}
-)
+type AppHandler struct {
+	logger  *zap.Logger
+	runtime core.Runtime
+	ref     core.ModuleRef
+}
 
-func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next http.Handler) {
+func NewHandler(rt core.Runtime, ref core.ModuleRef, logger *zap.Logger) http.Handler {
+	return &AppHandler{
+		logger:  logger.With(zap.String("component", "wasm-app-handler")),
+		runtime: rt,
+		ref:     ref,
+	}
+}
+
+func (h *AppHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	state := reqctx.RequestStateFromContextSafe(r.Context())
 	if state == nil {
 		state = &reqctx.RequestState{}
 	}
-	state.Interrupted = false
-	state.StatusCode = 0
-	state.Body = nil
-	reqLogger := m.logger.With(zap.String("path", r.URL.Path), zap.String("method", r.Method))
+	reqLogger := h.logger.With(zap.String("path", r.URL.Path), zap.String("method", r.Method))
 
 	ctx := r.Context()
 	ctx = reqctx.WithRequestState(ctx, state)
 	ctx = reqctx.WithLogger(ctx, reqLogger)
 	ctx = reqctx.WithRequest(ctx, r)
-	ctx = reqctx.WithJSONConfig(ctx, m.pluginConfig)
 
 	// Extract headers
 	headers := make(map[string][]string, len(r.Header))
@@ -63,8 +64,6 @@ func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next 
 		b, err := io.ReadAll(r.Body)
 		if err == nil {
 			bodyBytes = b
-			// We won't restore r.Body here since in the proxy architecture, plugins could consume it.
-			// Or we should ideally restore it if the next middleware needs it. For now keeping it simple as it was.
 		}
 	}
 
@@ -95,60 +94,40 @@ func (m *WasmMiddleware) ServeHTTP(w http.ResponseWriter, r *http.Request, next 
 
 	req := core.InvocationRequest{
 		Context:        coreCtx,
-		Ref:            m.ref,
-		ExecutionMode:  core.ExecutionModePlugin,
+		Ref:            h.ref,
+		ExecutionMode:  core.ExecutionModeFunction,
 		ExecutionPhase: core.ExecutionPhaseOnRequest,
 	}
 
-	res, err := m.runtime.Invoke(ctx, req)
+	res, err := h.runtime.Invoke(ctx, req)
 	if err != nil {
-		reqLogger.Error("plugin crashed during execution", zap.Error(fmt.Errorf("invoke call failed: %w", err)))
-		http.Error(w, "Plugin Error", http.StatusInternalServerError)
+		reqLogger.Error("application crashed during execution", zap.Error(fmt.Errorf("invoke call failed: %w", err)))
+		http.Error(w, "Application Error", http.StatusInternalServerError)
 		return
 	}
 
 	if res.Action == core.ResponseActionError {
-		reqLogger.Error("plugin returned internal error")
-		http.Error(w, "Plugin Error", http.StatusInternalServerError)
+		reqLogger.Error("application returned internal error")
+		http.Error(w, "Application Error", http.StatusInternalServerError)
 		return
 	}
 
-	if res.Interrupted || res.Action == core.ResponseActionRespond || res.Action == core.ResponseActionReject {
-		reqLogger.Info("Request was interrupted by plugin, skipping remaining middlewares and proxying",
-			zap.Int("status_code", res.ResponseMutations.StatusCode))
-
-		for k, v := range res.ResponseMutations.Headers {
-			for _, val := range v {
-				w.Header().Add(k, val)
-			}
-		}
-
-		statusCode := res.ResponseMutations.StatusCode
-		if statusCode == 0 {
-			statusCode = http.StatusOK
-		}
-		w.WriteHeader(statusCode)
-
-		if len(res.ResponseMutations.Body) > 0 {
-			if _, err := w.Write(res.ResponseMutations.Body); err != nil {
-				reqLogger.Error("failed to write response body", zap.Error(err))
-			}
-		}
-		return
-	}
-
-	// Apply request mutations before forwarding
-	if res.Mutated {
-		if res.RequestMutations.Method != "" {
-			r.Method = res.RequestMutations.Method
-		}
-		for k, v := range res.RequestMutations.Headers {
-			r.Header.Del(k)
-			for _, val := range v {
-				r.Header.Add(k, val)
-			}
+	// For an App, we always expect a response
+	for k, v := range res.ResponseMutations.Headers {
+		for _, val := range v {
+			w.Header().Add(k, val)
 		}
 	}
 
-	next.ServeHTTP(w, r)
+	statusCode := res.ResponseMutations.StatusCode
+	if statusCode == 0 {
+		statusCode = http.StatusOK
+	}
+	w.WriteHeader(statusCode)
+
+	if len(res.ResponseMutations.Body) > 0 {
+		if _, err := w.Write(res.ResponseMutations.Body); err != nil {
+			reqLogger.Error("failed to write response body", zap.Error(err))
+		}
+	}
 }

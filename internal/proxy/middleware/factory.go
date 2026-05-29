@@ -18,10 +18,9 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
-	"github.com/tetratelabs/wazero"
+	"github.com/mikhail5545/wasmforge/internal/runtime/core"
 	"go.uber.org/zap"
 )
 
@@ -29,43 +28,32 @@ import (
 
 type (
 	// Factory is responsible for creating WASM middleware instances based on the provided configuration.
-	// It compiles the WASM module once and creates middleware handlers that instantiate the module for each request.
-	// It's an interface for decoupling the middleware creation logic and WASM bytes compilation from the rest of the application, also providing
+	// It's an interface for decoupling the middleware creation logic from the rest of the application, also providing
 	// better testability and separation of concerns.
 	Factory interface {
-		Create(ctx context.Context, wasmBytes []byte, jsonConfig *string) (func(http.Handler) http.Handler, error)
+		Create(ctx context.Context, ref core.ModuleRef, jsonConfig *string) (func(http.Handler) http.Handler, error)
 	}
 
 	factory struct {
-		runtime wazero.Runtime
+		runtime core.Runtime
 		logger  *zap.Logger
 	}
 )
 
-func NewFactory(rt wazero.Runtime, logger *zap.Logger) Factory {
+func NewFactory(rt core.Runtime, logger *zap.Logger) Factory {
 	return &factory{
 		runtime: rt,
 		logger:  logger.With(zap.String("component", "wasm-middleware-factory")),
 	}
 }
 
-func (f *factory) Create(ctx context.Context, wasmBytes []byte, jsonConfig *string) (func(http.Handler) http.Handler, error) {
+func (f *factory) Create(ctx context.Context, ref core.ModuleRef, jsonConfig *string) (func(http.Handler) http.Handler, error) {
 	f.logger.Debug("creating WASM middleware", zap.Any("config", jsonConfig))
-
-	compiled, err := f.runtime.CompileModule(ctx, wasmBytes)
-	if err != nil {
-		f.logger.Error("failed to compile WASM module", zap.Error(err))
-		return nil, fmt.Errorf("failed to compile WASM module: %w", err)
-	}
-	instance, err := f.runtime.InstantiateModule(ctx, compiled, wazero.NewModuleConfig())
-	if err != nil {
-		f.logger.Error("failed to instantiate WASM module", zap.Error(err))
-		return nil, fmt.Errorf("failed to instantiate WASM module: %w", err)
-	}
 
 	mw := &WasmMiddleware{
 		logger:       f.logger,
-		module:       instance,
+		runtime:      f.runtime,
+		ref:          ref,
 		pluginConfig: jsonConfig,
 	}
 	return func(next http.Handler) http.Handler {

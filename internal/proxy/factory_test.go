@@ -25,12 +25,10 @@ import (
 	"github.com/google/uuid"
 	mockproxy "github.com/mikhail5545/wasmforge/internal/mocks/proxy"
 	mockmw "github.com/mikhail5545/wasmforge/internal/mocks/proxy/middleware"
-	mockuploads "github.com/mikhail5545/wasmforge/internal/mocks/uploads"
 	pluginmodel "github.com/mikhail5545/wasmforge/internal/models/plugin"
 	routemodel "github.com/mikhail5545/wasmforge/internal/models/route"
 	routepluginmodel "github.com/mikhail5545/wasmforge/internal/models/route/plugins"
 	"github.com/mikhail5545/wasmforge/internal/proxy"
-	"github.com/mikhail5545/wasmforge/internal/uploads"
 	"github.com/mikhail5545/wasmforge/internal/util/memory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,11 +47,10 @@ func setupLogger() (*zap.Logger, func(), error) {
 	return logger, cleanup, nil
 }
 
-func setupTest(t *testing.T) (*gomock.Controller, *mockproxy.MockBuilder, *mockuploads.MockManager, *mockmw.MockFactory, proxy.Factory) {
+func setupTest(t *testing.T) (*gomock.Controller, *mockproxy.MockBuilder, *mockmw.MockFactory, proxy.Factory) {
 	ctrl := gomock.NewController(t)
 
 	builder := mockproxy.NewMockBuilder(ctrl)
-	uploadsManager := mockuploads.NewMockManager(ctrl)
 	mwFactory := mockmw.NewMockFactory(ctrl)
 
 	logger, cleanup, err := setupLogger()
@@ -62,13 +59,13 @@ func setupTest(t *testing.T) (*gomock.Controller, *mockproxy.MockBuilder, *mocku
 	}
 	t.Cleanup(cleanup)
 
-	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, nil, nil, nil, nil, nil, logger)
+	factory := proxy.NewFactory(builder, nil, mwFactory, nil, nil, nil, nil, nil, logger)
 
-	return ctrl, builder, uploadsManager, mwFactory, factory
+	return ctrl, builder, mwFactory, factory
 }
 
 func TestFactory_Assemble(t *testing.T) {
-	ctrl, builder, uploadsManager, mwFactory, factory := setupTest(t)
+	ctrl, builder, mwFactory, factory := setupTest(t)
 	defer ctrl.Finish()
 
 	routeID, _ := uuid.NewV7()
@@ -128,22 +125,20 @@ func TestFactory_Assemble(t *testing.T) {
 			plugins: rtPlugins,
 			mockSetup: func() {
 				// We expect plugins in the same exact order as provided, because Factory should build the middleware chain in the given order
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
-				uploadsManager.EXPECT().Read(rtPlugins[1].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, rtPlugins[1].Config).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), rtPlugins[1].Config).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
 
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				builder.EXPECT().BuildProxyRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -153,7 +148,7 @@ func TestFactory_Assemble(t *testing.T) {
 			plugins: []*routepluginmodel.RoutePlugin{},
 			mockSetup: func() {
 				// Expect immediate building the route without middleware when there are no plugins
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
+				builder.EXPECT().BuildProxyRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil)
 			},
 			wantErr: false,
 		},
@@ -162,8 +157,7 @@ func TestFactory_Assemble(t *testing.T) {
 			route:   route,
 			plugins: rtPlugins,
 			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(nil, assert.AnError)
 			},
 			wantErr:   true,
@@ -172,45 +166,31 @@ func TestFactory_Assemble(t *testing.T) {
 				return assert.ErrorContains(t, err, "failed to create WASM middleware for plugin")
 			},
 		},
-		{
-			name:    "failure on file read",
-			route:   route,
-			plugins: rtPlugins,
-			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return(nil, assert.AnError)
-			},
-			wantErr:   true,
-			targetErr: assert.AnError,
-			checkErr: func(err error) bool {
-				return assert.ErrorContains(t, err, "failed to read WASM bytes for plugin")
-			},
-		},
+
 		{
 			name:    "failure on route build",
 			route:   route,
 			plugins: rtPlugins,
 			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
-				uploadsManager.EXPECT().Read(rtPlugins[1].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, rtPlugins[1].Config).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), rtPlugins[1].Config).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
 
-				builder.EXPECT().BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(assert.AnError)
+				builder.EXPECT().BuildProxyRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(assert.AnError)
 			},
 			wantErr:   true,
 			targetErr: assert.AnError,
 			checkErr: func(err error) bool {
-				return assert.ErrorContains(t, err, "failed to build route with middleware chain")
+				return assert.ErrorContains(t, err, "failed to build proxy route with middleware chain")
 			},
 		},
 	} {
@@ -234,7 +214,7 @@ func TestFactory_Assemble(t *testing.T) {
 }
 
 func TestFactory_Reassemble(t *testing.T) {
-	ctrl, builder, uploadsManager, mwFactory, factory := setupTest(t)
+	ctrl, builder, mwFactory, factory := setupTest(t)
 	defer ctrl.Finish()
 
 	routeID, _ := uuid.NewV7()
@@ -293,15 +273,13 @@ func TestFactory_Reassemble(t *testing.T) {
 			route:   route,
 			plugins: rtPlugins,
 			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
-				uploadsManager.EXPECT().Read(rtPlugins[1].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, rtPlugins[1].Config).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), rtPlugins[1].Config).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
@@ -339,8 +317,7 @@ func TestFactory_Reassemble(t *testing.T) {
 			route:   route,
 			plugins: rtPlugins,
 			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(nil, assert.AnError)
 			},
 			wantErr:   true,
@@ -349,33 +326,19 @@ func TestFactory_Reassemble(t *testing.T) {
 				return assert.ErrorContains(t, err, "failed to create WASM middleware for plugin")
 			},
 		},
-		{
-			name:    "failure on file read",
-			route:   route,
-			plugins: rtPlugins,
-			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return(nil, assert.AnError)
-			},
-			wantErr:   true,
-			targetErr: assert.AnError,
-			checkErr: func(err error) bool {
-				return assert.ErrorContains(t, err, "failed to read WASM bytes for plugin")
-			},
-		},
+
 		{
 			name:    "failure on route middleware rebuild",
 			route:   route,
 			plugins: rtPlugins,
 			mockSetup: func() {
-				uploadsManager.EXPECT().Read(rtPlugins[0].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), nil).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
 						})
 					}, nil)
-				uploadsManager.EXPECT().Read(rtPlugins[1].Plugin.Filename, uploads.PluginUpload).Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
-				mwFactory.EXPECT().Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, rtPlugins[1].Config).
+				mwFactory.EXPECT().Create(gomock.Any(), gomock.Any(), rtPlugins[1].Config).
 					Return(func(next http.Handler) http.Handler {
 						return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 							next.ServeHTTP(w, r)
@@ -411,7 +374,7 @@ func TestFactory_Reassemble(t *testing.T) {
 }
 
 func TestFactory_Disassemble(t *testing.T) {
-	ctrl, builder, _, _, factory := setupTest(t)
+	ctrl, builder, _, factory := setupTest(t)
 	defer ctrl.Finish()
 
 	routePath := "/test"
@@ -437,7 +400,6 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 	defer ctrl.Finish()
 
 	builder := mockproxy.NewMockBuilder(ctrl)
-	uploadsManager := mockuploads.NewMockManager(ctrl)
 	mwFactory := mockmw.NewMockFactory(ctrl)
 
 	logger, cleanup, err := setupLogger()
@@ -445,7 +407,7 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 	t.Cleanup(cleanup)
 
 	observer := &recordingObserver{}
-	factory := proxy.NewFactory(builder, mwFactory, uploadsManager, observer, nil, nil, nil, nil, logger)
+	factory := proxy.NewFactory(builder, nil, mwFactory, observer, nil, nil, nil, nil, logger)
 
 	routeID := uuid.MustParse("00000000-0000-0000-0000-000000000100")
 	pluginID := uuid.MustParse("00000000-0000-0000-0000-000000000200")
@@ -468,11 +430,8 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 		},
 	}
 
-	uploadsManager.EXPECT().
-		Read("test-plugin-1.wasm", uploads.PluginUpload).
-		Return([]byte{0x00, 0x61, 0x73, 0x6d}, nil)
 	mwFactory.EXPECT().
-		Create(gomock.Any(), []byte{0x00, 0x61, 0x73, 0x6d}, nil).
+		Create(gomock.Any(), gomock.Any(), nil).
 		Return(func(next http.Handler) http.Handler {
 			return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				observer.steps = append(observer.steps, "wasm-before")
@@ -481,7 +440,7 @@ func TestFactory_Assemble_AppliesPluginObserverMiddleware(t *testing.T) {
 			})
 		}, nil)
 	builder.EXPECT().
-		BuildRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
+		BuildProxyRoute(route.TargetURL, route.Path, gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).
 		DoAndReturn(func(_ string, _ string, _ []string, _ proxy.TransportConfig, middlewares ...func(http.Handler) http.Handler) error {
 			var handler http.Handler = http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
 				observer.steps = append(observer.steps, "terminal")

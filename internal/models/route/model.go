@@ -10,10 +10,11 @@ import (
 )
 
 type Route struct {
-	ID        uuid.UUID `gorm:"primaryKey;type:uuid" json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	Path      string    `gorm:"uniqueIndex;not null" json:"path"`
-	TargetURL string    `json:"target_url"`
+	ID        uuid.UUID  `gorm:"primaryKey;type:uuid" json:"id"`
+	CreatedAt time.Time  `json:"created_at"`
+	Path      string     `gorm:"uniqueIndex;not null" json:"path"`
+	TargetURL string     `json:"target_url"`
+	AppID     *uuid.UUID `gorm:"type:uuid" json:"app_id"`
 
 	Enabled               bool `gorm:"default:false" json:"enabled"`
 	IdleConnTimeout       int  `json:"idle_conn_timeout"`

@@ -18,6 +18,7 @@ type ListRequest struct {
 	PluginIDs  []string `query:"pids" json:"-"`
 	Paths      []string `query:"paths" json:"-"`
 	TargetURLs []string `query:"turls" json:"-"`
+	AppIDs     []string `query:"app_ids" json:"-"`
 	Enabled    *bool    `query:"enabled" json:"-"`
 
 	OrderField     OrderField `query:"of" json:"-"`
@@ -28,8 +29,9 @@ type ListRequest struct {
 }
 
 type CreateRequest struct {
-	Path      string `json:"path"`
-	TargetURL string `json:"target_url"`
+	Path      string  `json:"path"`
+	TargetURL string  `json:"target_url"`
+	AppID     *string `json:"app_id"`
 
 	IdleConnTimeout       int `json:"idle_conn_timeout"`
 	TLSHandshakeTimeout   int `json:"tls_handshake_timeout"`
@@ -46,6 +48,7 @@ type UpdateRequest struct {
 	ID        string  `param:"id" json:"-"`
 	Path      *string `json:"path,omitempty"`
 	TargetURL *string `json:"target_url,omitempty"`
+	AppID     *string `json:"app_id,omitempty"`
 
 	IdleConnTimeout       *int `json:"idle_conn_timeout,omitempty"`
 	TLSHandshakeTimeout   *int `json:"tls_handshake_timeout,omitempty"`
